@@ -53,6 +53,7 @@ else ifeq ($(DEVICE),npu2)
     CXXFLAGS += -fopenmp
 	CXXFLAGS += -ggdb
 	CXXFLAGS += -I/opt/xilinx/xrt/include
+	CXXFLAGS += -I/opt/xilinx/xrt/include/xrt  
 	CXXFLAGS += -I/usr/include/boost
 	CXXFLAGS += -I${HOME_DIR}/host
 	CXXFLAGS += -I${HOME_DIR}/common
