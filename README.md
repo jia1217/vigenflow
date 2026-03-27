@@ -4,6 +4,14 @@
 
 Follow these steps to set up, build, and run the project on your local machine.
 
+**Option A: Clone the Repository (Recommended)**
+Open your terminal and run the following commands to clone the repo and navigate into the folder:
+
+```bash
+git clone [https://github.com/your-username/your-repo-name.git](https://github.com/your-username/your-repo-name.git)
+cd your-repo-name
+```
+
 ### 1. Extract the Files
 Once you have downloaded the project `.zip` file, extract its contents. Open your terminal and navigate into the root directory of the extracted folder:
 
