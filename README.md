@@ -9,10 +9,15 @@ The fastest way to download the full weight structure:
 
 `sudo apt install python3.14-venv`
 
-python3 -m venv myenv
+`python3 -m venv myenv`
 
-source myenv/bin/activate
+`source myenv/bin/activate`
 
+
+`sudo apt update`
+`sudo apt install libstb-dev`
+
+to install the pacakge so that you can get the img.png file directly
 
 
 1. Install the Hub library:
