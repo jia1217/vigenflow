@@ -64,7 +64,8 @@ else ifeq ($(DEVICE),npu2)
 	LDFLAGS += -fopenmp
 	LDFLAGS += -lm
 	LDFLAGS += -L/opt/xilinx/xrt/lib
-	LDFLAGS += -Wl,-rpath,/opt/xilinx/xrt/lib
+	LDFLAGS += -Wl,-rpath,/opt/xilinx/xrt/lib 
+#   LDFLAGS += /usr/lib/x86_64-linux-gnu for ubutun 26
 	LDFLAGS += -lxrt_coreutil
 	LDFLAGS += -lboost_program_options -lboost_filesystem
 	LDFLAGS  += -L$(TORCH_PATH)/lib -Wl,-rpath,$(TORCH_PATH)/lib  
