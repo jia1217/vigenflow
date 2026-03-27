@@ -27,9 +27,6 @@ git submodule update --init --recursive
 
 ```
 
-CXXFLAGS += -I./external_lib
-
-
 1. Install the Hub library:
    `pip install -U "huggingface_hub[cli]"`
 2. Login:

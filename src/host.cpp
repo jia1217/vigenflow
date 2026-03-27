@@ -24,7 +24,7 @@
 #include <cstring>
 #include <thread> 
 #include <iostream>
-// #include <stb/stb_image_write.h>
+#include <stb_image_write.h>
 #include <malloc.h>
 #include "mvm_sequence.hpp"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
