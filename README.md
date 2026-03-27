@@ -12,6 +12,7 @@ git clone [https://github.com/your-username/your-repo-name.git](https://github.c
 cd your-repo-name
 ```
 
+**Option B: Download the `.zip` File**
 ### 1. Extract the Files
 Once you have downloaded the project `.zip` file, extract its contents. Open your terminal and navigate into the root directory of the extracted folder:
 
