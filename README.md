@@ -19,6 +19,16 @@ The fastest way to download the full weight structure:
 
 to install the pacakge so that you can get the img.png file directly
 
+or you can 
+```bash
+mkdir -p external_lib/stb
+git submodule add https://github.com/nothings/stb.git external_lib/stb
+git submodule update --init --recursive
+
+```
+
+CXXFLAGS += -I./external_lib
+
 
 1. Install the Hub library:
    `pip install -U "huggingface_hub[cli]"`
