@@ -52,6 +52,7 @@ Note: This script will clone the necessary repositories, update submodules, conf
 Once the dependencies are successfully set up, compile the main C++ project using `make`:
 
 ```bash
+sudo apt update && sudo apt install g++-13 -y
 make
 ```
 
