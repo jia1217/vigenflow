@@ -24,11 +24,11 @@
 #include <cstring>
 #include <thread> 
 #include <iostream>
-#include <stb_image_write.h>
 #include <malloc.h>
 #include "mvm_sequence.hpp"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 namespace po = boost::program_options;
 namespace fs = std::filesystem;
 using host_bf16  = dtype_out;      // your type, e.g. __bf16
