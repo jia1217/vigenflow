@@ -30,8 +30,8 @@ git submodule update --init --recursive
 1. Install the Hub library:
    `pip install -U "huggingface_hub[cli]"`
 2. Login:
-   `hf auth login`
-   `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`
+   `export HF_TOKEN=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`
+   `hf auth login --token "$HF_TOKEN"`
 3. Download the whole repo:
    `hf download Kelsey1217/Z-Image-Turbo --local-dir ./Z-Image-Turbo`
 
