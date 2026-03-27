@@ -7,6 +7,14 @@ Follow these steps to set up, build, and run the project on your local machine.
 ### 📥 Download model weights via CLI
 The fastest way to download the full weight structure:
 
+`sudo apt install python3.14-venv`
+
+python3 -m venv myenv
+
+source myenv/bin/activate
+
+
+
 1. Install the Hub library:
    `pip install -U "huggingface_hub[cli]"`
 2. Login:
@@ -34,6 +42,7 @@ cd path/to/extracted/folder
 Before compiling the main code, you need to pull in and build the required external libraries (such as tokenizers-cpp). We have provided a script to automate this. Run the following command from the root directory
 
 ```bash
+mkdir external_lib
 bash scripts/setup_deps.sh
 ```
 
