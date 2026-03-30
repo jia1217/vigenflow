@@ -31,19 +31,19 @@ using tcp = net::ip::tcp;
 // --------------------------------------------------
 // Global defaults
 // --------------------------------------------------
-std::string g_weights_path   = "./";             // Assuming weights are in the root folder
-std::string g_npu_files_path = "./npu_files";    // Points to your local npu_files folder
+std::string g_weights_path = "../";
+std::string g_npu_files_path = "../npu_files/Z-Image-Turbo";
 
-std::string g_output_dir     = "./images";       // Saves outputs into your existing images/ folder
-std::string g_public_base_url = "http://127.0.0.1:1234";
-std::string g_model_id       = "local-image-1";
+std::string g_output_dir = "/home/kelsey/img_test";
+std::string g_public_base_url = "http://127.0.0.1:11281";
+std::string g_model_id = "local-image-1";
 
-// Point to the executable right here in the root folder
-std::string g_exe_path       = "./run.exe";      
-// The working directory is simply the current folder
-std::string g_workdir        = "./";             
+std::string g_exe_path =
+    "../run.exe";
+std::string g_workdir =
+    ".";
 
-unsigned short g_port = 1234;
+unsigned short g_port = 11281;
 
 // serialize NPU / run.exe access
 std::mutex g_infer_mutex;
@@ -143,6 +143,16 @@ static std::string base64_encode(const std::vector<char>& data) {
     return out;
 }
 
+// static std::string get_response_format(const std::string& body) {
+//     try {
+//         json j = json::parse(body);
+//         if (j.contains("response_format") && j["response_format"].is_string()) {
+//             return j["response_format"].get<std::string>();
+//         }
+//     } catch (...) {
+//     }
+//     return "url";
+// }
 static std::string get_response_format(const std::string& body) {
     try {
         json j = json::parse(body);
@@ -200,7 +210,12 @@ GenParams parse_request(const std::string& body)
             else if (size == "1024x1024") {
                 params.H = 1024; params.W = 1024;
             }
-           
+            else if (size == "1024x1536") {
+                params.H = 1536; params.W = 1024;
+            }
+            else if (size == "1536x1024") {
+                params.H = 1024; params.W = 1536;
+            }
         }
 
         return params;
@@ -275,16 +290,28 @@ std::string run_worker(const GenParams& p)
 
     auto start_time = std::chrono::steady_clock::now();
 
+    // bp::child c(
+    //     g_exe_path,
+    //     g_weights_path,
+    //     g_npu_files_path,
+    //     std::to_string(p.seed),
+    //     std::to_string(p.H),
+    //     std::to_string(p.W),
+    //     std::to_string(p.steps),
+    //     p.prompt,
+    //     fullpath,
+    //     bp::start_dir = g_workdir
+    // );
     bp::child c(
         g_exe_path,
-        g_weights_path,
-        g_npu_files_path,
-        std::to_string(p.seed),
-        std::to_string(p.H),
-        std::to_string(p.W),
-        std::to_string(p.steps),
-        p.prompt,
-        fullpath,
+        "--weights_path", g_weights_path,
+        "--npu_files_path", g_npu_files_path,
+        "--seed", std::to_string(p.seed),
+        "--image_H", std::to_string(p.H),
+        "--image_W", std::to_string(p.W),
+        "--step", std::to_string(p.steps), // Note: singular 'step' matching your main.cpp
+        "--prompt", p.prompt,
+        "--output_path", fullpath,
         bp::start_dir = g_workdir
     );
 
@@ -346,7 +373,27 @@ handle_request(http::request<http::string_body>&& req)
     << req.method_string() << " " 
     << std::string(req.target()) << "\n";
     try {
-
+        // if (req.method() == http::verb::get && target == "/") {
+        //     std::ifstream f("index.html");
+        //     if (!f) {
+        //         return make_json_response(
+        //             http::status::not_found,
+        //             req.version(),
+        //             keep_alive,
+        //             json{{"error", "index.html not found"}}
+        //         );
+        //     }
+        
+        //     std::string html((std::istreambuf_iterator<char>(f)),
+        //                      std::istreambuf_iterator<char>());
+        
+        //     http::response<http::string_body> res{http::status::ok, req.version()};
+        //     res.set(http::field::content_type, "text/html; charset=utf-8");
+        //     res.keep_alive(keep_alive);
+        //     res.body() = html;
+        //     res.prepare_payload();
+        //     return res;
+        // }
         if (req.method() == http::verb::get && target == "/health") {
             return make_json_response(
                 http::status::ok,
@@ -544,13 +591,31 @@ void do_session(tcp::socket socket)
 // --------------------------------------------------
 // Main
 // --------------------------------------------------
+void print_usage(const char* prog_name) {
+    std::cout
+        << "Usage: " << prog_name << " [options]\n\n"
+        << "Options:\n"
+        << "  --weights_path <path>      Path to model weights\n"
+        << "  --npu_files_path <path>    Path to NPU files\n"
+        << "  --output_dir <path>        Output image directory\n"
+        << "  --public_base_url <url>    Public base URL\n"
+        << "  --model_id <id>            Model ID\n"
+        << "  --port <port>              Server port\n"
+        << "  --exe_path <path>          Worker executable path\n"
+        << "  --workdir <path>           Working directory\n"
+        << "  -h, --help                 Show this help message\n";
+}
 int main(int argc, char* argv[])
 {
     try {
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
-
-            if (arg == "--weights_path") {
+    
+            if (arg == "-h" || arg == "--help") {
+                print_usage(argv[0]);
+                return 0;
+            }
+            else if (arg == "--weights_path") {
                 if (i + 1 < argc) g_weights_path = argv[++i];
                 else { std::cerr << "Error: --weights_path requires an argument.\n"; return 1; }
             }
@@ -583,7 +648,8 @@ int main(int argc, char* argv[])
                 else { std::cerr << "Error: --workdir requires an argument.\n"; return 1; }
             }
             else {
-                std::cerr << "Unknown argument: " << arg << "\n";
+                std::cerr << "Unknown argument: " << arg << "\n\n";
+                print_usage(argv[0]);
                 return 1;
             }
         }
