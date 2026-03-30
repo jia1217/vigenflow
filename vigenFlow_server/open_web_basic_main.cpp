@@ -32,14 +32,14 @@ using tcp = net::ip::tcp;
 // Global defaults
 // --------------------------------------------------
 std::string g_weights_path = "../";
-std::string g_npu_files_path = "../npu_files/Z-Image-Turbo";
+std::string g_npu_files_path = "./npu_files/Z-Image-Turbo";
 
-std::string g_output_dir = "../images";
+std::string g_output_dir = "./images";
 std::string g_public_base_url = "http://127.0.0.1:11281";
 std::string g_model_id = "local-image-1";
 bool g_keep_images = true; // Default to keeping images
 std::string g_exe_path =
-    "../run.exe";
+    "./run.exe";
 std::string g_workdir =
     ".";
 
