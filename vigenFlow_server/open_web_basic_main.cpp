@@ -34,10 +34,10 @@ using tcp = net::ip::tcp;
 std::string g_weights_path = "../";
 std::string g_npu_files_path = "../npu_files/Z-Image-Turbo";
 
-std::string g_output_dir = "/home/kelsey/img_test";
+std::string g_output_dir = "../images";
 std::string g_public_base_url = "http://127.0.0.1:11281";
 std::string g_model_id = "local-image-1";
-
+bool g_keep_images = true; // Default to keeping images
 std::string g_exe_path =
     "../run.exe";
 std::string g_workdir =
@@ -373,27 +373,7 @@ handle_request(http::request<http::string_body>&& req)
     << req.method_string() << " " 
     << std::string(req.target()) << "\n";
     try {
-        // if (req.method() == http::verb::get && target == "/") {
-        //     std::ifstream f("index.html");
-        //     if (!f) {
-        //         return make_json_response(
-        //             http::status::not_found,
-        //             req.version(),
-        //             keep_alive,
-        //             json{{"error", "index.html not found"}}
-        //         );
-        //     }
-        
-        //     std::string html((std::istreambuf_iterator<char>(f)),
-        //                      std::istreambuf_iterator<char>());
-        
-        //     http::response<http::string_body> res{http::status::ok, req.version()};
-        //     res.set(http::field::content_type, "text/html; charset=utf-8");
-        //     res.keep_alive(keep_alive);
-        //     res.body() = html;
-        //     res.prepare_payload();
-        //     return res;
-        // }
+       
         if (req.method() == http::verb::get && target == "/health") {
             return make_json_response(
                 http::status::ok,
@@ -449,7 +429,7 @@ handle_request(http::request<http::string_body>&& req)
 
             return make_image_response(req.version(), keep_alive, std::move(data), mime);
         }
-
+        
         if (req.method() == http::verb::post && target == "/v1/images/generations") {
             GenParams params = parse_request(req.body());
             std::string response_format = get_response_format(req.body());
@@ -470,27 +450,56 @@ handle_request(http::request<http::string_body>&& req)
                 {"revised_prompt", params.prompt}
             };
 
+            // --- NEW CLEANUP LOGIC ---
+            // Only delete if the flag is false AND we aren't using URLs
+            if (!g_keep_images && response_format != "url") {
+                std::error_code ec;
+                fs::remove(image_path, ec);
+                if (ec) {
+                    std::cerr << "[WARNING] Failed to delete image: " << ec.message() << "\n";
+                } else {
+                    std::cout << "[INFO] Cleaned up temporary image: " << image_path << "\n";
+                }
+            }
+            // -------------------------
+
             json body = {
                 {"created", static_cast<long long>(std::time(nullptr))},
                 {"data", json::array({item})}
             };
 
             return make_json_response(http::status::ok, req.version(), keep_alive, body);
-            // json item;
-            // if (response_format == "b64_json") {
-            //     auto data = read_binary_file(image_path);
-            //     item["b64_json"] = base64_encode(data);
-            // } else {
-            //     item["url"] = public_url;
-            // }
-
-            // json body = {
-            //     {"created", static_cast<long long>(std::time(nullptr))},
-            //     {"data", json::array({item})}
-            // };
-
-            // return make_json_response(http::status::ok, req.version(), keep_alive, body);
         }
+        // if (req.method() == http::verb::post && target == "/v1/images/generations") {
+        //     GenParams params = parse_request(req.body());
+        //     std::string response_format = get_response_format(req.body());
+
+        //     std::string image_path;
+        //     {
+        //         std::lock_guard<std::mutex> lock(g_infer_mutex);
+        //         image_path = run_worker(params);
+        //     }
+
+        //     std::string filename = fs::path(image_path).filename().string();
+        //     std::string public_url = g_public_base_url + "/images/" + filename;
+
+        //     auto data = read_binary_file(image_path);
+
+        //     json item = {
+        //         {"b64_json", base64_encode(data)},
+        //         {"revised_prompt", params.prompt}
+        //     };
+
+        //     json body = {
+        //         {"created", static_cast<long long>(std::time(nullptr))},
+        //         {"data", json::array({item})}
+        //     };
+
+        //     return make_json_response(http::status::ok, req.version(), keep_alive, body);
+           
+        // }
+        
+        
         if (req.method() == http::verb::post && target == "/v1/chat/completions") {
             json body = {
                 {"id", "chatcmpl-local"},
@@ -603,7 +612,8 @@ void print_usage(const char* prog_name) {
         << "  --port <port>              Server port\n"
         << "  --exe_path <path>          Worker executable path\n"
         << "  --workdir <path>           Working directory\n"
-        << "  -h, --help                 Show this help message\n";
+        << "  -h, --help                 Show this help message\n"
+        << "  --keep_images <true/false> Keep generated images on disk (default: true)\n";
 }
 int main(int argc, char* argv[])
 {
@@ -646,6 +656,13 @@ int main(int argc, char* argv[])
             else if (arg == "--workdir") {
                 if (i + 1 < argc) g_workdir = argv[++i];
                 else { std::cerr << "Error: --workdir requires an argument.\n"; return 1; }
+            }
+            else if (arg == "--keep_images") {
+                if (i + 1 < argc) {
+                    std::string val = argv[++i];
+                    g_keep_images = (val == "true" || val == "1");
+                }
+                else { std::cerr << "Error: --keep_images requires an argument (true/false).\n"; return 1; }
             }
             else {
                 std::cerr << "Unknown argument: " << arg << "\n\n";
