@@ -150,33 +150,8 @@ nting with figures resting under trees." /home/kelsey/img_test/img_test.png
 
 This method compiles and runs an HTTP server that listens for generation requests. When a request is received via POST, the server handles the execution of the underlying NPU worker and returns the generated image data.
 
-#### Step 1: Configure Paths (main.cpp)
 
-The server is designed to be portable. The `run_worker` function has been polished to use **relative paths**, ensuring the NPU executable can be found regardless of where the project is installed on the system.
-
-Update your `main.cpp` with the following implementation:
-
-```cpp
-#include <string>
-#include <atomic>
-#include <iostream>
-
-/**
- * Executes the NPU worker process. 
- * Polished for portability using relative paths.
- */
-std::string run_worker(const GenParams& p)
-{
-    const std::string exe =
-        "/run.exe";
-
-    const std::string workdir =
-        "/";
-
-   ....
-}
-```
-#### Step 2: Compile the Server
+#### Step 1: Compile the Server
 
 Use `g++` to compile the server code. Ensure you link the necessary threads and Boost libraries.
 
@@ -189,15 +164,8 @@ g++ -std=c++17 -O2 main.cpp -lpthread -lboost_system -o server
 Run the generated server binary. You must specify the base paths for the weights and NPU files using command-line flags. These paths act as the global defaults for the server.
 
 ```bash
-./server --weights_path /home/kelsey/repo_test/npu-image-diffusion --npu_files_path /home/kelsey/repo_test/npu-image-diffusion/build/Z-Image-Turbo
+./server -h
 ```
 
 By default, the server will run and listen on `http://0.0.0.0:1234`.
 
-#### Step 4: Trigger Generation
-
-Once the server is running, you can send generation requests to it. A sample bash script is provided to quickly test the server. Open a new terminal window and run:
-
-```bash
-bash test_server.sh
-```
