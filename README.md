@@ -40,7 +40,30 @@ If any dependencies are missing, run:
 sudo apt-get install -f
 ```
 
+### Start the Server After Installation
+
+After installing the package, you should see a message indicating that `vgf-serve` has been installed successfully and added to your system path.
+
+You can then verify the installation and view the available server options by running:
+
+```bash
+vgf-serve -h
+```
+
+This command will display the supported arguments, such as the model weights path, NPU files path, output directory, port, and other server settings.
+
+After that, you can launch the server with your desired configuration. For example:
+
+```bash
+vgf-serve \
+  --w /path/to/model_weights \
+  --k false \
+```
+
 After installation, you can integrate VigenFlow with **Open WebUI** and use Open WebUI to call your own server.
+
+
+
 
 ### Option B: Build from Source
 

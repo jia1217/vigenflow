@@ -65,7 +65,7 @@ You can run inference directly by executing the `run.exe` binary. This method re
 #### Example
 
 ```bash
- ./run.exe /home/kelsey/repo_test/npu-image-diffusion /home/kelsey/repo_test/npu-image-diffusion/build/Z-Image-T
+ ./run.exe /home/kelsey/repo_test/model_weights /home/kelsey/repo_test/vigenflow/build/Z-Image-T
 urbo 42 1024 1024 4 "Cover of 'JACOB VAN RUISDAEL: A COMPLETE CATALOGGW OF HIS PAINTINGS, DRAWINGS AND ETCHINGS' by SEYMOUR SLIVE, featuring a serene landscape pai
 nting with figures resting under trees." /home/kelsey/img_test/img_test.png
 ```
