@@ -1,8 +1,8 @@
-
-
 ## Getting Started
 
-Follow these steps to set up, build, and run the project on your local machine.
+Follow the steps below to set up, build, and run the project on your local machine.
+
+Before proceeding, please make sure that the AMD XDNA driver has been installed on your system. You can find more details in the [installation guide](https://github.com/Xilinx/mlir-aie).
 
 ### 📥 Download model weights via CLI
 The fastest way to download the full weight structure:
