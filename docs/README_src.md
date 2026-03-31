@@ -1,4 +1,4 @@
-### Option B: Build from Source
+### Option : Build from Source
 
 You can also clone the repository and build the executable yourself.
 

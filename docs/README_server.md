@@ -1,4 +1,4 @@
-### Option 2: Server Mode (API-Based)
+### Option : Server Mode (API-Based)
 
 This method compiles and runs an HTTP server that listens for generation requests. When a request is received via POST, the server handles the execution of the underlying NPU worker and returns the generated image data.
 
