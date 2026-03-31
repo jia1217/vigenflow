@@ -226,18 +226,6 @@ int main(int argc, const char *argv[]) {
     
 
     ////////////////////////////////////////////////////////////////////////////////////////
-    srand(0);
-    // Program arguments parsing
-    // po::options_description desc("Allowed options");
-    // po::variables_map vm;
-    // arg_utils::add_default_options(desc);
-
-    // Add custom options
-    // desc.add_options()("M,m", po::value<int>()->default_value(128 * 4 * 4), "M");
-    // desc.add_options()("K,k", po::value<int>()->default_value(128 * 4), "K");
-    // desc.add_options()("I,i", po::value<int>()->default_value(1), "Iterations");
-
-    // arg_utils::parse_options(argc, argv, desc, vm);
     fs::path base_dir = weights_path + "/Z-Image-Turbo/denoising/bf16_parts"; 
 
     fs::path qwen_dir = weights_path + "/Z-Image-Turbo/text_encoder";
@@ -250,7 +238,6 @@ int main(int argc, const char *argv[]) {
         npu_instance.get_npu_power(true);
         npu_instance.print_npu_info();
     }
-    // arg_utils::parse_options(argc, argv, desc, vm);
     /////////////////////////////////////////////////////////////////////////
     std::string qwen_qkv_mm_xclbin = npu_files_path + "/xclbins/MM_128.xclbin";
     npu_app_desc accel_desc_q, accel_desc_kv, accel_desc_o, accel_desc_down, accel_desc_gate_up;
@@ -260,7 +247,7 @@ int main(int argc, const char *argv[]) {
     accel_desc_kv.app_name = "qwen_k_mm";
     accel_desc_o.xclbin_name = qwen_qkv_mm_xclbin;
     accel_desc_o.app_name = "qwen_o_mm";
-    accel_desc_down.xclbin_name = qwen_qkv_mm_xclbin;
+    accel_desc_down.xclbin_name = qwen_qkv_mm_xclbin;cap_padding_len
     accel_desc_down.app_name = "qwen_down_mm";
     accel_desc_gate_up.xclbin_name = qwen_qkv_mm_xclbin;
     accel_desc_gate_up.app_name = "qwen_gate_up_mm";
@@ -1362,9 +1349,9 @@ int main(int argc, const char *argv[]) {
     std::vector<uint16_t> final_mm_bias_u16(64);
     io::read_data_from_files(final_mm_weight_path.c_str(), final_mm_weight_u16, 3840*64);
     io::read_data_from_files(final_mm_bias_path.c_str(), final_mm_bias_u16, 64);
-    buffer<dtype_in> final_mm_in = app_final_mm.create_bo_buffer<dtype_in>(4352*3840, 3);
+    buffer<dtype_in> final_mm_in = app_final_mm.create_bo_buffer<dtype_in>(4608*3840, 3);
     buffer<dtype_in> final_mm_weight = app_final_mm.create_bo_buffer<dtype_in>(3840*512, 4);
-    buffer<dtype_in> final_mm_out = app_final_mm.create_bo_buffer<dtype_in>(4352*512, 5);
+    buffer<dtype_in> final_mm_out = app_final_mm.create_bo_buffer<dtype_in>(4608*512, 5);
     buffer<dtype_in> final_adaLN_linear_bias(64);
     for (size_t i = 0; i < 3840; ++i) {
         // source row: 3840 uint16_t values
