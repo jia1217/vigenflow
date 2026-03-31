@@ -7,11 +7,11 @@ Follow these steps to set up, build, and run the project on your local machine.
 ### 📥 Download model weights via CLI
 The fastest way to download the full weight structure:
 
-`sudo apt install python3.14-venv`
+`sudo apt purge vigenflow`
 
-`python3 -m venv myenv`
+`dpkg -l | grep vigenflow`
 
-`source myenv/bin/activate`
+`sudo dpkg -i vigenflow_1.6_amd64.deb`
 
 
 `sudo apt update`
