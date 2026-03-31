@@ -56,8 +56,9 @@ After that, you can launch the server with your desired configuration. For examp
 
 ```bash
 vgf-serve \
-  --w /path/to/model_weights \
-  --k false \
+  -w /path/to/model_weights \
+  -k false \
+  -m model_name \
 ```
 
 After installation, you can integrate VigenFlow with **Open WebUI** and use Open WebUI to call your own server.
