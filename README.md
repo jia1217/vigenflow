@@ -17,7 +17,6 @@ sudo apt update
 1. Install the Hub library:
    `pip install -U "huggingface_hub[cli]"`
 2. Login:
-   `export HF_TOKEN=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`
    `hf auth login`
 3. Download the whole repo:
    `hf download Kelsey1217/Z-Image-Turbo --local-dir ./Z-Image-Turbo`
@@ -29,7 +28,7 @@ You can use either of the following methods to run **VigenFlow**.
 
 ### Option A: Install from the Release Package (Recommended)
 
-The easiest way to get started is to download the released `.deb` package and install it directly:
+The easiest way to get started is to download the [released](https://github.com/jia1217/vigenflow/releases/tag/vigen1.0) `.deb` package and install it directly:
 
 ```bash
 sudo dpkg -i vigenflow_1.0_amd64.deb
