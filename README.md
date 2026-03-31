@@ -91,8 +91,8 @@ To view the available command-line arguments, run:
 
 For more detailed build and usage instructions, please refer to:
 
-- `doc/readme_doc.md`
-- [https://github.com/jia1217/vigenflow/blob/main/docs/README_deb.md](YOUR_LINK_HERE)
+- `doc/readme_*.md`
+- [https://github.com/jia1217/vigenflow/tree/main/docs](YOUR_LINK_HERE)
 
 ## Usage
 
