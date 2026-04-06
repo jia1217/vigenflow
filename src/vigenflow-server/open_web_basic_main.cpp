@@ -31,20 +31,23 @@ using tcp = net::ip::tcp;
 // --------------------------------------------------
 // Global defaults
 // --------------------------------------------------
-std::string g_weights_path = "../";
-std::string g_npu_files_path = "./npu_files/Z-Image-Turbo";
 
-std::string g_output_dir = "./images";
-std::string g_public_base_url = "http://127.0.0.1:11281";
+// std::string g_weights_path = "./";
+// std::string g_npu_files_path = "../npu_files/Z-Image-Turbo";
+// std::string g_exe_path = "../run.exe";
+// std::string g_workdir = ".";
+const std::string INSTALL_DIR = "/opt/vigenflow";
+std::string g_weights_path    = INSTALL_DIR + "/"; 
+std::string g_npu_files_path  = INSTALL_DIR + "/npu_files/Z-Image-Turbo";
+std::string g_exe_path        = INSTALL_DIR + "/run.exe";
+std::string g_workdir        = INSTALL_DIR; // Crucial: tell
+
 std::string g_model_id = "local-image-1";
+unsigned short g_port = 11283; // Moved up so it can be used below
+std::string g_public_base_url = "http://127.0.0.1:" + std::to_string(g_port);
+std::string g_output_dir = "../images";
+
 bool g_keep_images = true; // Default to keeping images
-std::string g_exe_path =
-    "./run.exe";
-std::string g_workdir =
-    ".";
-
-unsigned short g_port = 11281;
-
 // serialize NPU / run.exe access
 std::mutex g_infer_mutex;
 
@@ -278,7 +281,8 @@ std::string run_worker(const GenParams& p)
     ).count();
 
     std::string filename = "output_" + std::to_string(ms) + "_" + std::to_string(++job_counter) + ".png";
-    std::string fullpath = g_output_dir + "/" + filename;
+    // std::string fullpath = g_output_dir + "/" + filename;
+    std::string fullpath = (fs::path(g_output_dir) / filename).string();
 
     std::cout << "[INFO] Request received. Starting AI model (" << p.W << "x" << p.H << ")...\n";
     std::cout << "[INFO] Using model weights: " << g_weights_path << "\n";
@@ -470,34 +474,7 @@ handle_request(http::request<http::string_body>&& req)
 
             return make_json_response(http::status::ok, req.version(), keep_alive, body);
         }
-        // if (req.method() == http::verb::post && target == "/v1/images/generations") {
-        //     GenParams params = parse_request(req.body());
-        //     std::string response_format = get_response_format(req.body());
 
-        //     std::string image_path;
-        //     {
-        //         std::lock_guard<std::mutex> lock(g_infer_mutex);
-        //         image_path = run_worker(params);
-        //     }
-
-        //     std::string filename = fs::path(image_path).filename().string();
-        //     std::string public_url = g_public_base_url + "/images/" + filename;
-
-        //     auto data = read_binary_file(image_path);
-
-        //     json item = {
-        //         {"b64_json", base64_encode(data)},
-        //         {"revised_prompt", params.prompt}
-        //     };
-
-        //     json body = {
-        //         {"created", static_cast<long long>(std::time(nullptr))},
-        //         {"data", json::array({item})}
-        //     };
-
-        //     return make_json_response(http::status::ok, req.version(), keep_alive, body);
-           
-        // }
         
         
         if (req.method() == http::verb::post && target == "/v1/chat/completions") {
@@ -604,71 +581,86 @@ void print_usage(const char* prog_name) {
     std::cout
         << "Usage: " << prog_name << " [options]\n\n"
         << "Options:\n"
-        << "  --weights_path <path>      Path to model weights\n"
-        << "  --npu_files_path <path>    Path to NPU files\n"
-        << "  --output_dir <path>        Output image directory\n"
-        << "  --public_base_url <url>    Public base URL\n"
-        << "  --model_id <id>            Model ID\n"
-        << "  --port <port>              Server port\n"
-        << "  --exe_path <path>          Worker executable path\n"
-        << "  --workdir <path>           Working directory\n"
-        << "  -h, --help                 Show this help message\n"
-        << "  --keep_images <true/false> Keep generated images on disk (default: true)\n";
+        << "  -w, --weights-path <path>      Path to model weights\n"
+        << "  -n, --npu-files-path <path>    Path to NPU files\n"
+        << "  -o, --output-dir <path>        Output image directory\n"
+        // << "  -u, --public-base-url <url>    Public base URL\n"
+        << "  -m, --model-id <id>            Model ID\n"
+        << "  -p, --port <port>              Server port\n"
+        << "  -e, --exe-path <path>          Worker executable path\n"
+        << "  -d, --workdir <path>           Working directory\n"
+        << "  -k, --keep-images <true/false> Keep generated images on disk (default: true)\n"
+        << "  -h, --help                     Show this help message\n";
 }
 int main(int argc, char* argv[])
 {
+    bool output_dir_specified = false;
+
     try {
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
     
             if (arg == "-h" || arg == "--help") {
-                print_usage(argv[0]);
-                return 0;
+            print_usage(argv[0]);
+            return 0;
+        }
+        else if (arg == "-w" || arg == "--weights-path") {
+            if (i + 1 < argc) g_weights_path = argv[++i];
+            else { std::cerr << "Error: -w/--weights-path requires an argument.\n"; return 1; }
+        }
+        else if (arg == "-n" || arg == "--npu-files-path") {
+            if (i + 1 < argc) g_npu_files_path = argv[++i];
+            else { std::cerr << "Error: -n/--npu-files-path requires an argument.\n"; return 1; }
+        }
+        else if (arg == "-o" || arg == "--output-dir") {
+            if (i + 1 < argc) { 
+                g_output_dir = argv[++i]; 
+                output_dir_specified = true;
             }
-            else if (arg == "--weights_path") {
-                if (i + 1 < argc) g_weights_path = argv[++i];
-                else { std::cerr << "Error: --weights_path requires an argument.\n"; return 1; }
+            else { std::cerr << "Error: -o/--output-dir requires an argument.\n"; return 1; }
+        }
+        // else if (arg == "-u" || arg == "--public-base-url") {
+        //     if (i + 1 < argc) g_public_base_url = argv[++i];
+        //     else { std::cerr << "Error: -u/--public-base-url requires an argument.\n"; return 1; }
+        // }
+        else if (arg == "-m" || arg == "--model-id") {
+            if (i + 1 < argc) g_model_id = argv[++i];
+            else { std::cerr << "Error: -m/--model-id requires an argument.\n"; return 1; }
+        }
+         else if (arg == "-p" || arg == "--port") {
+            if (i + 1 < argc) {
+                g_port = static_cast<unsigned short>(std::stoi(argv[++i]));
+                g_public_base_url = "http://127.0.0.1:" + std::to_string(g_port);
+            } else { 
+                std::cerr << "Error: -p/--port requires an argument.\n"; 
+                return 1; 
             }
-            else if (arg == "--npu_files_path") {
-                if (i + 1 < argc) g_npu_files_path = argv[++i];
-                else { std::cerr << "Error: --npu_files_path requires an argument.\n"; return 1; }
+             }
+        else if (arg == "-e" || arg == "--exe-path") {
+            if (i + 1 < argc) g_exe_path = argv[++i];
+            else { std::cerr << "Error: -e/--exe-path requires an argument.\n"; return 1; }
+        }
+        else if (arg == "-d" || arg == "--workdir") {
+            if (i + 1 < argc) g_workdir = argv[++i];
+            else { std::cerr << "Error: -d/--workdir requires an argument.\n"; return 1; }
+        }
+        else if (arg == "-k" || arg == "--keep-images") {
+            if (i + 1 < argc) {
+                std::string val = argv[++i];
+                g_keep_images = (val == "true" || val == "1");
             }
-            else if (arg == "--output_dir") {
-                if (i + 1 < argc) g_output_dir = argv[++i];
-                else { std::cerr << "Error: --output_dir requires an argument.\n"; return 1; }
-            }
-            else if (arg == "--public_base_url") {
-                if (i + 1 < argc) g_public_base_url = argv[++i];
-                else { std::cerr << "Error: --public_base_url requires an argument.\n"; return 1; }
-            }
-            else if (arg == "--model_id") {
-                if (i + 1 < argc) g_model_id = argv[++i];
-                else { std::cerr << "Error: --model_id requires an argument.\n"; return 1; }
-            }
-            else if (arg == "--port") {
-                if (i + 1 < argc) g_port = static_cast<unsigned short>(std::stoi(argv[++i]));
-                else { std::cerr << "Error: --port requires an argument.\n"; return 1; }
-            }
-            else if (arg == "--exe_path") {
-                if (i + 1 < argc) g_exe_path = argv[++i];
-                else { std::cerr << "Error: --exe_path requires an argument.\n"; return 1; }
-            }
-            else if (arg == "--workdir") {
-                if (i + 1 < argc) g_workdir = argv[++i];
-                else { std::cerr << "Error: --workdir requires an argument.\n"; return 1; }
-            }
-            else if (arg == "--keep_images") {
-                if (i + 1 < argc) {
-                    std::string val = argv[++i];
-                    g_keep_images = (val == "true" || val == "1");
-                }
-                else { std::cerr << "Error: --keep_images requires an argument (true/false).\n"; return 1; }
-            }
-            else {
-                std::cerr << "Unknown argument: " << arg << "\n\n";
-                print_usage(argv[0]);
-                return 1;
-            }
+            else { std::cerr << "Error: -k/--keep-images requires an argument (true/false).\n"; return 1; }
+        }
+        else {
+            std::cerr << "Unknown argument: " << arg << "\n\n";
+            print_usage(argv[0]);
+            return 1;
+        }
+        }
+
+        // --- FIX: Use OS temp directory if we aren't keeping images ---
+        if (!g_keep_images && !output_dir_specified) {
+            g_output_dir = fs::temp_directory_path().string();
         }
 
         ensure_output_dir();
@@ -681,7 +673,7 @@ int main(int argc, char* argv[])
         std::cout << "NPU Files Path: " << g_npu_files_path << "\n";
         std::cout << "Executable Path: " << g_exe_path << "\n";
         std::cout << "Working Directory: " << g_workdir << "\n";
-        std::cout << "Image Output Dir: " << g_output_dir << "\n";
+        std::cout << "Image Output Dir: " << g_output_dir << (!g_keep_images && !output_dir_specified ? " (Temporary)" : "") << "\n";
         std::cout << "Public Base URL: " << g_public_base_url << "\n";
         std::cout << "Model ID: " << g_model_id << "\n";
 
@@ -695,4 +687,5 @@ int main(int argc, char* argv[])
         std::cerr << "fatal error: " << e.what() << "\n";
         return 1;
     }
+    
 }
