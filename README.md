@@ -10,14 +10,23 @@ You can use either of the following methods to run **VigenFlow**.
 
 ### Option A: Install from the Release Package (Recommended)
 
-The easiest way to get started is to download the deb package under the /src/linux_deb folder or download the zip file for your window systerm.
+The easiest way to get started is to download the Debian package from the `/src/linux_deb` folder for Ubuntu, or download the ZIP package from the `/src/windows_zip` folder for Windows.
 
 #### Windows systerm
 
-##### Step 1: Download the .zip file from the /src/windows_zip
+##### Step 1: Download the ZIP File
 
-##### Step 2: unzip the file
-Run the generated server binary. You just need to provide the model-name and the port like the below.
+Download the Windows ZIP package from the `/src/windows_zip` folder.
+
+##### Step 2: Extract the ZIP File
+
+Extract the downloaded ZIP package to your desired location.
+
+##### Step 3: Run the Server
+
+Open PowerShell or Command Prompt in the extracted folder and run the generated server binary.
+
+You can first check the available options with:
 
 ```bash
 .\vgf-serve.exe -h
