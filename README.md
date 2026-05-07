@@ -28,10 +28,26 @@ You can use either of the following methods to run **VigenFlow**.
 
 ### Option A: Install from the Release Package (Recommended)
 
-The easiest way to get started is to download the [released](https://github.com/jia1217/vigenflow/releases/tag/vigen1.0) `.deb` package and install it directly:
+The easiest way to get started is to download the deb package under the /src/linux_deb folder or download the zip file for your window systerm.
+
+#### Windows systerm
+
+##### Step 1: Download the .zip file 
+
+##### Step 2: unzip the file
+Run the generated server binary. You just need to provide the model-name and the port like the below.
 
 ```bash
-sudo dpkg -i vigenflow_1.0_amd64.deb
+.\vgf-serve.exe -h
+
+.\vgf-serve.exe z-image-turbo -p 2048
+```
+
+#### Ubuntu systerm
+
+
+```bash
+sudo dpkg -i vigenflow_1.2_amd64.deb
 ```
 
 If any dependencies are missing, run:
@@ -39,6 +55,8 @@ If any dependencies are missing, run:
 ```bash
 sudo apt-get install -f
 ```
+
+
 
 ### Start the Server After Installation
 
@@ -63,25 +81,14 @@ vgf-serve \
 
 After installation, you can integrate VigenFlow with **Open WebUI** and use Open WebUI to call your own server.
 
-
-
-
-### Option B: Build from Source
-
-You can also clone the repository and build the executable yourself. Please see the docs for more information.
-
-## Documentation
-
-For more detailed build and usage instructions, please refer to:
-
-- `doc/readme_*.md`
-- [https://github.com/jia1217/vigenflow/tree/main/docs](YOUR_LINK_HERE)
-
 ## Usage
 
 ### 📊 Supported Configurations
 
-#### 1. Supported Aspect Ratios
+#### 1. Supported models
+For now, we support Z-Image-Turbo and FLUX.2-klein-4B models.
+
+#### 2. Supported Aspect Ratios
 The model is optimized for these specific dimensions. Using other resolutions may result in unexpected cropping or performance degradation.
 
 | Aspect Ratio | Resolution (W x H) | Recommended Use |
@@ -92,7 +99,7 @@ The model is optimized for these specific dimensions. Using other resolutions ma
 | **16:9** | 1024 x 576 | Widescreen |
 | **9:16** | 576 x 1024 | Vertical / Social Media |
 
-#### 2. Denoising Steps
+#### 3. Denoising Steps
 You can choose the number of steps based on your requirement for speed vs. quality:
 
 * **4 Steps (Turbo):** Highly recommended for speed. Generates an image in approximately **one minute** on supported NPU hardware.
