@@ -4,7 +4,30 @@ Follow the steps below to set up, build, and run the project on your local machi
 
 Before proceeding, please make sure that the AMD XDNA driver has been installed on your system. You can find more details in the [installation guide](https://github.com/Xilinx/mlir-aie).
 
-### 📥 Download model weights via CLI
+## Installation
+
+You can use either of the following methods to run **VigenFlow**.
+
+### Option A: Install from the Release Package (Recommended)
+
+The easiest way to get started is to download the deb package under the /src/linux_deb folder or download the zip file for your window systerm.
+
+#### Windows systerm
+
+##### Step 1: Download the .zip file from the /src/windows_zip
+
+##### Step 2: unzip the file
+Run the generated server binary. You just need to provide the model-name and the port like the below.
+
+```bash
+.\vgf-serve.exe -h
+
+.\vgf-serve.exe z-image-turbo -p 2048
+```
+
+#### Ubuntu systerm
+
+##### 📥 Download model weights via CLI
 The fastest way to download the full weight structure:
 
 ```bash
@@ -21,31 +44,7 @@ sudo apt update
 3. Download the whole repo:
    `hf download Kelsey1217/Z-Image-Turbo --local-dir ./Z-Image-Turbo`
 
-
-## Installation
-
-You can use either of the following methods to run **VigenFlow**.
-
-### Option A: Install from the Release Package (Recommended)
-
-The easiest way to get started is to download the deb package under the /src/linux_deb folder or download the zip file for your window systerm.
-
-#### Windows systerm
-
-##### Step 1: Download the .zip file 
-
-##### Step 2: unzip the file
-Run the generated server binary. You just need to provide the model-name and the port like the below.
-
-```bash
-.\vgf-serve.exe -h
-
-.\vgf-serve.exe z-image-turbo -p 2048
-```
-
-#### Ubuntu systerm
-
-
+##### Install the deb file 
 ```bash
 sudo dpkg -i vigenflow_1.2_amd64.deb
 ```
@@ -55,8 +54,6 @@ If any dependencies are missing, run:
 ```bash
 sudo apt-get install -f
 ```
-
-
 
 ### Start the Server After Installation
 
