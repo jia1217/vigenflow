@@ -51,7 +51,7 @@ sudo apt update
 2. Login:
    `hf auth login`
 3. Download the whole repo:
-   `hf download Kelsey1217/Z-Image-Turbo --local-dir ./Z-Image-Turbo`
+   `hf download Kelsey1217/Z-Image-Turbo-npu --local-dir ./Z-Image-Turbo`
 
 ##### Install the deb file 
 ```bash
