@@ -34,6 +34,10 @@ You can first check the available options with:
 .\vgf-serve.exe z-image-turbo -p 2048
 ```
 
+#### Demo
+
+
+
 #### Ubuntu systerm
 
 ##### 📥 Download model weights via CLI
