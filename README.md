@@ -35,7 +35,7 @@ You can first check the available options with:
 ```
 
 #### Demo
-<video src="https://raw.githubusercontent.com/jia1217/vigenflow/main/assets/npu_demo.mp4" controls width="100%"></video>
+https://github.com/jia1217/vigenflow/blob/main/assets/npu_demo.mp4
 
 #### Ubuntu systerm
 
