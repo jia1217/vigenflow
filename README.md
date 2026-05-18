@@ -40,6 +40,8 @@ You can first check the available options with:
 https://github.com/user-attachments/assets/ad22f2e3-ffca-468e-ab7f-d5fe10e70998
 
 
+And also need to configure the ```connections``` part of the openWebUI as shown below:
+<img width="1629" height="995" alt="openwebUI" src="https://github.com/user-attachments/assets/59543b3f-3a49-4675-8aaf-f48afae57c73" />
 
 #### Ubuntu systerm
 
