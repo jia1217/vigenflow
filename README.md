@@ -36,7 +36,7 @@ You can first check the available options with:
 
 #### Demo
 
-https://github.com/jia1217/vigenflow/blob/main/assets/npu_demo.mp4
+![](assets/npu_demo.mp4)
 
 #### Ubuntu systerm
 
