@@ -35,7 +35,11 @@ You can first check the available options with:
 ```
 
 #### Demo
-https://github.com/jia1217/vigenflow/blob/main/assets/npu_demo_small.mp4
+
+
+https://github.com/user-attachments/assets/ad22f2e3-ffca-468e-ab7f-d5fe10e70998
+
+
 
 #### Ubuntu systerm
 
