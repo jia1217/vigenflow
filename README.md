@@ -36,7 +36,7 @@ You can first check the available options with:
 
 #### Demo
 
-![](assets/npu_demo.mp4)
+<video src="assets/npu_demo.mp4" controls width="100%"></video>
 
 #### Ubuntu systerm
 
