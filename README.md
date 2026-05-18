@@ -59,7 +59,7 @@ sudo apt update
 
 ##### Install the deb file 
 ```bash
-sudo dpkg -i vigenflow_1.2_amd64.deb
+sudo dpkg -i vigenflow_1.3_amd64.deb
 ```
 
 If any dependencies are missing, run:
