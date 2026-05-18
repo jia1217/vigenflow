@@ -37,8 +37,6 @@ You can first check the available options with:
 #### Demo
 
 
-
-
 #### Ubuntu systerm
 
 ##### 📥 Download model weights via CLI
