@@ -96,7 +96,7 @@ vgf-serve \
 
 After installation, you can integrate VigenFlow with **Open WebUI** and use Open WebUI to call your own server.
 
-## Usage
+<!-- ## Usage
 
 ### 📊 Supported Configurations
 
@@ -112,12 +112,12 @@ The model is optimized for these specific dimensions. Using other resolutions ma
 | **4:3** | 1024 x 768 | Landscape (Classic) |
 | **3:4** | 768 x 1024 | Portrait |
 | **16:9** | 1024 x 576 | Widescreen |
-| **9:16** | 576 x 1024 | Vertical / Social Media |
+| **9:16** | 576 x 1024 | Vertical / Social Media | -->
 
-#### 3. Denoising Steps
+<!-- #### 3. Denoising Steps
 You can choose the number of steps based on your requirement for speed vs. quality:
 
 * **4 Steps (Turbo):** Highly recommended for speed. Generates an image in approximately **one minute** on supported NPU hardware.
-* **8 Steps (High Quality):** Provides more detail and better texture refinement at the cost of longer generation time.
+* **8 Steps (High Quality):** Provides more detail and better texture refinement at the cost of longer generation time. -->
 
 
