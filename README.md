@@ -1,123 +1,209 @@
-## Getting Started
+## 🚀 Getting Started
 
-Follow the steps below to set up, build, and run the project on your local machine.
+Set up **VigenFlow** in just a few minutes and connect it with **OpenWebUI Desktop** to run your own local VigenFlow AI.
 
-Before proceeding, please make sure that the AMD XDNA driver has been installed on your system. You can find more details in the [installation guide](https://github.com/Xilinx/mlir-aie).
+Before getting started, please make sure the **AMD XDNA driver** has been installed on your system.
 
-## Installation
+You can find more details in the [AMD XDNA / MLIR-AIE installation guide](https://github.com/Xilinx/mlir-aie).
 
-You can use either of the following methods to run **VigenFlow**.
+---
 
-### Option A: Install from the Release Package (Recommended)
+## 📦 Installation
 
-The easiest way to get started is to download the Debian package from the `/src/linux_deb` folder for Ubuntu, or download the ZIP package from the `/src/windows_zip` folder for Windows.
+The recommended way to use **VigenFlow** is to download the latest release package.
 
-#### Windows systerm
+Starting from **VigenFlow v0.1.2**, we provide ready-to-use `.zip` packages for both Ubuntu and Windows:
 
-##### Step 1: Download the ZIP File
+- 🐧 `vigenflow_0.1.2_ubuntu_amd64.zip`
+- 🪟 `vigenflow_0.1.2_windows_amd64.zip`
 
-Download the Windows ZIP package from the `/src/windows_zip` folder.
+You only need to download the package for your system, extract it, launch `vgf-serve`, and connect it with **OpenWebUI Desktop**.
 
-##### Step 2: Extract the ZIP File
+---
 
-Extract the downloaded ZIP package to your desired location.
+## ⭐ Option A: Install from the Release Package Recommended
 
-##### Step 3: Run the Server
+### 📥 Step 1: Download the Release Package
 
-Open PowerShell or Command Prompt in the extracted folder and run the generated server binary.
+Go to the **Latest Release** page and download the package for your operating system.
 
-You can first check the available options with:
+#### 🐧 Ubuntu
 
-```bash
-.\vgf-serve.exe -h
+Download:
 
-.\vgf-serve.exe z-image-turbo -p 2048
+```text
+vigenflow_0.1.2_ubuntu_amd64.zip
 ```
 
-#### Demo
+#### 🪟 Windows
 
+Download:
+
+```text
+vigenflow_0.1.2_windows_amd64.zip
+```
+
+---
+
+### 📂 Step 2: Extract the Package
+
+Extract the downloaded `.zip` package to your desired location.
+
+#### 🐧 Ubuntu
+
+```bash
+unzip vigenflow_0.1.2_ubuntu_amd64.zip
+cd vigenflow_0.1.2_ubuntu_amd64
+```
+
+#### 🪟 Windows
+
+Extract the ZIP package manually, then open **PowerShell** or **Command Prompt** inside the extracted folder.
+
+---
+
+### ▶️ Step 3: Launch VigenFlow Server
+
+Starting from **VigenFlow v0.1.2**, image generation models are launched automatically by default.
+
+You no longer need to provide a model name when starting the server for image generation.
+
+#### 🐧 Ubuntu
+
+```bash
+./vgf-serve
+```
+
+#### 🪟 Windows
+
+```powershell
+.\vgf-serve.exe
+```
+
+After the server starts successfully, VigenFlow will make the supported image generation models available to OpenWebUI.
+
+---
+
+## 🔗 Connect with OpenWebUI Desktop
+
+After launching `vgf-serve`, open **OpenWebUI Desktop** and configure the connection to your local VigenFlow server.
+
+In OpenWebUI, go to the **Connections** settings and add your VigenFlow server endpoint.
+
+Example local endpoint:
+
+```text
+http://localhost:2048/v1
+```
+
+Once the connection is configured, you can select and switch VigenFlow models directly from the OpenWebUI model list.
+
+<img width="1629" height="995" alt="OpenWebUI connection settings" src="https://github.com/user-attachments/assets/59543b3f-3a49-4675-8aaf-f48afae57c73" />
+
+---
+
+## 🧠 Supported Image Generation Models
+
+The following image generation models are available from the OpenWebUI model list after launching `vgf-serve`:
+
+- ⚡ `z-image-turbo-BF16`
+- 🎨 `z-image-turbo-BF16-lora`
+- ⚡ `z-image-turbo-Q4_1-GGUF`
+- 🎨 `z-image-turbo-Q4_1-GGUF-lora`
+- 🌊 `flux.2-klein-4B`
+- 🎨 `flux.2-klein-4B-lora`
+
+You can switch between different base models and LoRA models directly inside OpenWebUI without restarting `vgf-serve`.
+
+---
+
+## ✨ Simple Usage
+
+For most users, the complete workflow is:
+
+1. 📥 Download the release package for your system.
+2. 📂 Extract the `.zip` file.
+3. ▶️ Start the VigenFlow server.
+4. 🖥️ Open OpenWebUI Desktop.
+5. 🔗 Configure the VigenFlow connection.
+6. 🧠 Select a model from the OpenWebUI model list.
+7. 🎨 Start generating images with your own local VigenFlow AI.
+
+---
+
+## 💻 Usage Commands
+
+### 🐧 Ubuntu
+
+```bash
+./vgf-serve
+```
+
+### 🪟 Windows
+
+```powershell
+.\vgf-serve.exe
+```
+
+To check available options:
+
+#### 🐧 Ubuntu
+
+```bash
+./vgf-serve -h
+```
+
+#### 🪟 Windows
+
+```powershell
+.\vgf-serve.exe -h
+```
+
+---
+
+## 🖼️ Important Note for Image Editing Models
+
+The simplified startup workflow applies to **image generation models**.
+
+For **image editing models**, you still need to specify the model name when launching `vgf-serve` if you want to use a different image editing model.
+
+Example:
+
+#### 🐧 Ubuntu
+
+```bash
+./vgf-serve <image-edit-model-name>
+```
+
+#### 🪟 Windows
+
+```powershell
+.\vgf-serve.exe <image-edit-model-name>
+```
+
+---
+
+## 🎬 Demo
+
+Watch the demo video to learn how to set up and use VigenFlow with OpenWebUI Desktop:
+
+<!-- Replace the link below with your YouTube video link -->
+
+[![Watch the VigenFlow Demo](https://img.youtube.com/vi/YOUR_VIDEO_ID/maxresdefault.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
+
+You can also watch the local demo below:
 
 https://github.com/user-attachments/assets/ad22f2e3-ffca-468e-ab7f-d5fe10e70998
 
+---
 
-And also need to configure the ```connections``` part of the openWebUI firstly as shown below:
-<img width="1629" height="995" alt="openwebUI" src="https://github.com/user-attachments/assets/59543b3f-3a49-4675-8aaf-f48afae57c73" />
+## ✅ Summary
 
-#### Ubuntu systerm
+With the latest release package, VigenFlow is now much easier to run:
 
-##### 📥 Download model weights via CLI
-The fastest way to download the full weight structure:
-
-```bash
-sudo apt install python3.14-venv
-python3 -m venv myenv
-source myenv/bin/activate
-sudo apt update
-```
-
-1. Install the Hub library:
-   `pip install -U "huggingface_hub[cli]"`
-2. Login:
-   `hf auth login`
-3. Download the whole repo:
-   `hf download Kelsey1217/Z-Image-Turbo-npu --local-dir ./Z-Image-Turbo`
-
-##### Install the deb file 
-```bash
-sudo dpkg -i vigenflow_1.3_amd64.deb
-```
-
-If any dependencies are missing, run:
-
-```bash
-sudo apt-get install -f
-```
-
-### Start the Server After Installation
-
-After installing the package, you should see a message indicating that `vgf-serve` has been installed successfully and added to your system path.
-
-You can then verify the installation and view the available server options by running:
-
-```bash
-vgf-serve -h
-```
-
-This command will display the supported arguments, such as the model weights path, NPU files path, output directory, port, and other server settings.
-
-After that, you can launch the server with your desired configuration. For example:
-
-```bash
-vgf-serve \
-  -w /path/to/model_weights \
-  -k false \
-  -m model_name \
-```
-
-After installation, you can integrate VigenFlow with **Open WebUI** and use Open WebUI to call your own server.
-
-<!-- ## Usage
-
-### 📊 Supported Configurations
-
-#### 1. Supported models
-For now, we support Z-Image-Turbo and FLUX.2-klein-4B models.
-
-#### 2. Supported Aspect Ratios
-The model is optimized for these specific dimensions. Using other resolutions may result in unexpected cropping or performance degradation.
-
-| Aspect Ratio | Resolution (W x H) | Recommended Use |
-| :--- | :--- | :--- |
-| **1:1** | 1024 x 1024 | Square (Standard) |
-| **4:3** | 1024 x 768 | Landscape (Classic) |
-| **3:4** | 768 x 1024 | Portrait |
-| **16:9** | 1024 x 576 | Widescreen |
-| **9:16** | 576 x 1024 | Vertical / Social Media | -->
-
-<!-- #### 3. Denoising Steps
-You can choose the number of steps based on your requirement for speed vs. quality:
-
-* **4 Steps (Turbo):** Highly recommended for speed. Generates an image in approximately **one minute** on supported NPU hardware.
-* **8 Steps (High Quality):** Provides more detail and better texture refinement at the cost of longer generation time. -->
-
-
+- 📦 Ready-to-use `.zip` packages for Ubuntu and Windows.
+- 🛠️ No manual build required for normal users.
+- ▶️ Start the image generation service with one command.
+- 🧠 Switch image generation models directly from OpenWebUI.
+- 🎨 LoRA model variants are available from the OpenWebUI model list.
+- 🖥️ Works together with OpenWebUI Desktop to create your own local VigenFlow AI.
