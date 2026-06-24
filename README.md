@@ -93,7 +93,7 @@ In OpenWebUI, go to the **Connections** settings and add your VigenFlow server e
 Example local endpoint:
 
 ```text
-http://localhost:2048/v1
+http://127.0.0.1:2048/v1
 ```
 
 Once the connection is configured, you can select and switch VigenFlow models directly from the OpenWebUI model list.
