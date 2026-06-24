@@ -4,7 +4,7 @@ Set up **VigenFlow** in just a few minutes and connect it with **OpenWebUI Deskt
 
 Before getting started, please make sure the **AMD XDNA driver** has been installed on your system.
 
-You can find more details in the [AMD XDNA / MLIR-AIE installation guide](https://github.com/Xilinx/mlir-aie).
+You can find more details in the [AMD XDNA / MLIR-AIE installation guide](https://github.com/Xilinx/mlir-aie) for the Ubuntu system and Windows system in the [Driver Download](https://www.amd.com/en/support/download/drivers.html).
 
 ---
 
