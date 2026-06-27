@@ -1,13 +1,17 @@
-name: Vigenflow Ubuntu Build In Docker
+name: Vigenflow Ubuntu Worker Build In Docker
 
 on:
   push:
     paths:
-      - "src/server_unified/**"
+      - "src/models/**"
+      - "src/lib/**"
+      - "Dockerfile"
       - ".github/workflows/ubuntu-build.yml"
   pull_request:
     paths:
-      - "src/server_unified/**"
+      - "src/models/**"
+      - "src/lib/**"
+      - "Dockerfile"
       - ".github/workflows/ubuntu-build.yml"
   workflow_dispatch:
 
@@ -22,11 +26,11 @@ permissions:
 env:
   IMAGE_BASENAME: vigenflow-build-env
   IMAGE_TAG: ubuntu24.04
-  SERVER_DIR: src/server_unified
+  SRC_DIR: src
 
 jobs:
   build:
-    name: Build server in GHCR image
+    name: Build worker run.exe files in GHCR image
     runs-on: ubuntu-latest
 
     steps:
@@ -47,30 +51,64 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull build image
-        run: docker pull "${{ steps.image.outputs.name }}"
+      - name: Pull or build image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="${{ steps.image.outputs.name }}"
+          if docker pull "$image"; then
+            echo "Using GHCR build image: $image"
+          else
+            echo "GHCR build image is not available yet. Building it locally for this run."
+            docker build \
+              --build-arg BASE_IMAGE=ubuntu:24.04 \
+              --build-arg UBUNTU_PPA=ppa:lemonade-team/stable \
+              --build-arg INSTALL_XRT_DEV=1 \
+              --build-arg PREFETCH_CARGO_DEPS=0 \
+              -t "$image" \
+              .
+          fi
 
-      - name: Build in container
+      - name: Build run.exe files in container
         run: |
           docker run --rm \
             -e HOME=/tmp \
-            -e SERVER_DIR="${SERVER_DIR}" \
             -v "${GITHUB_WORKSPACE}:/workspace" \
             -w /workspace \
             --user "$(id -u):$(id -g)" \
             "${{ steps.image.outputs.name }}" \
-            bash -lc 'cd "$SERVER_DIR" && bash build_ubuntu.sh && ./vigenflow_ubuntu/vgf-serve --help'
+            bash -lc '
+              set -euo pipefail
+              make -C src/models/z-image-turbo/bf16_lora clean all
+              make -C src/models/z-image-turbo/q41 clean all
+              make -C src/models/z-image-turbo/q41_lora_fused clean all
+              make -C src/models/flux.2-klein-4B-npu clean all
+              make -C src/models/flux.2-klein-4B-edit-npu clean all
+              find src/exe_models -type f -name run.exe -print0 | while IFS= read -r -d "" exe; do
+                echo "Testing $exe --help"
+                "$exe" --help >/dev/null
+              done
+            '
 
       - name: Stage artifact
         run: |
-          mkdir -p dist/ubuntu
-          cp "${SERVER_DIR}/vigenflow_ubuntu/vgf-serve" dist/ubuntu/
-          cp "${SERVER_DIR}"/*.jsonc dist/ubuntu/
-          cp "${SERVER_DIR}/README.md" dist/ubuntu/
+          set -euo pipefail
+          out="dist/ubuntu-exe"
+          rm -rf "$out"
+          mkdir -p "$out/exe_models" "$out/lib"
+
+          find "${SRC_DIR}/exe_models" -type f -name run.exe -print0 | while IFS= read -r -d '' exe; do
+            rel="${exe#${SRC_DIR}/exe_models/}"
+            mkdir -p "$out/exe_models/$(dirname "$rel")"
+            cp "$exe" "$out/exe_models/$rel"
+          done
+
+          cp "${SRC_DIR}/lib"/*.so "$out/lib/"
+          find "$out" -type f -print
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vgf-serve-ubuntu-x64
-          path: dist/ubuntu
+          name: vigenflow-ubuntu-run-exe
+          path: dist/ubuntu-exe
           if-no-files-found: error
