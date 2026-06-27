@@ -78,9 +78,9 @@ jobs:
             "${{ steps.image.outputs.name }}" \
             bash -lc '
               set -euo pipefail
-              make -C src/models/z-image-turbo/bf16_lora clean all
-              make -C src/models/z-image-turbo/q41 clean all
-              make -C src/models/z-image-turbo/q41_lora_fused clean all
+              make -C src/models/z-image-turbo-npu/bf16_lora clean all
+              make -C src/models/z-image-turbo-npu/q41 clean all
+              make -C src/models/z-image-turbo-npu/q41_lora_fused clean all
               make -C src/models/flux.2-klein-4B-npu clean all
               make -C src/models/flux.2-klein-4B-edit-npu clean all
               count="$(find src/exe_models -type f -name run.exe | wc -l)"
