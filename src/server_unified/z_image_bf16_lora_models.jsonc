@@ -1,0 +1,88 @@
+{
+  "models": [
+    {
+      "id": "tarn59_pixel_art_style",
+      "source": "tarn59/pixel_art_style_lora_z_image_turbo",
+      "file": "pixel_art_style_z_image_turbo.safetensors",
+      "enabled": true,
+      "lora_rank": 32,
+      "lora_scale": 1.0
+    },
+    {
+      "id": "ostris_childrens-drawings",
+      "source": "ostris/z_image_turbo_childrens_drawings",
+      "file": "z_image_turbo_childrens_drawings.safetensors",
+      "enabled": true,
+      "lora_rank": 32,
+      "lora_scale": 1.0
+    },
+    {
+      "id": "Danrisi_Lenovo_UltraReal",
+      "source": "Danrisi/Lenovo_UltraReal_Z_Image",
+      "file": "lenovo_z.safetensors",
+      "enabled": true,
+      "lora_rank": 16,
+      "lora_scale": 1.0
+    },
+    {
+      "id": "renderartist_classic-painting-z",
+      "source": "renderartist/Classic-Painting-Z-Image-Turbo-LoRA",
+      "file": "Classic_Painting_Z_Image_Turbo_v1_renderartist_1750.safetensors",
+      "enabled": true,
+      "lora_rank": 32,
+      "lora_scale": 1.0
+    },
+    {
+      "id": "jarod2212_PhysioShade detail Enhancer",
+      "source": "jarod2212/PhysioShade_ZIT",
+      "file": "PhysioShade_LoraZIT_Enhancer.safetensors",
+      "enabled": true,
+      "lora_rank": 16,
+      "lora_scale": 0.8
+    },
+    {
+      "id": "wolfer45_nsfwv2-zit",
+      "source": "wolfer45/nsfwv2-zit",
+      "file": "nsfwv2-zit.safetensors",
+      "enabled": true,
+      "lora_rank": 4,
+      "lora_scale": 1.0
+    },
+    {
+      "id": "JunkieMonkey69_ChaseInfinity",
+      "source": "JunkieMonkey69/Chaseinfinity_ZimageTurbo",
+      "file": "ChaseInfinity_ZimageTurbo.safetensors",
+      "enabled": true,
+      "lora_rank": 32,
+      "lora_scale": 0.75
+    },
+    {
+      "id": "renderartist_Technically-Color",
+      "source": "renderartist/Technically-Color-Z-Image-TurboT",
+      "file": "Technically_Color_Z_Image_Turbo_v1_renderartist_2000.safetensors",
+      "enabled": true,
+      "lora_rank": 48,
+      "lora_scale": 1.0
+      //this is the 8 lora models for z-image-turbo-bf16, we can add more in the future if needed
+    },
+    {
+      "id": "suayptalha-Realism",
+      "source": "suayptalha/Z-Image-Turbo-Realism-LoRA",
+      "file": "pytorch_lora_weights.safetensors",
+      "enabled": true,
+      "lora_rank": 16,
+      "lora_scale": 1.0
+      //this is the 9th lora model for z-image-turbo-bf16, we can add more in the future if needed
+    },
+    {
+      "id": "Shakker-Labs-AWPortrait-Z",
+      "source": "Shakker-Labs/AWPortrait-Z",
+      "file": "AWPortrait-Z.safetensors",
+      "enabled": true,
+      "lora_rank": 128,
+      "lora_scale": 1.0
+      //this is the 10th lora model for z-image-turbo-bf16, we can add more in the future if needed
+    }
+    
+  ]
+}

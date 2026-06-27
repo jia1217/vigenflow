@@ -1,0 +1,32 @@
+{
+  "models": [
+    {
+      "id": "tarn59_pixel_art_style",
+      "source": "tarn59/pixel_art_style_lora_z_image_turbo",
+      "file": "pixel_art_style_z_image_turbo.safetensors",
+      "enabled": true,
+      "lora_rank": 32
+    },
+    {
+      "id": "ostris_childrens-drawings",
+      "source": "ostris/z_image_turbo_childrens_drawings",
+      "file": "z_image_turbo_childrens_drawings.safetensors",
+      "enabled": true,
+      "lora_rank": 32
+    },
+    {
+      "id": "renderartist_classic-painting-z",
+      "source": "renderartist/Classic-Painting-Z-Image-Turbo-LoRA",
+      "file": "Classic_Painting_Z_Image_Turbo_v1_renderartist_1750.safetensors",
+      "enabled": true,
+      "lora_rank": 32
+    },
+   {
+      "id": "JunkieMonkey69_ChaseInfinity",
+      "source": "JunkieMonkey69/Chaseinfinity_ZimageTurbo",
+      "file": "ChaseInfinity_ZimageTurbo.safetensors",
+      "enabled": true,
+      "lora_rank": 32
+    }
+  ]
+}

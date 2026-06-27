@@ -1,0 +1,4 @@
+/home/kelsey/NPU_projects/NPU_repo/host_flux_klein_bf16_img_lora_test/src/models/flux.2-klein-4B-npu/.cmake-build-wrapper/CMakeFiles/host_flux_run.dir
+/home/kelsey/NPU_projects/NPU_repo/host_flux_klein_bf16_img_lora_test/src/models/flux.2-klein-4B-npu/.cmake-build-wrapper/CMakeFiles/check.dir
+/home/kelsey/NPU_projects/NPU_repo/host_flux_klein_bf16_img_lora_test/src/models/flux.2-klein-4B-npu/.cmake-build-wrapper/CMakeFiles/edit_cache.dir
+/home/kelsey/NPU_projects/NPU_repo/host_flux_klein_bf16_img_lora_test/src/models/flux.2-klein-4B-npu/.cmake-build-wrapper/CMakeFiles/rebuild_cache.dir

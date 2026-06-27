@@ -1,0 +1,29 @@
+{
+  "models": [
+    {
+      "id": "2x2 sprite sheet",
+      "source": "fal/flux-2-klein-4b-spritesheet-lora",
+      "file": "flux-spritesheet-lora.safetensors",
+      "enabled": true,
+      "lora_rank": 16,
+      "lora_scale": 1.0
+    },
+    {
+      "id": "background_removal",
+      "source": "fal/flux-2-klein-4B-background-remove-lora",
+      "file": "flux-background-remove-lora.safetensors",
+      "enabled": true,
+      "lora_rank": 16,
+      "lora_scale": 1.0
+    },
+    {
+      "id": "zoom_in",
+      "source": "fal/flux-2-klein-4B-zoom-lora",
+      "file": "flux-red-zoom-lora.safetensors",
+      "enabled": true,
+      "lora_rank": 16,
+      "lora_scale": 1.0
+    }
+    
+  ]
+}
