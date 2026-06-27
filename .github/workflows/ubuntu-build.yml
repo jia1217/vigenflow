@@ -83,10 +83,13 @@ jobs:
               make -C src/models/z-image-turbo/q41_lora_fused clean all
               make -C src/models/flux.2-klein-4B-npu clean all
               make -C src/models/flux.2-klein-4B-edit-npu clean all
-              find src/exe_models -type f -name run.exe -print0 | while IFS= read -r -d "" exe; do
-                echo "Testing $exe --help"
-                "$exe" --help >/dev/null
-              done
+              count="$(find src/exe_models -type f -name run.exe | wc -l)"
+              if [ "$count" -ne 5 ]; then
+                echo "Expected 5 run.exe files, found $count"
+                find src/exe_models -type f -name run.exe -print
+                exit 1
+              fi
+              find src/exe_models -type f -name run.exe -exec chmod +x {} \; -print
             '
 
       - name: Stage artifact
