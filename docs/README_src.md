@@ -42,7 +42,7 @@ The GitHub Actions workflow uses the same Ubuntu 24.04 base image and XRT PPA.
 
 ## Start the Build Container
 
-On Linux or macOS:
+On Linux:
 
 ```bash
 docker run --rm -it \
@@ -51,14 +51,6 @@ docker run --rm -it \
   vigenflow-build-env:ubuntu24.04
 ```
 
-On Windows PowerShell:
-
-```powershell
-docker run --rm -it `
-  -v "${PWD}:/workspace/vigenflow" `
-  -w /workspace/vigenflow `
-  vigenflow-build-env:ubuntu24.04
-```
 
 All commands below are run inside the container unless noted otherwise.
 
@@ -194,6 +186,54 @@ http://127.0.0.1:2048/v1
 ```
 
 ## Troubleshooting
+
+### `permission denied while trying to connect to the Docker daemon socket`
+
+Your user account cannot access `/var/run/docker.sock`. Use `sudo` for the
+current build:
+
+```bash
+sudo docker build \
+  -t vigenflow-build-env:ubuntu24.04 \
+  --build-arg BASE_IMAGE=ubuntu:24.04 \
+  --build-arg UBUNTU_PPA=ppa:lemonade-team/stable \
+  --build-arg INSTALL_XRT_DEV=1 \
+  .
+```
+
+Or add your user to the `docker` group, then open a new terminal session:
+
+```bash
+sudo usermod -aG docker "$USER"
+newgrp docker
+docker ps
+```
+
+The `DEPRECATED: The legacy builder is deprecated` message is only a warning and
+does not stop the image from building.
+
+### `BuildKit is enabled but the buildx component is missing or broken`
+
+Your Docker installation does not have the Buildx plugin. Either run the build
+without `DOCKER_BUILDKIT=1`, or install Buildx and rerun the BuildKit command.
+
+Compatible command without BuildKit:
+
+```bash
+docker build \
+  -t vigenflow-build-env:ubuntu24.04 \
+  --build-arg BASE_IMAGE=ubuntu:24.04 \
+  --build-arg UBUNTU_PPA=ppa:lemonade-team/stable \
+  --build-arg INSTALL_XRT_DEV=1 \
+  .
+```
+
+On Docker CE installs, the Buildx package is usually available as:
+
+```bash
+sudo apt-get update
+sudo apt-get install docker-buildx-plugin
+```
 
 ### `Unable to locate package libxrt-dev`
 
