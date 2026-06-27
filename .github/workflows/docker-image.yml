@@ -9,12 +9,10 @@ on:
       - "v*"
     paths:
       - "Dockerfile"
-      - "external_lib/tokenizers-cpp/rust/**"
       - ".github/workflows/docker-image.yml"
   pull_request:
     paths:
       - "Dockerfile"
-      - "external_lib/tokenizers-cpp/rust/**"
       - ".github/workflows/docker-image.yml"
   workflow_dispatch:
 
@@ -80,6 +78,5 @@ jobs:
             BASE_IMAGE=ubuntu:24.04
             UBUNTU_PPA=ppa:lemonade-team/stable
             INSTALL_XRT_DEV=1
-            PREFETCH_CARGO_DEPS=0
           cache-from: type=gha
           cache-to: type=gha,mode=max

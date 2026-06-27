@@ -9,7 +9,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 ARG UBUNTU_PPA=""
 ARG BACKPORTS=""
 ARG INSTALL_XRT_DEV=1
-ARG PREFETCH_CARGO_DEPS=0
 
 RUN if [ -n "$UBUNTU_PPA" ]; then \
         apt-get update && \
@@ -48,17 +47,6 @@ RUN apt-get update && apt-get install -y \
         fi; \
     fi \
     && rm -rf /var/lib/apt/lists/*
-
-ENV PATH="/root/.cargo/bin:${PATH}"
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-        RUSTUP_INIT_SKIP_PATH_CHECK=yes sh -s -- -y --profile minimal --default-toolchain stable
-
-COPY external_lib/tokenizers-cpp/rust/ /tmp/tokenizers-cpp-rust/
-RUN if [ "$PREFETCH_CARGO_DEPS" = "1" ]; then \
-        cargo fetch --manifest-path /tmp/tokenizers-cpp-rust/Cargo.toml --locked; \
-    else \
-        echo "Skipping Cargo dependency prefetch"; \
-    fi
 
 WORKDIR /workspace
 

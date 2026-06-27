@@ -64,7 +64,6 @@ jobs:
               --build-arg BASE_IMAGE=ubuntu:24.04 \
               --build-arg UBUNTU_PPA=ppa:lemonade-team/stable \
               --build-arg INSTALL_XRT_DEV=1 \
-              --build-arg PREFETCH_CARGO_DEPS=0 \
               -t "$image" \
               .
           fi
