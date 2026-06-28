@@ -191,9 +191,9 @@ Watch the demo video to learn how to set up and use VigenFlow with OpenWebUI Des
 
 [[Watch the VigenFlow Demo]](https://youtu.be/kZaqCE0LnRA?si=5h6zOFKBfm6EKJv9)
 
-You can also watch the local demo below:
+<!-- You can also watch the local demo below:
 
-https://github.com/user-attachments/assets/ad22f2e3-ffca-468e-ab7f-d5fe10e70998
+https://github.com/user-attachments/assets/ad22f2e3-ffca-468e-ab7f-d5fe10e70998 -->
 
 ---
 
