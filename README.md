@@ -187,7 +187,7 @@ Example:
 
 Watch the demo video to learn how to set up and use VigenFlow with OpenWebUI Desktop:
 
-<!-- Replace the link below with your YouTube video link -->
+<!-- https://youtu.be/kZaqCE0LnRA?si=5h6zOFKBfm6EKJv9 -->
 
 [![Watch the VigenFlow Demo](https://img.youtube.com/vi/YOUR_VIDEO_ID/maxresdefault.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
 
