@@ -197,6 +197,10 @@ https://github.com/user-attachments/assets/ad22f2e3-ffca-468e-ab7f-d5fe10e70998 
 
 ---
 
+> **Note:** If you are using the latest version of OpenWebUI Desktop, we recommend switching to the stable version shown in the video to avoid compatibility issues.
+
+[Watch the VigenFlow Demo](https://youtu.be/KZaqCE0LnRA?si=5h6zOFKBfm6EKJv9)
+
 ## ✅ Summary
 
 With the latest release package, VigenFlow is now much easier to run:
