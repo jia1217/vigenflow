@@ -1,0 +1,54 @@
+$targetVersion = "0.9.6"   # Use "0.10.1" for previous version, or "" for latest
+$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+
+# Find Open WebUI Desktop config
+$cfgs = @(Get-ChildItem "$env:APPDATA","$env:LOCALAPPDATA" -Recurse -Filter config.json -ErrorAction SilentlyContinue |
+  Where-Object { $_.FullName -match 'open[-_ ]?webui|Open WebUI|open-webui' })
+
+if ($cfgs.Count -eq 0) {
+  Write-Host "Could not find Open WebUI Desktop config.json."
+  Write-Host "Search AppData manually for webui.db, then rename its parent data folder."
+  exit
+}
+
+$cfg = $cfgs[0].FullName
+$json = Get-Content $cfg -Raw | ConvertFrom-Json
+
+$userData = Split-Path $cfg
+$installDir = if ($json.installDir) { $json.installDir } else { $userData }
+$dataDir = if ($json.dataDir) { $json.dataDir } else { Join-Path $installDir "data" }
+
+Write-Host "Config file: $cfg"
+Write-Host "Open WebUI data folder: $dataDir"
+
+# Rename old broken data folder instead of deleting it
+$dbPath = Join-Path $dataDir "webui.db"
+
+if (Test-Path $dbPath) {
+  $newName = (Split-Path $dataDir -Leaf) + ".backup-$stamp"
+  Rename-Item -LiteralPath $dataDir -NewName $newName
+  Write-Host "Old data folder backed up as: $dataDir.backup-$stamp"
+} else {
+  Write-Host "No webui.db found at expected location. Nothing renamed."
+}
+
+# Make sure localServer config exists
+if (-not $json.localServer) {
+  $json | Add-Member -MemberType NoteProperty -Name localServer -Value ([pscustomobject]@{})
+}
+
+# Set desired Open WebUI server version
+if ($targetVersion.Trim()) {
+  $json.localServer | Add-Member -MemberType NoteProperty -Name version -Value $targetVersion -Force
+  $json.localServer | Add-Member -MemberType NoteProperty -Name autoUpdate -Value $false -Force
+  Write-Host "Pinned Open WebUI server version to: $targetVersion"
+} else {
+  if ($json.localServer.PSObject.Properties["version"]) {
+    $json.localServer.PSObject.Properties.Remove("version")
+  }
+  $json.localServer | Add-Member -MemberType NoteProperty -Name autoUpdate -Value $true -Force
+  Write-Host "Cleared version pin. Desktop will use latest."
+}
+
+$json | ConvertTo-Json -Depth 50 | Set-Content $cfg -Encoding UTF8
+Write-Host "Done. Reopen Open WebUI Desktop."
