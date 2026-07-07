@@ -7,14 +7,11 @@
 #include <atomic>
 #include <algorithm>
 
-#ifdef _WIN32
+#if defined(__has_include) && __has_include(<boost/process/v1.hpp>)
 #ifndef BOOST_PROCESS_VERSION
 #define BOOST_PROCESS_VERSION 1
 #endif
-#include <boost/process/v1/child.hpp>
-#include <boost/process/v1/args.hpp>
-#include <boost/process/v1/io.hpp>
-#include <boost/process/v1/start_dir.hpp>
+#include <boost/process/v1.hpp>
 #else
 #include <boost/process.hpp>
 #endif
