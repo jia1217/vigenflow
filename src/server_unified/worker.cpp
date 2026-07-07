@@ -1,7 +1,3 @@
-#ifndef BOOST_PROCESS_VERSION
-#define BOOST_PROCESS_VERSION 1
-#endif
-
 #include "worker.hpp"
 #include "file_utils.hpp"
 #include "flux_klein_bf16_export.hpp"
@@ -11,10 +7,17 @@
 #include <atomic>
 #include <algorithm>
 
+#ifdef _WIN32
+#ifndef BOOST_PROCESS_VERSION
+#define BOOST_PROCESS_VERSION 1
+#endif
 #include <boost/process/v1/child.hpp>
 #include <boost/process/v1/args.hpp>
 #include <boost/process/v1/io.hpp>
 #include <boost/process/v1/start_dir.hpp>
+#else
+#include <boost/process.hpp>
+#endif
 #include <chrono>
 #include <cctype>
 #include <filesystem>
@@ -1731,7 +1734,26 @@ std::optional<double> parse_e2e_runtime_seconds(const std::string& output) {
     return result;
 }
 
-GenerationTimingInfo parse_generation_timing_info(const std::string& output) {
+bool is_flux_klein_base_timing_target(const std::string& raw_target) {
+    return raw_target == "flux.2-klein-4B" ||
+           raw_target == "flux.2-klein-4B-lora";
+}
+
+std::optional<double> flux_klein_base_e2e_runtime_seconds(
+    const GenerationTimingInfo& timing) {
+    if (timing.text_encoder_seconds &&
+        timing.denoising_total_seconds &&
+        timing.vae_decoder_seconds) {
+        return *timing.text_encoder_seconds +
+               *timing.denoising_total_seconds +
+               *timing.vae_decoder_seconds;
+    }
+    return std::nullopt;
+}
+
+GenerationTimingInfo parse_generation_timing_info(
+    const std::string& output,
+    const std::string& raw_target) {
     GenerationTimingInfo timing;
 
     if (const auto vae_encoder_timing = parse_progress_timing(output, "VAE Encoder")) {
@@ -1750,7 +1772,11 @@ GenerationTimingInfo parse_generation_timing_info(const std::string& output) {
     }
 
     timing.e2e_runtime_seconds = parse_e2e_runtime_seconds(output);
-    if (!timing.e2e_runtime_seconds &&
+    if (is_flux_klein_base_timing_target(raw_target)) {
+        if (const auto e2e_seconds = flux_klein_base_e2e_runtime_seconds(timing)) {
+            timing.e2e_runtime_seconds = e2e_seconds;
+        }
+    } else if (!timing.e2e_runtime_seconds &&
         timing.vae_encoder_seconds &&
         timing.text_encoder_seconds &&
         timing.denoising_total_seconds &&
@@ -2085,7 +2111,7 @@ WorkerResult run_worker(const GenParams& p) {
     std::cout << "[INFO] Generation completed in " << elapsed_ms << " ms\n";
     std::cout << "[INFO] Waiting for next request\n";
 
-    GenerationTimingInfo timing = parse_generation_timing_info(worker_output);
+    GenerationTimingInfo timing = parse_generation_timing_info(worker_output, raw_target);
     if (!timing.e2e_runtime_seconds) {
         timing.e2e_runtime_seconds = static_cast<double>(elapsed_ms) / 1000.0;
     }
