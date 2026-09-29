@@ -10,20 +10,26 @@ The new VigenFlow version uses **BFP16 weights for all supported models**.
 
 The current release supports the following base models and editing workflow:
 
-| Model | Task | Weight format | Platforms | Output size | E2E runtime (Windows) |
+| Model | Task | Weight format | Platforms | Output size | Denoising steps |
 | --- | --- | --- | --- | --- | ---: |
-| **FLUX.1-schnell** | Text-to-image generation | BFP16 | Windows / Ubuntu | 1024 × 1024 | 19.42 s |
-| **FLUX.2-klein-4B** | Text-to-image generation | BFP16 | Windows / Ubuntu | 1024 × 1024 | 8.12 s |
-| **FLUX.2-klein-4B Edit** | Image editing with an input image and prompt | BFP16 | Windows / Ubuntu | 1024 × 1024 | 18 s |
-| **Z-Image-Turbo** | Text-to-image generation | BFP16 | Windows / Ubuntu | 1024 × 1024 | 17.07 s |
+| **FLUX.1-schnell** | Text-to-image  | BFP16 | Windows / Ubuntu | 1024 × 1024 | 4 |
+| **FLUX.2-klein-4B** | Text-to-image  | BFP16 | Windows / Ubuntu | 1024 × 1024 | 4 |
+| **FLUX.2-klein-4B Edit** | Image-to-image | BFP16 | Windows / Ubuntu | 1024 × 1024 | 4 |
+| **Z-Image-Turbo** | Text-to-image  | BFP16 | Windows / Ubuntu | 1024 × 1024 | 4 |
 
-**Generation benchmark conditions:** AMD Ryzen AI 9 HX PRO 370, Windows 11, Best performance power mode, four denoising steps, and seed 42. Generation times are averages over 30 measured images. FLUX.1-schnell and FLUX.2-klein-4B use 256 text tokens; Z-Image-Turbo uses a caption padded to 512 tokens.
-
-E2E runtime covers text encoding, denoising, and VAE decoding; image editing also includes reference-image VAE encoding. It excludes model loading, initialization, image saving, and server/UI overhead. These measurements apply to Windows; Ubuntu support is listed separately from runtime measurements.
+FLUX.1-schnell and FLUX.2-klein-4B use 256 text tokens; Z-Image-Turbo uses a caption padded to 512 tokens.
 
 All models use the AMD NPU target described in **Supported Devices and Platforms**. Select a model from the OpenWebUI model list after launching `vgf-serve`.
 
 You can switch image generation models inside OpenWebUI without restarting `vgf-serve`.
+
+---
+
+## 🔜 Next Steps
+
+Planned for a future release:
+
+- [ ] **LoRA support** for the BFP16 model pipelines.
 
 ---
 
@@ -54,14 +60,6 @@ To check available options:
 ```powershell
 .\vgf-serve.exe -h
 ```
-
----
-
-## 🔜 Next Steps
-
-Planned for a future release:
-
-- [ ] **LoRA support** for the BFP16 model pipelines.
 
 ---
 
