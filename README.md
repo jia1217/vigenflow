@@ -6,6 +6,14 @@ The new VigenFlow version uses **BFP16 weights for all supported models**.
 
 ---
 
+## 🚀 Getting Started
+
+Before getting started, please make sure the **AMD XDNA driver** has been installed on your system.
+
+You can find more details in the [AMD XDNA / MLIR-AIE installation guide](https://github.com/Xilinx/mlir-aie) for the Ubuntu system and Windows system in the [Driver Download](https://www.amd.com/en/support/download/drivers.html).
+
+---
+
 <!-- ## 🧠 Supported Models
 
 The current release supports the following base models and editing workflow:
@@ -75,14 +83,6 @@ VigenFlow's model workers use **CPU + AMD NPU inference** and currently target *
 | Driver and runtime | AMD XDNA driver and an XRT runtime compatible with the installed NPU driver |
 
 Choose the release package for your operating system and keep its matching model workers and NPU assets together. The device target applies to all supported models; support for another processor requires compatible NPU binaries and runtime support.
-
----
-
-## 🚀 Getting Started
-
-Before getting started, please make sure the **AMD XDNA driver** has been installed on your system.
-
-You can find more details in the [AMD XDNA / MLIR-AIE installation guide](https://github.com/Xilinx/mlir-aie) for the Ubuntu system and Windows system in the [Driver Download](https://www.amd.com/en/support/download/drivers.html).
 
 ---
 
