@@ -2,9 +2,26 @@
 
 Set up **VigenFlow** in just a few minutes and connect it with **OpenWebUI Desktop** to run your own local VigenFlow AI.
 
+The new VigenFlow version uses **BFP16 weights for all supported models**.
+
 Before getting started, please make sure the **AMD XDNA driver** has been installed on your system.
 
 You can find more details in the [AMD XDNA / MLIR-AIE installation guide](https://github.com/Xilinx/mlir-aie) for the Ubuntu system and Windows system in the [Driver Download](https://www.amd.com/en/support/download/drivers.html).
+
+---
+
+## 💻 Supported Devices and Platforms
+
+VigenFlow's model workers use **CPU + AMD NPU inference** and currently target **AMD XDNA 2 (`npu2`)**.
+
+| Component | Supported target |
+| --- | --- |
+| NPU | AMD XDNA 2, using the matching model xclbins and instruction files |
+| Reference processor | [AMD Ryzen AI 9 HX PRO 370](https://www.amd.com/en/newsroom/press-releases/2024-10-10-amd-launches-new-ryzen-ai-pro-300-series-processo.html), from the Ryzen AI PRO 300 Series |
+| Operating systems | Ubuntu x86_64 and Windows x64 |
+| Driver and runtime | AMD XDNA driver and an XRT runtime compatible with the installed NPU driver |
+
+Choose the release package for your operating system and keep its matching model workers and NPU assets together. The device target applies to all models listed below; support for another processor requires compatible NPU binaries and runtime support.
 
 ---
 
@@ -102,18 +119,28 @@ Once the connection is configured, you can select and switch VigenFlow models di
 
 ---
 
-## 🧠 Supported Image Generation Models
+## 🧠 Supported Models
 
-The following image generation models are available from the OpenWebUI model list after launching `vgf-serve`:
+The current release supports the following base models and editing workflow:
 
-- ⚡ `z-image-turbo-BF16`
-- 🎨 `z-image-turbo-BF16-lora`
-- ⚡ `z-image-turbo-Q4_1-GGUF`
-- 🎨 `z-image-turbo-Q4_1-GGUF-lora`
-- 🌊 `flux.2-klein-4B`
-- 🎨 `flux.2-klein-4B-lora`
+| Model | Task | Weight format |
+| --- | --- | --- |
+| **FLUX.1-schnell** | Text-to-image generation | BFP16 |
+| **FLUX.2-klein-4B** | Text-to-image generation | BFP16 |
+| **FLUX.2-klein-4B Edit** | Image editing with an input image and prompt | BFP16 |
+| **Z-Image-Turbo** | Text-to-image generation | BFP16 |
 
-You can switch between different base models and LoRA models directly inside OpenWebUI without restarting `vgf-serve`.
+All models use the AMD NPU target described in **Supported Devices and Platforms**. Select a model from the OpenWebUI model list after launching `vgf-serve`.
+
+You can switch image generation models inside OpenWebUI without restarting `vgf-serve`.
+
+---
+
+## 🔜 Next Steps
+
+Planned for a future release:
+
+- [ ] **LoRA support** for the BFP16 model pipelines.
 
 ---
 
@@ -163,22 +190,20 @@ To check available options:
 
 ## 🖼️ Important Note for Image Editing Models
 
-The simplified startup workflow applies to **image generation models**.
-
-For **image editing models**, you still need to specify the model name when launching `vgf-serve` if you want to use a different image editing model.
+To select **FLUX.2-klein-4B image editing** as the default model, specify its model ID when launching `vgf-serve`. Editing requests also need an input image and an editing prompt.
 
 Example:
 
 #### 🐧 Ubuntu
 
 ```bash
-./vgf-serve <image-edit-model-name>
+./vgf-serve flux.2-klein-4B-edit
 ```
 
 #### 🪟 Windows
 
 ```powershell
-.\vgf-serve.exe <image-edit-model-name>
+.\vgf-serve.exe flux.2-klein-4B-edit
 ```
 
 ---
@@ -209,5 +234,6 @@ With the latest release package, VigenFlow is now much easier to run:
 - 🛠️ No manual build required for normal users.
 - ▶️ Start the image generation service with one command.
 - 🧠 Switch image generation models directly from OpenWebUI.
-- 🎨 LoRA model variants are available from the OpenWebUI model list.
+- 🎨 FLUX.1-schnell, FLUX.2-klein-4B, and Z-Image-Turbo base models, plus FLUX.2-klein-4B image editing.
+- ⚡ BFP16 weights for all supported models.
 - 🖥️ Works together with OpenWebUI Desktop to create your own local VigenFlow AI.
