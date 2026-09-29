@@ -10,16 +10,50 @@ The new VigenFlow version uses **BFP16 weights for all supported models**.
 
 The current release supports the following base models and editing workflow:
 
-| Model | Task | Weight format |
-| --- | --- | --- |
-| **FLUX.1-schnell** | Text-to-image generation | BFP16 |
-| **FLUX.2-klein-4B** | Text-to-image generation | BFP16 |
-| **FLUX.2-klein-4B Edit** | Image editing with an input image and prompt | BFP16 |
-| **Z-Image-Turbo** | Text-to-image generation | BFP16 |
+| Model | Task | Weight format | Platforms | Output size | E2E runtime (Windows) |
+| --- | --- | --- | --- | --- | ---: |
+| **FLUX.1-schnell** | Text-to-image generation | BFP16 | Windows / Ubuntu | 1024 × 1024 | 19.42 s |
+| **FLUX.2-klein-4B** | Text-to-image generation | BFP16 | Windows / Ubuntu | 1024 × 1024 | 8.12 s |
+| **FLUX.2-klein-4B Edit** | Image editing with an input image and prompt | BFP16 | Windows / Ubuntu | 1024 × 1024 | Pending |
+| **Z-Image-Turbo** | Text-to-image generation | BFP16 | Windows / Ubuntu | 1024 × 1024 | 17.07 s |
+
+**Benchmark conditions:** AMD Ryzen AI 9 HX PRO 370, Windows 11, Best performance power mode, four denoising steps, and seed 42. Times are averages over 30 measured images. FLUX.1-schnell and FLUX.2-klein-4B use 256 text tokens; Z-Image-Turbo uses a caption padded to 512 tokens.
+
+E2E runtime here is the sum of text encoding, denoising, and VAE decoding times. It excludes model loading, initialization, image saving, and server/UI overhead. These measurements apply to Windows; Ubuntu support is listed separately from runtime measurements. FLUX.2-klein-4B Edit is pending a comparable benchmark that also includes reference-image VAE encoding.
 
 All models use the AMD NPU target described in **Supported Devices and Platforms**. Select a model from the OpenWebUI model list after launching `vgf-serve`.
 
 You can switch image generation models inside OpenWebUI without restarting `vgf-serve`.
+
+---
+
+## 💻 Usage Commands
+
+### 🐧 Ubuntu
+
+```bash
+./vgf-serve
+```
+
+### 🪟 Windows
+
+```powershell
+.\vgf-serve.exe
+```
+
+To check available options:
+
+#### 🐧 Ubuntu
+
+```bash
+./vgf-serve -h
+```
+
+#### 🪟 Windows
+
+```powershell
+.\vgf-serve.exe -h
+```
 
 ---
 
@@ -151,36 +185,6 @@ http://127.0.0.1:2048/v1
 Once the connection is configured, you can select and switch VigenFlow models directly from the OpenWebUI model list.
 
 <img width="1629" height="995" alt="OpenWebUI connection settings" src="https://github.com/user-attachments/assets/59543b3f-3a49-4675-8aaf-f48afae57c73" />
-
----
-
-## 💻 Usage Commands
-
-### 🐧 Ubuntu
-
-```bash
-./vgf-serve
-```
-
-### 🪟 Windows
-
-```powershell
-.\vgf-serve.exe
-```
-
-To check available options:
-
-#### 🐧 Ubuntu
-
-```bash
-./vgf-serve -h
-```
-
-#### 🪟 Windows
-
-```powershell
-.\vgf-serve.exe -h
-```
 
 ---
 
