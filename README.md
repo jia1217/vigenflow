@@ -111,6 +111,18 @@ Starting from **VigenFlow v0.1.2**, we provide ready-to-use `.zip` packages for 
 
 You only need to download the package for your system, extract it, launch `vgf-serve`, and connect it with **OpenWebUI Desktop**.
 
+### 🔔 Get Release Notifications
+
+Downloading a VigenFlow package does not automatically subscribe you to future release notifications. To receive updates:
+
+1. Sign in to GitHub and open the [VigenFlow repository](https://github.com/jia1217/vigenflow).
+2. Click **Watch → Custom** in the upper-right corner.
+3. Select **Releases** and save your preferences.
+
+When a new release is published, you can receive notifications on GitHub or by email, depending on your [notification settings](https://github.com/settings/notifications). See [GitHub's notification guide](https://docs.github.com/en/subscriptions-and-notifications/get-started/configuring-notifications) for details.
+
+You can also check the [Latest Release](https://github.com/jia1217/vigenflow/releases/latest) page at any time.
+
 ---
 
 ## ⭐ Option A: Install from the Release Package Recommended
