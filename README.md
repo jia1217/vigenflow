@@ -6,7 +6,7 @@ The new VigenFlow version uses **BFP16 weights for all supported models**.
 
 ---
 
-## 🧠 Supported Models
+<!-- ## 🧠 Supported Models
 
 The current release supports the following base models and editing workflow:
 
@@ -31,7 +31,7 @@ Planned for a future release:
 
 - [ ] **LoRA support** for the BFP16 model pipelines.
 
----
+--- -->
 
 ## 💻 Usage Commands
 
