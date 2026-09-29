@@ -1,12 +1,25 @@
-## 🚀 Getting Started
+# VigenFlow
 
-Set up **VigenFlow** in just a few minutes and connect it with **OpenWebUI Desktop** to run your own local VigenFlow AI.
+Local image generation and editing with **CPU + AMD NPU inference**, connected to **OpenWebUI Desktop**.
 
 The new VigenFlow version uses **BFP16 weights for all supported models**.
 
-Before getting started, please make sure the **AMD XDNA driver** has been installed on your system.
+---
 
-You can find more details in the [AMD XDNA / MLIR-AIE installation guide](https://github.com/Xilinx/mlir-aie) for the Ubuntu system and Windows system in the [Driver Download](https://www.amd.com/en/support/download/drivers.html).
+## 🧠 Supported Models
+
+The current release supports the following base models and editing workflow:
+
+| Model | Task | Weight format |
+| --- | --- | --- |
+| **FLUX.1-schnell** | Text-to-image generation | BFP16 |
+| **FLUX.2-klein-4B** | Text-to-image generation | BFP16 |
+| **FLUX.2-klein-4B Edit** | Image editing with an input image and prompt | BFP16 |
+| **Z-Image-Turbo** | Text-to-image generation | BFP16 |
+
+All models use the AMD NPU target described in **Supported Devices and Platforms**. Select a model from the OpenWebUI model list after launching `vgf-serve`.
+
+You can switch image generation models inside OpenWebUI without restarting `vgf-serve`.
 
 ---
 
@@ -21,7 +34,29 @@ VigenFlow's model workers use **CPU + AMD NPU inference** and currently target *
 | Operating systems | Ubuntu x86_64 and Windows x64 |
 | Driver and runtime | AMD XDNA driver and an XRT runtime compatible with the installed NPU driver |
 
-Choose the release package for your operating system and keep its matching model workers and NPU assets together. The device target applies to all models listed below; support for another processor requires compatible NPU binaries and runtime support.
+Choose the release package for your operating system and keep its matching model workers and NPU assets together. The device target applies to all supported models; support for another processor requires compatible NPU binaries and runtime support.
+
+---
+
+## 🚀 Getting Started
+
+Before getting started, please make sure the **AMD XDNA driver** has been installed on your system.
+
+You can find more details in the [AMD XDNA / MLIR-AIE installation guide](https://github.com/Xilinx/mlir-aie) for the Ubuntu system and Windows system in the [Driver Download](https://www.amd.com/en/support/download/drivers.html).
+
+---
+
+## ✨ Simple Usage
+
+For most users, the complete workflow is:
+
+1. 📥 Download the release package for your system.
+2. 📂 Extract the `.zip` file.
+3. ▶️ Start the VigenFlow server.
+4. 🖥️ Open OpenWebUI Desktop.
+5. 🔗 Configure the VigenFlow connection.
+6. 🧠 Select a model from the OpenWebUI model list.
+7. 🎨 Start generating images with your own local VigenFlow AI.
 
 ---
 
@@ -119,45 +154,6 @@ Once the connection is configured, you can select and switch VigenFlow models di
 
 ---
 
-## 🧠 Supported Models
-
-The current release supports the following base models and editing workflow:
-
-| Model | Task | Weight format |
-| --- | --- | --- |
-| **FLUX.1-schnell** | Text-to-image generation | BFP16 |
-| **FLUX.2-klein-4B** | Text-to-image generation | BFP16 |
-| **FLUX.2-klein-4B Edit** | Image editing with an input image and prompt | BFP16 |
-| **Z-Image-Turbo** | Text-to-image generation | BFP16 |
-
-All models use the AMD NPU target described in **Supported Devices and Platforms**. Select a model from the OpenWebUI model list after launching `vgf-serve`.
-
-You can switch image generation models inside OpenWebUI without restarting `vgf-serve`.
-
----
-
-## 🔜 Next Steps
-
-Planned for a future release:
-
-- [ ] **LoRA support** for the BFP16 model pipelines.
-
----
-
-## ✨ Simple Usage
-
-For most users, the complete workflow is:
-
-1. 📥 Download the release package for your system.
-2. 📂 Extract the `.zip` file.
-3. ▶️ Start the VigenFlow server.
-4. 🖥️ Open OpenWebUI Desktop.
-5. 🔗 Configure the VigenFlow connection.
-6. 🧠 Select a model from the OpenWebUI model list.
-7. 🎨 Start generating images with your own local VigenFlow AI.
-
----
-
 ## 💻 Usage Commands
 
 ### 🐧 Ubuntu
@@ -226,6 +222,8 @@ https://github.com/user-attachments/assets/ad22f2e3-ffca-468e-ab7f-d5fe10e70998 
 
 [[Watch the VigenFlow Demo]](https://youtube.com/shorts/dwDsCnBObzQ?si=Aq4BZV3zcW51KjQa)
 
+---
+
 ## ✅ Summary
 
 With the latest release package, VigenFlow is now much easier to run:
@@ -237,3 +235,11 @@ With the latest release package, VigenFlow is now much easier to run:
 - 🎨 FLUX.1-schnell, FLUX.2-klein-4B, and Z-Image-Turbo base models, plus FLUX.2-klein-4B image editing.
 - ⚡ BFP16 weights for all supported models.
 - 🖥️ Works together with OpenWebUI Desktop to create your own local VigenFlow AI.
+
+---
+
+## 🔜 Next Steps
+
+Planned for a future release:
+
+- [ ] **LoRA support** for the BFP16 model pipelines.
