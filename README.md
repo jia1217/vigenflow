@@ -14,12 +14,12 @@ The current release supports the following base models and editing workflow:
 | --- | --- | --- | --- | --- | ---: |
 | **FLUX.1-schnell** | Text-to-image generation | BFP16 | Windows / Ubuntu | 1024 × 1024 | 19.42 s |
 | **FLUX.2-klein-4B** | Text-to-image generation | BFP16 | Windows / Ubuntu | 1024 × 1024 | 8.12 s |
-| **FLUX.2-klein-4B Edit** | Image editing with an input image and prompt | BFP16 | Windows / Ubuntu | 1024 × 1024 | Pending |
+| **FLUX.2-klein-4B Edit** | Image editing with an input image and prompt | BFP16 | Windows / Ubuntu | 1024 × 1024 | 18 s |
 | **Z-Image-Turbo** | Text-to-image generation | BFP16 | Windows / Ubuntu | 1024 × 1024 | 17.07 s |
 
-**Benchmark conditions:** AMD Ryzen AI 9 HX PRO 370, Windows 11, Best performance power mode, four denoising steps, and seed 42. Times are averages over 30 measured images. FLUX.1-schnell and FLUX.2-klein-4B use 256 text tokens; Z-Image-Turbo uses a caption padded to 512 tokens.
+**Generation benchmark conditions:** AMD Ryzen AI 9 HX PRO 370, Windows 11, Best performance power mode, four denoising steps, and seed 42. Generation times are averages over 30 measured images. FLUX.1-schnell and FLUX.2-klein-4B use 256 text tokens; Z-Image-Turbo uses a caption padded to 512 tokens.
 
-E2E runtime here is the sum of text encoding, denoising, and VAE decoding times. It excludes model loading, initialization, image saving, and server/UI overhead. These measurements apply to Windows; Ubuntu support is listed separately from runtime measurements. FLUX.2-klein-4B Edit is pending a comparable benchmark that also includes reference-image VAE encoding.
+E2E runtime covers text encoding, denoising, and VAE decoding; image editing also includes reference-image VAE encoding. It excludes model loading, initialization, image saving, and server/UI overhead. These measurements apply to Windows; Ubuntu support is listed separately from runtime measurements.
 
 All models use the AMD NPU target described in **Supported Devices and Platforms**. Select a model from the OpenWebUI model list after launching `vgf-serve`.
 
@@ -54,6 +54,14 @@ To check available options:
 ```powershell
 .\vgf-serve.exe -h
 ```
+
+---
+
+## 🔜 Next Steps
+
+Planned for a future release:
+
+- [ ] **LoRA support** for the BFP16 model pipelines.
 
 ---
 
@@ -239,11 +247,3 @@ With the latest release package, VigenFlow is now much easier to run:
 - 🎨 FLUX.1-schnell, FLUX.2-klein-4B, and Z-Image-Turbo base models, plus FLUX.2-klein-4B image editing.
 - ⚡ BFP16 weights for all supported models.
 - 🖥️ Works together with OpenWebUI Desktop to create your own local VigenFlow AI.
-
----
-
-## 🔜 Next Steps
-
-Planned for a future release:
-
-- [ ] **LoRA support** for the BFP16 model pipelines.
