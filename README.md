@@ -257,3 +257,11 @@ With the latest release package, VigenFlow is now much easier to run:
 - 🎨 FLUX.1-schnell, FLUX.2-klein-4B, and Z-Image-Turbo base models, plus FLUX.2-klein-4B image editing.
 - ⚡ BFP16 weights for all supported models.
 - 🖥️ Works together with OpenWebUI Desktop to create your own local VigenFlow AI.
+
+---
+
+## 📄 License
+
+The VigenFlow source code is licensed under the [Apache License 2.0](LICENSE).
+
+Model weights are **not** covered by this license. Each model and LoRA keeps its original license, including the BFP16 weights in the release packages. See [MODEL_LICENSES.md](MODEL_LICENSES.md) for each model's license and whether it allows commercial use. Third-party libraries are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

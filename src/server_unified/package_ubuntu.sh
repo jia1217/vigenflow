@@ -97,6 +97,10 @@ for catalog in \
   cp "$SCRIPT_DIR/$catalog" "$STAGE_DIR/$catalog"
 done
 
+for doc in LICENSE MODEL_LICENSES.md THIRD_PARTY_NOTICES.md; do
+  cp "$SRC_ROOT/../$doc" "$STAGE_DIR/$doc"
+done
+
 find "$STAGE_DIR/exe_models" -type f -name 'run.exe' -exec chmod +x {} +
 
 (
