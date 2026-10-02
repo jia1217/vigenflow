@@ -37,6 +37,8 @@ You can switch image generation models inside OpenWebUI without restarting `vgf-
 
 Planned for a future release:
 
+- [ ] **Krea2-Turbo** support.
+- [ ] **Qwen-Image 2.1** support.
 - [ ] **LoRA support** for the BFP16 model pipelines. If you need LoRA today, use [v0.1.2](https://github.com/jia1217/vigenflow/releases/tag/v0.1.2).
 
 ---
@@ -80,7 +82,7 @@ VigenFlow's model workers use **CPU + AMD NPU inference** and currently target *
 | Component | Supported target |
 | --- | --- |
 | NPU | AMD XDNA 2, using the matching model xclbins and instruction files |
-| Reference processor | [AMD Ryzen AI 9 HX PRO 370](https://www.amd.com/en/newsroom/press-releases/2024-10-10-amd-launches-new-ryzen-ai-pro-300-series-processo.html), from the Ryzen AI PRO 300 Series |
+| Reference processor | [AMD Ryzen AI 9 HX 370](https://www.amd.com/en/newsroom/press-releases/2024-10-10-amd-launches-new-ryzen-ai-pro-300-series-processo.html), from the Ryzen AI PRO 300 Series |
 | Operating systems | Ubuntu 24.04 x86_64 and Windows x64 |
 | Driver and runtime | AMD XDNA driver and an XRT runtime compatible with the installed NPU driver |
 
