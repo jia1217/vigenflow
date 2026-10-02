@@ -2,7 +2,7 @@
 
 Local image generation and editing with **CPU + AMD NPU inference**, connected to **OpenWebUI Desktop**.
 
-The new VigenFlow version uses **BFP16 weights for all supported models**.
+The latest release, **[v0.2.0 Beta 1](https://github.com/jia1217/vigenflow/releases/latest)**, uses **BFP16 weights for all supported models**, adds **FLUX.1-schnell**, and serves **image editing** next to the text-to-image models. Running on the NPU, VigenFlow generates images **several times faster than the same laptop's integrated GPU**.
 
 ---
 
@@ -14,16 +14,16 @@ You can find more details in the [AMD XDNA / MLIR-AIE installation guide](https:
 
 ---
 
-<!-- ## 🧠 Supported Models
+## 🧠 Supported Models
 
 The current release supports the following base models and editing workflow:
 
-| Model | Task | Weight format | Platforms | Output size | Denoising steps |
-| --- | --- | --- | --- | --- | ---: |
-| **FLUX.1-schnell** | Text-to-image  | BFP16 | Windows / Ubuntu | 1024 × 1024 | 4 |
-| **FLUX.2-klein-4B** | Text-to-image  | BFP16 | Windows / Ubuntu | 1024 × 1024 | 4 |
-| **FLUX.2-klein-4B Edit** | Image-to-image | BFP16 | Windows / Ubuntu | 1024 × 1024 | 4 |
-| **Z-Image-Turbo** | Text-to-image  | BFP16 | Windows / Ubuntu | 1024 × 1024 | 4 |
+| Model | Model ID | Task | Weight format | Platforms | Output size | Denoising steps |
+| --- | --- | --- | --- | --- | --- | ---: |
+| **FLUX.1-schnell** | `flux1-schnell` | Text-to-image  | BFP16 | Windows / Ubuntu | 1024 × 1024 | 4 |
+| **FLUX.2-klein-4B** | `flux2-klein-4B` | Text-to-image  | BFP16 | Windows / Ubuntu | 1024 × 1024 | 4 |
+| **FLUX.2-klein-4B Edit** | `flux2-klein-4B-edit` | Image-to-image | BFP16 | Windows / Ubuntu | 1024 × 1024 | 4 |
+| **Z-Image-Turbo** | `z-image-turbo` | Text-to-image  | BFP16 | Windows / Ubuntu | 1024 × 1024 | 4 or 8 |
 
 FLUX.1-schnell and FLUX.2-klein-4B use 256 text tokens; Z-Image-Turbo uses a caption padded to 512 tokens.
 
@@ -37,11 +37,13 @@ You can switch image generation models inside OpenWebUI without restarting `vgf-
 
 Planned for a future release:
 
-- [ ] **LoRA support** for the BFP16 model pipelines.
+- [ ] **LoRA support** for the BFP16 model pipelines. If you need LoRA today, use [v0.1.2](https://github.com/jia1217/vigenflow/releases/tag/v0.1.2).
 
---- -->
+---
 
 ## 💻 Usage Commands
+
+Run these inside the `server_running` folder of the extracted package.
 
 ### 🐧 Ubuntu
 
@@ -79,7 +81,7 @@ VigenFlow's model workers use **CPU + AMD NPU inference** and currently target *
 | --- | --- |
 | NPU | AMD XDNA 2, using the matching model xclbins and instruction files |
 | Reference processor | [AMD Ryzen AI 9 HX PRO 370](https://www.amd.com/en/newsroom/press-releases/2024-10-10-amd-launches-new-ryzen-ai-pro-300-series-processo.html), from the Ryzen AI PRO 300 Series |
-| Operating systems | Ubuntu x86_64 and Windows x64 |
+| Operating systems | Ubuntu 24.04 x86_64 and Windows x64 |
 | Driver and runtime | AMD XDNA driver and an XRT runtime compatible with the installed NPU driver |
 
 Choose the release package for your operating system and keep its matching model workers and NPU assets together. The device target applies to all supported models; support for another processor requires compatible NPU binaries and runtime support.
@@ -92,11 +94,12 @@ For most users, the complete workflow is:
 
 1. 📥 Download the release package for your system.
 2. 📂 Extract the `.zip` file.
-3. ▶️ Start the VigenFlow server.
-4. 🖥️ Open OpenWebUI Desktop.
-5. 🔗 Configure the VigenFlow connection.
-6. 🧠 Select a model from the OpenWebUI model list.
-7. 🎨 Start generating images with your own local VigenFlow AI.
+3. 💾 Download the model weights (one time).
+4. ▶️ Start the VigenFlow server.
+5. 🖥️ Open OpenWebUI Desktop.
+6. 🔗 Configure the VigenFlow connection and image settings.
+7. 🧠 Select a model from the OpenWebUI model list.
+8. 🎨 Start generating images with your own local VigenFlow AI.
 
 ---
 
@@ -104,12 +107,12 @@ For most users, the complete workflow is:
 
 The recommended way to use **VigenFlow** is to download the latest release package.
 
-Starting from **VigenFlow v0.1.2**, we provide ready-to-use `.zip` packages for both Ubuntu and Windows:
+The latest release provides ready-to-use `.zip` packages for both Ubuntu and Windows:
 
-- 🐧 `vigenflow_0.1.2_ubuntu_amd64.zip`
-- 🪟 `vigenflow_0.1.2_windows_amd64.zip`
+- 🐧 `vigenflow_0.2.0-beta.1_ubuntu_amd64.zip`
+- 🪟 `vigenflow_0.2.0-beta.1_windows_amd64.zip`
 
-You only need to download the package for your system, extract it, launch `vgf-serve`, and connect it with **OpenWebUI Desktop**.
+You only need to download the package for your system, extract it, download the model weights once, launch `vgf-serve`, and connect it with **OpenWebUI Desktop**. The model weights are not included in the packages; a one-time step downloads them from Hugging Face.
 
 ### 🔔 Get Release Notifications
 
@@ -129,14 +132,14 @@ You can also check the [Latest Release](https://github.com/jia1217/vigenflow/rel
 
 ### 📥 Step 1: Download the Release Package
 
-Go to the **Latest Release** page and download the package for your operating system.
+Go to the [Latest Release](https://github.com/jia1217/vigenflow/releases/latest) page and download the package for your operating system.
 
 #### 🐧 Ubuntu
 
 Download:
 
 ```text
-vigenflow_0.1.2_ubuntu_amd64.zip
+vigenflow_0.2.0-beta.1_ubuntu_amd64.zip
 ```
 
 #### 🪟 Windows
@@ -144,7 +147,7 @@ vigenflow_0.1.2_ubuntu_amd64.zip
 Download:
 
 ```text
-vigenflow_0.1.2_windows_amd64.zip
+vigenflow_0.2.0-beta.1_windows_amd64.zip
 ```
 
 ---
@@ -155,73 +158,112 @@ Extract the downloaded `.zip` package to your desired location.
 
 #### 🐧 Ubuntu
 
+The Ubuntu package needs a few runtime libraries. XRT comes with the AMD XDNA driver installation from [Getting Started](#-getting-started).
+
 ```bash
-unzip vigenflow_0.1.2_ubuntu_amd64.zip
-cd vigenflow_0.1.2_ubuntu_amd64
+sudo apt install libboost-program-options1.83.0 libgomp1 libpng16-16t64 curl unzip
+unzip vigenflow_0.2.0-beta.1_ubuntu_amd64.zip
+cd vigenflow_0.2.0-beta.1_ubuntu_amd64
 ```
 
 #### 🪟 Windows
 
-Extract the ZIP package manually, then open **PowerShell** or **Command Prompt** inside the extracted folder.
+Extract the ZIP package manually, then open **PowerShell** inside the extracted `vigenflow_0.2.0-beta.1_windows_amd64` folder.
 
 ---
 
-### ▶️ Step 3: Launch VigenFlow Server
+### 💾 Step 3: Download the Model Weights (One Time)
 
-Starting from **VigenFlow v0.1.2**, image generation models are launched automatically by default.
-
-You no longer need to provide a model name when starting the server for image generation.
+`prepare_base.exe` downloads the pre-packed NPU weights from [Kelsey1217/vigenflow-npu-weights](https://huggingface.co/Kelsey1217/vigenflow-npu-weights) into the `all_model_weights` folder. No Hugging Face account is needed.
 
 #### 🐧 Ubuntu
 
 ```bash
+./prepare/prepare_base.exe
+```
+
+#### 🪟 Windows
+
+```powershell
+.\prepare\prepare_base.exe
+```
+
+All three models together are about **46 GB** (FLUX.1-schnell 27 GB, Z-Image-Turbo 12 GB, FLUX.2-klein-4B 8 GB), plus up to 10 GB of free space while downloading. The edit model uses the FLUX.2-klein-4B weights. To skip a model, set `"enabled": false` for it in `prepare/prepare_models.jsonc` before running the command.
+
+You can run `prepare_base.exe` again at any time. It only downloads models whose weights have changed, and it resumes an interrupted download.
+
+---
+
+### ▶️ Step 4: Launch VigenFlow Server
+
+All models are served at once, so you don't need to give a model name when starting the server.
+
+#### 🐧 Ubuntu
+
+```bash
+cd server_running
 ./vgf-serve
 ```
 
 #### 🪟 Windows
 
 ```powershell
+cd server_running
 .\vgf-serve.exe
 ```
 
-After the server starts successfully, VigenFlow will make the supported image generation models available to OpenWebUI.
+After the server starts successfully, VigenFlow makes all supported models available to OpenWebUI. The server listens on port **11283**.
 
 ---
 
 ## 🔗 Connect with OpenWebUI Desktop
 
-After launching `vgf-serve`, open **OpenWebUI Desktop** and configure the connection to your local VigenFlow server.
+After launching `vgf-serve`, open **OpenWebUI Desktop** and configure it for your local VigenFlow server. All settings below are in OpenWebUI's **Admin Panel → Settings**.
 
-In OpenWebUI, go to the **Connections** settings and add your VigenFlow server endpoint.
+1. **Add the connection.** In **Connections**, add an OpenAI API connection with this URL:
 
-Example local endpoint:
+   ```text
+   http://127.0.0.1:11283/v1
+   ```
 
-```text
-http://127.0.0.1:2048/v1
-```
+   Keep **API Type** set to **Chat Completions** (the default). No API key is needed. The VigenFlow models then appear in the model list.
+2. **Turn on image generation.** In **Images**, turn on **Image Generation**, keep the engine set to **OpenAI**, set the API base URL to `http://127.0.0.1:11283/v1`, and type any text as the API key, then click **Save**. OpenWebUI will not save this setting without a key; VigenFlow ignores it.
+3. **Set up each model.** In **Models**, edit each VigenFlow model:
+   - Set **Function Calling** to **Native** in its advanced parameters. Recent OpenWebUI versions already use Native by default.
+   - Keep **Image Generation** and **Builtin Tools** checked under Capabilities.
+   - For `flux2-klein-4B-edit`, also check **Vision** so you can attach images.
+4. **Generate an image.** In a chat, pick a VigenFlow model, open **Integrations** in the message box and turn on **Image**, then type your prompt.
 
-Once the connection is configured, you can select and switch VigenFlow models directly from the OpenWebUI model list.
+You can switch VigenFlow models directly from the OpenWebUI model list.
 
 <img width="1629" height="995" alt="OpenWebUI connection settings" src="https://github.com/user-attachments/assets/59543b3f-3a49-4675-8aaf-f48afae57c73" />
 
+The screenshot shows the **Connections** page from an earlier release, which used port 2048. Use `http://127.0.0.1:11283/v1` for the current release.
+
 ---
 
-## 🖼️ Important Note for Image Editing Models
+## 🖼️ Image Editing
 
-To select **FLUX.2-klein-4B image editing** as the default model, specify its model ID when launching `vgf-serve`. Editing requests also need an input image and an editing prompt.
+`flux2-klein-4B-edit` is always in the OpenWebUI model list next to the text-to-image models, so you don't need to restart the server to use it.
 
-Example:
+1. Pick `flux2-klein-4B-edit` in a chat. Make sure **Vision** is on for it (step 3 above).
+2. Turn on **Image**, attach a picture, and describe the change, for example `change the dress color from white to red`.
+3. A follow-up message such as `now make it night` edits the previous result without attaching it again. You can also create an image with a text-to-image model, then switch to `flux2-klein-4B-edit` to edit it.
+
+The input image is center-cropped to a square and resized to 1024 × 1024.
+
+To make the edit model the server's default model, start the server with:
 
 #### 🐧 Ubuntu
 
 ```bash
-./vgf-serve flux.2-klein-4B-edit
+./vgf-serve --model flux2-klein-4B-edit
 ```
 
 #### 🪟 Windows
 
 ```powershell
-.\vgf-serve.exe flux.2-klein-4B-edit
+.\vgf-serve.exe --model flux2-klein-4B-edit
 ```
 
 ---
@@ -255,7 +297,8 @@ With the latest release package, VigenFlow is now much easier to run:
 - ▶️ Start the image generation service with one command.
 - 🧠 Switch image generation models directly from OpenWebUI.
 - 🎨 FLUX.1-schnell, FLUX.2-klein-4B, and Z-Image-Turbo base models, plus FLUX.2-klein-4B image editing.
-- ⚡ BFP16 weights for all supported models.
+- ⚡ Several times faster image generation on the NPU than on the same laptop's integrated GPU.
+- 🔢 BFP16 weights for all supported models.
 - 🖥️ Works together with OpenWebUI Desktop to create your own local VigenFlow AI.
 
 ---
