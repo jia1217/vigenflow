@@ -6,6 +6,28 @@ The latest release, **[v0.2.0 Beta 1](https://github.com/jia1217/vigenflow/relea
 
 ---
 
+## 🎬 Demo
+
+Watch the v0.2 speed demo to see VigenFlow generate images on the NPU:
+
+[[Watch the VigenFlow v0.2 Speed Demo]](https://www.youtube.com/watch?v=2mQH2Q0H6Nc&list=PLcZNuhm1Td94)
+
+Watch the demo video to learn how to set up and use VigenFlow with OpenWebUI Desktop:
+
+<!-- https://youtu.be/kZaqCE0LnRA?si=5h6zOFKBfm6EKJv9 -->
+
+[[Watch the VigenFlow Demo]](https://youtu.be/kZaqCE0LnRA?si=5h6zOFKBfm6EKJv9)
+
+<!-- You can also watch the local demo below:
+
+https://github.com/user-attachments/assets/ad22f2e3-ffca-468e-ab7f-d5fe10e70998 -->
+
+> **Note:** If you are using the latest version of OpenWebUI Desktop, we recommend switching to the stable version shown in the video to avoid compatibility issues.
+
+[[Watch the VigenFlow Demo]](https://youtube.com/shorts/dwDsCnBObzQ?si=Aq4BZV3zcW51KjQa)
+
+---
+
 ## 🚀 Getting Started
 
 Before getting started, please make sure the **AMD XDNA driver** has been installed on your system.
@@ -267,26 +289,6 @@ To make the edit model the server's default model, start the server with:
 ```powershell
 .\vgf-serve.exe --model flux2-klein-4B-edit
 ```
-
----
-
-## 🎬 Demo
-
-Watch the demo video to learn how to set up and use VigenFlow with OpenWebUI Desktop:
-
-<!-- https://youtu.be/kZaqCE0LnRA?si=5h6zOFKBfm6EKJv9 -->
-
-[[Watch the VigenFlow Demo]](https://youtu.be/kZaqCE0LnRA?si=5h6zOFKBfm6EKJv9)
-
-<!-- You can also watch the local demo below:
-
-https://github.com/user-attachments/assets/ad22f2e3-ffca-468e-ab7f-d5fe10e70998 -->
-
----
-
-> **Note:** If you are using the latest version of OpenWebUI Desktop, we recommend switching to the stable version shown in the video to avoid compatibility issues.
-
-[[Watch the VigenFlow Demo]](https://youtube.com/shorts/dwDsCnBObzQ?si=Aq4BZV3zcW51KjQa)
 
 ---
 
