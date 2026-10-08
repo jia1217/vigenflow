@@ -309,9 +309,9 @@ After launching `vgf-serve`, open **OpenWebUI Desktop** and configure it for you
 
 You can switch VigenFlow models directly from the OpenWebUI model list.
 
-<img width="1629" height="995" alt="OpenWebUI connection settings" src="https://github.com/user-attachments/assets/59543b3f-3a49-4675-8aaf-f48afae57c73" />
+<img src="assets/openwebUI.png" width="500" alt="OpenWebUI Images settings for VigenFlow" />
 
-The screenshot shows the **Connections** page from an earlier release, which used port 2048. Use `http://127.0.0.1:11283/v1` for the current release.
+The screenshot shows the **Images** settings page set up for VigenFlow.
 
 ---
 
