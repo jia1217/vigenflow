@@ -307,11 +307,10 @@ After launching `vgf-serve`, open **OpenWebUI Desktop** and configure it for you
    - For `flux2-klein-4B-edit`, also check **Vision** so you can attach images.
 4. **Generate an image.** In a chat, pick a VigenFlow model, open **Integrations** in the message box and turn on **Image**, then type your prompt.
 
-You can switch VigenFlow models directly from the OpenWebUI model list.
-
+The screenshot shows the **Images** settings page set up for VigenFlow.
 <img src="assets/openwebUI.png" width="500" alt="OpenWebUI Images settings for VigenFlow" />
 
-The screenshot shows the **Images** settings page set up for VigenFlow.
+
 
 ---
 
