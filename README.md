@@ -73,6 +73,16 @@ All models use BFP16 weights, run on both Windows and Ubuntu, and make 1024 × 1
 
 ---
 
+## 🔜 Next Steps
+
+Planned for a future release:
+
+- [ ] **Krea2-Turbo** support.
+- [ ] **Qwen-Image 2.1** support.
+- [ ] **LoRA support** for the BFP16 model pipelines. If you need LoRA today, use [v0.1.2](https://github.com/jia1217/vigenflow/releases/tag/v0.1.2).
+
+---
+
 ## 🚀 Getting Started
 
 Check that you have everything below before you download VigenFlow:
@@ -181,16 +191,6 @@ After launching `vgf-serve`, open **OpenWebUI Desktop** and configure it for you
 The screenshot shows the **Images** settings page set up for VigenFlow.
 
 <img src="assets/openwebUI.png" width="500" alt="OpenWebUI Images settings for VigenFlow" />
-
----
-
-## 🔜 Next Steps
-
-Planned for a future release:
-
-- [ ] **Krea2-Turbo** support.
-- [ ] **Qwen-Image 2.1** support.
-- [ ] **LoRA support** for the BFP16 model pipelines. If you need LoRA today, use [v0.1.2](https://github.com/jia1217/vigenflow/releases/tag/v0.1.2).
 
 ---
 
