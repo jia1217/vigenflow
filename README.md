@@ -266,32 +266,6 @@ The screenshot shows the **Connections** page from an earlier release, which use
 
 ---
 
-## 🖼️ Image Editing
-
-`flux2-klein-4B-edit` is always in the OpenWebUI model list next to the text-to-image models, so you don't need to restart the server to use it.
-
-1. Pick `flux2-klein-4B-edit` in a chat. Make sure **Vision** is on for it (step 3 above).
-2. Turn on **Image**, attach a picture, and describe the change, for example `change the dress color from white to red`.
-3. A follow-up message such as `now make it night` edits the previous result without attaching it again. You can also create an image with a text-to-image model, then switch to `flux2-klein-4B-edit` to edit it.
-
-The input image is center-cropped to a square and resized to 1024 × 1024.
-
-To make the edit model the server's default model, start the server with:
-
-#### 🐧 Ubuntu
-
-```bash
-./vgf-serve --model flux2-klein-4B-edit
-```
-
-#### 🪟 Windows
-
-```powershell
-.\vgf-serve.exe --model flux2-klein-4B-edit
-```
-
----
-
 ## ✅ Summary
 
 With the latest release package, VigenFlow is now much easier to run:
