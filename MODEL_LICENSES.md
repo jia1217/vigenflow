@@ -2,7 +2,7 @@
 
 The VigenFlow source code is licensed under the [Apache License 2.0](LICENSE). **That license covers the code only, not model weights.** Each model and LoRA adapter stays under the license chosen by its original authors. This includes the BFP16 weights that the VigenFlow release packages contain.
 
-Before you use a model, especially commercially, read its license on the upstream model card. The tables below were checked against Hugging Face on 2026-09-30.
+Before you use a model, especially commercially, read its license on the upstream model card. The tables below were checked against Hugging Face on 2026-09-30, and the Krea 2 Turbo row on 2026-10-12.
 
 ## Base models
 
@@ -13,8 +13,11 @@ These weights ship in the release packages, converted to BFP16 for the AMD NPU. 
 | FLUX.1-schnell | [black-forest-labs/FLUX.1-schnell](https://huggingface.co/black-forest-labs/FLUX.1-schnell) | Apache-2.0 | Allowed |
 | FLUX.2-klein-4B (text-to-image and editing) | [black-forest-labs/FLUX.2-klein-4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) | Apache-2.0 | Allowed |
 | Z-Image-Turbo | [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) | Apache-2.0 | Allowed |
+| Krea 2 Turbo | [krea/Krea-2-Turbo](https://huggingface.co/krea/Krea-2-Turbo) | [Krea 2 Community License](https://www.krea.ai/krea-2-licensing) | Limited: only while total company revenue, including affiliates, is below USD 1 million over the past twelve months. Above that, a separate Krea enterprise license is required. |
 
 The text encoders and VAEs are the ones distributed in the upstream repositories above.
+
+Krea 2 Turbo is also subject to the [Krea Acceptable Use Policy](https://www.krea.ai/krea-2-use-policy). `prepare_base.exe` asks you to accept both before it downloads these weights, and it saves `LICENSE.pdf` and `Notice` with them. Keep those two files with any copy you make. The full license agreement controls; the row above is only a summary.
 
 Other models from the same families use different licenses. For example, [FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev) and [FLUX.2-klein-9B](https://huggingface.co/black-forest-labs/FLUX.2-klein-9B) are under FLUX non-commercial licenses. If VigenFlow adds such a model, it will be listed here with its license. Its commercial use column will read "Not allowed".
 
