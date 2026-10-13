@@ -1,0 +1,149 @@
+{
+  "created_utc": "2026-10-06T19:01:57.781855+00:00",
+  "tile_geometry": {
+    "m": 128,
+    "k": 64,
+    "n": 128,
+    "columns": 8,
+    "rows": 4
+  },
+  "first_k": 1,
+  "parallel_output": 1,
+  "n_unroll": 8,
+  "k_unroll": 8,
+  "instruction_format": "binary little-endian uint32",
+  "hardware_sha256": "9740d21a81adf61aa60078c4167408eae11571dbbe6ae4115416996ab462a6a8",
+  "sources": {
+    "kernel/mm_bfp.cc": "6256dd62a6568cc2d5ec7746eb629ef2fd5ecbd28189c5f9efffa32e1f52425c",
+    "kernel/aie_kernel_utils.h": "dc4f6b9ae9cf60a42f1711e4971ffe392127af2b5b43da1324aa7f191edfdeea",
+    "iron/mm_test.py": "8c9fc93efb19cdee2719fcf740a20b108f7fb8bd1d2a630cfef1e59962de9e07",
+    "scripts/krea2_denoising_mm_shapes.json": "f3848bd91d0ca57f96465b6bda36740176c7c2b36975641f00d4b004406b0163"
+  },
+  "compiler_command": [
+    "/home/kelsey2/NPU_NEW/mlir-aie/ironenv/lib/python3.12/site-packages/llvm-aie/bin/clang++",
+    "-O2",
+    "-std=c++20",
+    "--target=aie2p-none-unknown-elf",
+    "-Wno-parentheses",
+    "-Wno-attributes",
+    "-Wno-macro-redefined",
+    "-DNDEBUG",
+    "-D__AIE_API_AIE_ADF_HPP__",
+    "-DAIE_API_EMULATE_BFLOAT16_MMUL_WITH_BFP16",
+    "-I/home/kelsey2/NPU_NEW/mlir-aie/ironenv/lib/python3.12/site-packages/mlir_aie/include",
+    "-DDIM_M=128",
+    "-DDIM_K=64",
+    "-DMM_N_UNROLL=8",
+    "-DMM_K_UNROLL=8",
+    "-DMM_ENABLE_INIT=1",
+    "-c",
+    "/home/kelsey2/NPU_NEW/NPU_krea2/MM_128_bfp16_NK_AB/kernel/mm_bfp.cc",
+    "-o",
+    "/home/kelsey2/NPU_NEW/NPU_krea2/MM_128_bfp16_NK_AB/build/krea2_denoising_mm/work/mm_bfp.o"
+  ],
+  "xclbin": {
+    "path": "xclbins/mm_bfp_new.xclbin",
+    "sha256": "b35612d824e305709ba2f2b1ceb553d6434eacdf1429783e7626a29dda94e82d"
+  },
+  "instructions": [
+    {
+      "name": "mm_img_in",
+      "M": 4096,
+      "K": 512,
+      "N": 6144,
+      "path": "insts/mm_img_in.bin",
+      "bytes": 25104,
+      "sha256": "3ca787c60213800c7f82b159791251bebec193152ecbb149f3700a77d98443fe"
+    },
+    {
+      "name": "mm_blk_6144",
+      "M": 4608,
+      "K": 6144,
+      "N": 6144,
+      "path": "insts/mm_blk_6144.bin",
+      "bytes": 27856,
+      "sha256": "0067b9625211dbe1edd874e35a398b0f59df0940ca0957de8bc2d2673edefd67"
+    },
+    {
+      "name": "mm_blk_kv",
+      "M": 4608,
+      "K": 6144,
+      "N": 2048,
+      "path": "insts/mm_blk_kv.bin",
+      "bytes": 27856,
+      "sha256": "7946cfdd28f9303979277d7d2625ebb8320fc20ea27ec273a2a957764631cc3b"
+    },
+    {
+      "name": "mm_blk_ff_up",
+      "M": 4608,
+      "K": 6144,
+      "N": 16384,
+      "path": "insts/mm_blk_ff_up.bin",
+      "bytes": 27856,
+      "sha256": "43260cc9959eb9383d074f2d3273cf73cac1971d0e38dae4f2836412a1ae7541"
+    },
+    {
+      "name": "mm_blk_ff_down",
+      "M": 4608,
+      "K": 16384,
+      "N": 6144,
+      "path": "insts/mm_blk_ff_down.bin",
+      "bytes": 27856,
+      "sha256": "6b4dc9410fb0bec27aa8dfabc3fe33c7c0670ec076f550aeb5c853c7f5f6b041"
+    },
+    {
+      "name": "mm_final",
+      "M": 4096,
+      "K": 6144,
+      "N": 1024,
+      "path": "insts/mm_final.bin",
+      "bytes": 25104,
+      "sha256": "8a99bf185cd78ce1c151f44a1e23f7859876acee030945dabc2b730dac20ac67"
+    },
+    {
+      "name": "mm_tf_2560",
+      "M": 512,
+      "K": 2560,
+      "N": 3072,
+      "path": "insts/mm_tf_2560.bin",
+      "bytes": 5840,
+      "sha256": "01f926e1ba25c6575334f01c9d8de597de83fc7a8e4a14b0d333cb900d17dafe"
+    },
+    {
+      "name": "mm_tf_ff_up",
+      "M": 512,
+      "K": 2560,
+      "N": 7168,
+      "path": "insts/mm_tf_ff_up.bin",
+      "bytes": 5840,
+      "sha256": "7a8845dee31a278396edfce6bad285c0ec74712b9174ea2613ad7c0972bf8580"
+    },
+    {
+      "name": "mm_tf_ff_down",
+      "M": 512,
+      "K": 7168,
+      "N": 3072,
+      "path": "insts/mm_tf_ff_down.bin",
+      "bytes": 5840,
+      "sha256": "48e8293f6a448d38b3d1088219e73cbf9247615d3a5d2e941790b72856f6bbaa"
+    },
+    {
+      "name": "mm_txt_in_1",
+      "M": 512,
+      "K": 2560,
+      "N": 6144,
+      "path": "insts/mm_txt_in_1.bin",
+      "bytes": 5840,
+      "sha256": "84cd791184d8ef746311b272ef807e884cf19e13cd09608bf07215b4e946f456"
+    },
+    {
+      "name": "mm_txt_in_2",
+      "M": 512,
+      "K": 6144,
+      "N": 6144,
+      "path": "insts/mm_txt_in_2.bin",
+      "bytes": 5840,
+      "sha256": "ccde7c874c2608a110bd1851d90529cf1d2368263f8add223d972db6ed27d06c"
+    }
+  ]
+}

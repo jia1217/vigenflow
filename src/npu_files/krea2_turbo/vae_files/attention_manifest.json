@@ -1,0 +1,55 @@
+{
+  "compiler": "Peano",
+  "source_project": "Z0_MM_BPF_NK_bf_bfp_bf",
+  "source_sha256": {
+    "iron/atten_fv.py": "0cffb3b70a4b42378868ad871beba816e876a24a55fa9da5439ab4cc301e414c",
+    "kernel/mm_own.cc": "c9f0c76995747451e7175f402459efc4af3057be2aeb6d4875a45109b9715195",
+    "Makefile": "74faad8efd6d893b822161e230e36ff5a66f6d1f93eaaaf9e0d145fb505a938f"
+  },
+  "xclbin_sha256": {
+    "384": "94ac0ab101f8485e7ab268a1ef5d78ea3076682578627bccbe0f4a0c6f3223c7",
+    "192": "661adc6e611decc121ac0813c6d3cb1b449674a556f61b66c702d5f554e6d768",
+    "96": "f0f043db120311621930b9637edaafa57e890cfc0d10f801c36a1ca2b5d2c663",
+    "shortcut": "2a1c981f94568bb0d63ae8b04883d006fe089a73d3f0ca4d44919d0a69356984"
+  },
+  "sequence_length": 16384,
+  "channels": 384,
+  "query_block_rows": 1024,
+  "configurations": {
+    "qk": {
+      "id": "attention_qk_m1024_k512_n16384",
+      "padded_mkn": [
+        1024,
+        512,
+        16384
+      ],
+      "xclbin": "xclbins/conv1x1_shortcut.xclbin",
+      "instructions": "insts/attention_qk_m1024_k512_n16384.bin",
+      "instruction_sha256": "abe171cc87074365def7d2039f94af1309d8d38a7d9f8fcc9b37a1e3dba9e26e",
+      "instruction_words": 2148,
+      "static_device_sha256": "63568a5568b095b614f01db5022944dc5b6cc7629b570ce129081ec1206536d9",
+      "allocated_program_sha256": "e77a6e2d06c96761ebf7de116b21bb81790a20e170a01a120732e366ec373ad5",
+      "A_bf16_elements": 524288,
+      "B_packed_bytes": 9437184,
+      "C_bf16_elements": 16777216
+    },
+    "pv": {
+      "id": "attention_pv_m1024_k16384_n1024",
+      "padded_mkn": [
+        1024,
+        16384,
+        1024
+      ],
+      "xclbin": "xclbins/conv1x1_shortcut.xclbin",
+      "instructions": "insts/attention_pv_m1024_k16384_n1024.bin",
+      "instruction_sha256": "88357d7bf77dfe13babb5687be77636c6afe8671ffd32ffb544582246dbd9c9b",
+      "instruction_words": 2148,
+      "static_device_sha256": "63568a5568b095b614f01db5022944dc5b6cc7629b570ce129081ec1206536d9",
+      "allocated_program_sha256": "e77a6e2d06c96761ebf7de116b21bb81790a20e170a01a120732e366ec373ad5",
+      "A_bf16_elements": 16777216,
+      "B_packed_bytes": 18874368,
+      "C_bf16_elements": 1048576
+    }
+  },
+  "shared_xclbin_verified": true
+}
