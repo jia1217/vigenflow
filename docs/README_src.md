@@ -91,11 +91,10 @@ The source tree must contain the matching shared libraries before these builds
 will succeed, for example:
 
 ```text
-src/lib/libhost_flux.so
-src/lib/libhost_flux_edit.so
-src/lib/libhost_zimage_bf16_lora.so
-src/lib/libhost_zimage_q41.so
-src/lib/libhost_zimage_q41_lora_fused.so
+src/lib/libhost_flux1_schnell.so
+src/lib/libhost_flux2_klein_4B.so
+src/lib/libhost_flux2_klein_4B_edit.so
+src/lib/libhost_z_image_turbo.so
 ```
 
 Build the launchers you need:
@@ -103,22 +102,23 @@ Build the launchers you need:
 ```bash
 cd /workspace/vigenflow
 
-make -C src/models/flux.2-klein-4B-npu check
-make -C src/models/flux.2-klein-4B-edit-npu check
-make -C src/models/z-image-turbo/bf16_lora check
-make -C src/models/z-image-turbo/q41 check
-make -C src/models/z-image-turbo/q41_lora_fused check
+make -C src/models/flux1_schnell check
+make -C src/models/flux2_klein_4B check
+make -C src/models/flux2_klein_4B_edit check
+make -C src/models/z_image_turbo check
 ```
 
 The generated binaries are written under `src/exe_models`, for example:
 
 ```text
-src/exe_models/flux.2-klein-4B/run.exe
-src/exe_models/flux.2-klein-4B-edit/run.exe
-src/exe_models/z-image-turbo/bf16/run.exe
-src/exe_models/z-image-turbo/q41/run.exe
-src/exe_models/z-image-turbo/lora_add_q41/run.exe
+src/exe_models/flux1_schnell/run.exe
+src/exe_models/flux2_klein_4B/run.exe
+src/exe_models/flux2_klein_4B_edit/run.exe
+src/exe_models/z_image_turbo/run.exe
 ```
+
+Krea 2 Turbo has no launcher source. `src/exe_models/krea2_turbo/run.exe` is a
+prebuilt standalone binary and does not use `src/lib`.
 
 ## Optional CMake Build for a Model Launcher
 
@@ -128,7 +128,7 @@ you prefer CMake/Ninja over the Makefile.
 Example:
 
 ```bash
-cd /workspace/vigenflow/src/models/z-image-turbo/q41
+cd /workspace/vigenflow/src/models/z_image_turbo
 cmake -S . -B build -G Ninja
 cmake --build build
 cmake --build build --target check

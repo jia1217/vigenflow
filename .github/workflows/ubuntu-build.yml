@@ -80,11 +80,11 @@ jobs:
             "${{ steps.image.outputs.name }}" \
             bash -lc '
               set -euo pipefail
-              make -C src/models/z-image-turbo-npu/bf16_lora clean all
-              make -C src/models/z-image-turbo-npu/q41 clean all
-              make -C src/models/z-image-turbo-npu/q41_lora_fused clean all
-              make -C src/models/flux.2-klein-4B-npu clean all
-              make -C src/models/flux.2-klein-4B-edit-npu clean all
+              make -C src/models/flux1_schnell clean all
+              make -C src/models/flux2_klein_4B clean all
+              make -C src/models/flux2_klein_4B_edit clean all
+              make -C src/models/z_image_turbo clean all
+              # Four launchers built above, plus the prebuilt krea2_turbo run.exe.
               count="$(find src/exe_models -type f -name run.exe | wc -l)"
               if [ "$count" -ne 5 ]; then
                 echo "Expected 5 run.exe files, found $count"
