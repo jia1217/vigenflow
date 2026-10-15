@@ -81,6 +81,20 @@ You can also call the Ubuntu build script directly:
 bash build_ubuntu.sh
 ```
 
+## Compile the Weight Downloader
+
+`prepare_base.exe` downloads the pre-packed NPU weights from Hugging Face. Its
+source lives in `src/prepare_weights`:
+
+```bash
+cd src/prepare_weights
+bash build_ubuntu.sh
+./prepare_base.exe --help
+```
+
+It is the `prepare/` folder of the release package; see
+`src/prepare_weights/README.md` for its options.
+
 ## Compile Model Worker Launchers
 
 Model launcher sources live under `src/models`. The Makefiles compile small
@@ -136,53 +150,59 @@ cmake --build build --target check
 
 ## Create an Ubuntu Release Package
 
-After the server and model launchers build, you can create a release ZIP:
+After the model launchers build, create a release ZIP. The script builds
+`vgf-serve` and `prepare_base.exe` itself:
 
 ```bash
 cd /workspace/vigenflow/src/server_unified
-VERSION=0.1.2 bash package_ubuntu.sh
+VERSION=0.2.0-beta.2 bash package_ubuntu.sh
 ```
 
-The package script expects these runtime assets to exist:
+It packages these runtime assets:
 
 ```text
-src/exe_models
-src/npu_files
-src/model_weights
+src/exe_models    -> server_running/exe_models
+src/lib           -> server_running/lib
+src/npu_files     -> all_npu_files
 ```
 
 If your assets are stored somewhere else, pass explicit paths:
 
 ```bash
 EXE_MODELS_DIR=/path/to/exe_models \
+LIB_DIR=/path/to/lib \
 NPU_FILES_DIR=/path/to/npu_files \
-MODEL_WEIGHTS_DIR=/path/to/model_weights \
-VERSION=0.1.2 \
+VERSION=0.2.0-beta.2 \
 bash package_ubuntu.sh
 ```
 
-The ZIP is created under:
+The folder and its ZIP are created under:
 
 ```text
-src/server_unified/release/
+src/server_unified/release/vigenflow_0.2.0-beta.2_ubuntu_amd64/
+src/server_unified/release/vigenflow_0.2.0-beta.2_ubuntu_amd64.zip
 ```
+
+The model weights are not packaged. `prepare/prepare_base.exe` downloads them
+into `all_model_weights/`, next to the package folder.
 
 ## Run the Built Server
 
-For normal NPU execution, run the package or built binaries on a host with the
-AMD XDNA driver installed.
-
-From the repository tree:
+For normal NPU execution, run the package on a host with the AMD XDNA driver
+installed. `vgf-serve` finds the workers, NPU files and weights relative to its
+own folder, so run it from the package, not from `src/server_unified`:
 
 ```bash
-cd /workspace/vigenflow/src/server_unified
-./vigenflow_ubuntu/vgf-serve
+cd src/server_unified/release/vigenflow_0.2.0-beta.2_ubuntu_amd64
+./prepare/prepare_base.exe
+cd server_running
+./vgf-serve
 ```
 
 The default OpenWebUI-compatible endpoint is:
 
 ```text
-http://127.0.0.1:2048/v1
+http://127.0.0.1:11283/v1
 ```
 
 ## Troubleshooting
@@ -252,13 +272,11 @@ docker build \
 The model launcher Makefiles link against prebuilt host shared libraries in
 `src/lib`. Copy or build the required `.so` file before running `make`.
 
-### `package_ubuntu.sh` cannot find `model_weights`
+### `package_ubuntu.sh` reports a missing worker
 
-Download or prepare the model weights, then rerun the script with:
-
-```bash
-MODEL_WEIGHTS_DIR=/path/to/model_weights bash package_ubuntu.sh
-```
+The package needs all five `src/exe_models/<model>/run.exe` launchers, because
+`vgf-serve` does not start without them. Build the missing one with
+`make -C src/models/<model>`.
 
 ### Permission errors after building in Docker
 

@@ -37,6 +37,7 @@ RUN apt-get update && apt-get install -y \
         libboost-filesystem-dev \
         nlohmann-json3-dev \
         libstb-dev \
+        libpng-dev \
         uuid-dev \
         libdrm-dev \
     && if [ "$INSTALL_XRT_DEV" = "1" ]; then \

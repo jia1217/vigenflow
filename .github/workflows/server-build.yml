@@ -4,11 +4,13 @@ on:
   push:
     paths:
       - "src/server_unified/**"
-      - ".github/workflows/server_build.yml"
+      - "src/prepare_weights/**"
+      - ".github/workflows/server-build.yml"
   pull_request:
     paths:
       - "src/server_unified/**"
-      - ".github/workflows/server_build.yml"
+      - "src/prepare_weights/**"
+      - ".github/workflows/server-build.yml"
   workflow_dispatch:
 
 concurrency:
@@ -20,6 +22,7 @@ permissions:
 
 env:
   SERVER_DIR: src/server_unified
+  PREPARE_DIR: src/prepare_weights
 
 jobs:
   build-ubuntu:
@@ -33,21 +36,26 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libboost-all-dev nlohmann-json3-dev
+          sudo apt-get install -y build-essential g++-13 libboost-all-dev nlohmann-json3-dev libpng-dev libstb-dev
 
       - name: Build
         working-directory: ${{ env.SERVER_DIR }}
         run: bash build_ubuntu.sh
 
+      - name: Build prepare_base.exe
+        working-directory: ${{ env.PREPARE_DIR }}
+        run: bash build_ubuntu.sh
+
       - name: Smoke test
-        run: ./${{ env.SERVER_DIR }}/vigenflow_ubuntu/vgf-serve --help
+        run: |
+          ./${{ env.SERVER_DIR }}/vigenflow_ubuntu/vgf-serve --help
+          ./${{ env.PREPARE_DIR }}/prepare_base.exe --help
 
       - name: Stage artifact
         run: |
-          mkdir -p dist/ubuntu
-          cp "${SERVER_DIR}/vigenflow_ubuntu/vgf-serve" dist/ubuntu/
-          cp "${SERVER_DIR}"/*.jsonc dist/ubuntu/
-          cp "${SERVER_DIR}/README.md" dist/ubuntu/
+          mkdir -p dist/ubuntu/server_running dist/ubuntu/prepare
+          cp "${SERVER_DIR}/vigenflow_ubuntu/vgf-serve" "${SERVER_DIR}/README.md" dist/ubuntu/server_running/
+          cp "${PREPARE_DIR}/prepare_base.exe" "${PREPARE_DIR}/prepare_models.jsonc" "${PREPARE_DIR}/README.md" dist/ubuntu/prepare/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -91,9 +99,12 @@ jobs:
             boost-asio:$env:VCPKG_TRIPLET `
             boost-beast:$env:VCPKG_TRIPLET `
             boost-filesystem:$env:VCPKG_TRIPLET `
+            boost-gil:$env:VCPKG_TRIPLET `
             boost-process:$env:VCPKG_TRIPLET `
             boost-system:$env:VCPKG_TRIPLET `
-            nlohmann-json:$env:VCPKG_TRIPLET
+            libpng:$env:VCPKG_TRIPLET `
+            nlohmann-json:$env:VCPKG_TRIPLET `
+            stb:$env:VCPKG_TRIPLET
 
       - name: Build
         working-directory: ${{ env.SERVER_DIR }}
@@ -110,7 +121,6 @@ jobs:
           New-Item -ItemType Directory -Path dist\windows -Force | Out-Null
           Copy-Item "$env:SERVER_DIR\vigenflow_win\vgf-serve.exe" dist\windows\
           Copy-Item "$env:SERVER_DIR\vigenflow_win\*.dll" dist\windows\ -ErrorAction SilentlyContinue
-          Copy-Item "$env:SERVER_DIR\*.jsonc" dist\windows\
           Copy-Item "$env:SERVER_DIR\README.md" dist\windows\
 
       - name: Upload artifact
