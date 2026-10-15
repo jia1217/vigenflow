@@ -78,11 +78,17 @@ rem Stand-in worker for test_server.py (runs its Python fake worker); not used w
 cl /nologo /utf-8 /O2 /EHsc /MD /std:c++17 test_worker_stub.cpp /Fo"build-windows\\" /Fe"build-windows\test_worker_stub.exe"
 if errorlevel 1 exit /b 1
 
-set "BOOST_FILESYSTEM_DLL=%BOOST_FILESYSTEM_LIB:.lib=.dll%"
-set "BOOST_SYSTEM_DLL=%BOOST_FILESYSTEM_DLL:boost_filesystem=boost_system%"
-if exist "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin\%BOOST_FILESYSTEM_DLL%" copy /Y "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin\%BOOST_FILESYSTEM_DLL%" "%OUT_DIR%\" >nul
-if exist "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin\%BOOST_SYSTEM_DLL%" copy /Y "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin\%BOOST_SYSTEM_DLL%" "%OUT_DIR%\" >nul
+rem Copy the vcpkg DLLs vgf-serve.exe imports, and the ones those import, next to it. Which ones depends on
+rem the vcpkg versions: with Boost 1.88 only libpng16.dll and zlib1.dll; newer Boost adds its filesystem
+rem DLL, which needs the atomic one.
+set "APPLOCAL=%VCPKG_ROOT%\scripts\buildsystems\msbuild\applocal.ps1"
+if exist "%APPLOCAL%" goto have_applocal
+echo vcpkg's applocal.ps1 not found: "%APPLOCAL%"
+exit /b 1
 
-for %%D in (libpng16.dll zlib1.dll) do if exist "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin\%%D" copy /Y "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin\%%D" "%OUT_DIR%\" >nul
+:have_applocal
+powershell -NoProfile -ExecutionPolicy Bypass -File "%APPLOCAL%" -targetBinary "%CD%\%OUT_DIR%\vgf-serve.exe" ^
+  -installedDir "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin"
+if errorlevel 1 exit /b 1
 
 echo Built %CD%\%OUT_DIR%\vgf-serve.exe

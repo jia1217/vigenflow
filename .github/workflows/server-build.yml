@@ -117,10 +117,14 @@ jobs:
         run: build_windows.bat
 
       - name: Smoke test
-        shell: cmd
+        shell: pwsh
         run: |
-          src\server_unified\vigenflow_win\vgf-serve.exe --help || exit /b 1
-          src\prepare_weights\vigenflow_win\prepare_base.exe --help || exit /b 1
+          # The DLLs build_windows.bat copied; 0xC0000135 below means one that vgf-serve.exe needs is missing.
+          Get-ChildItem "$env:SERVER_DIR\vigenflow_win" -Filter *.dll | ForEach-Object { "  $($_.Name)" }
+          foreach ($exe in "$env:SERVER_DIR\vigenflow_win\vgf-serve.exe", "$env:PREPARE_DIR\vigenflow_win\prepare_base.exe") {
+            & $exe --help
+            if ($LASTEXITCODE -ne 0) { throw ("{0} --help exited with 0x{1:X8}" -f $exe, $LASTEXITCODE) }
+          }
 
       - name: Stage artifact
         shell: pwsh
