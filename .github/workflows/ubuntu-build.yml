@@ -84,7 +84,7 @@ jobs:
               make -C src/models/flux2_klein_4B clean all
               make -C src/models/flux2_klein_4B_edit clean all
               make -C src/models/z_image_turbo clean all
-              # Four launchers built above, plus the prebuilt krea2_turbo run.exe.
+              make -C src/models/krea2_turbo clean all
               count="$(find src/exe_models -type f -name run.exe | wc -l)"
               if [ "$count" -ne 5 ]; then
                 echo "Expected 5 run.exe files, found $count"

@@ -95,6 +95,7 @@ src/lib/libhost_flux1_schnell.so
 src/lib/libhost_flux2_klein_4B.so
 src/lib/libhost_flux2_klein_4B_edit.so
 src/lib/libhost_z_image_turbo.so
+src/lib/libhost_krea2_turbo.so
 ```
 
 Build the launchers you need:
@@ -106,6 +107,7 @@ make -C src/models/flux1_schnell check
 make -C src/models/flux2_klein_4B check
 make -C src/models/flux2_klein_4B_edit check
 make -C src/models/z_image_turbo check
+make -C src/models/krea2_turbo check
 ```
 
 The generated binaries are written under `src/exe_models`, for example:
@@ -115,10 +117,8 @@ src/exe_models/flux1_schnell/run.exe
 src/exe_models/flux2_klein_4B/run.exe
 src/exe_models/flux2_klein_4B_edit/run.exe
 src/exe_models/z_image_turbo/run.exe
+src/exe_models/krea2_turbo/run.exe
 ```
-
-Krea 2 Turbo has no launcher source. `src/exe_models/krea2_turbo/run.exe` is a
-prebuilt standalone binary and does not use `src/lib`.
 
 ## Optional CMake Build for a Model Launcher
 
