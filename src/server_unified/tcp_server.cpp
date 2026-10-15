@@ -59,6 +59,10 @@ void run_server() {
     std::cout << "Server running on http://0.0.0.0:" << config::port << "\n";
     std::cout << "Default Model: " << config::default_model_id << "\n";
     for (const auto& model : config::models) {
+        if (!model.available) {
+            std::cout << "Model ID: " << model.id << " (not served: worker not found)\n";
+            continue;
+        }
         std::cout << "Model ID: " << model.id << "\n"
                   << "  run.exe: " << model.worker_exe << "\n"
                   << "  Weights Path: " << model.weights_path << "\n"

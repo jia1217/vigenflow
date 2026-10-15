@@ -36,11 +36,20 @@ int main(int argc, char* argv[]) {
         if (cli_result < 0) return 1;
 
         server::config::make_paths_absolute();
-        for (const auto& model : server::config::models) {
-            if (!fs::is_regular_file(model.worker_exe)) {
-                throw std::runtime_error(std::string(model.id) + " worker not found: " +
-                                         model.worker_exe + " (build this worker first)");
-            }
+        for (auto& model : server::config::models) {
+            if (server::config::is_worker(model.worker_exe)) continue;
+            const std::string missing = std::string(model.id) + " worker not found: " + model.worker_exe;
+#ifdef _WIN32
+            // Windows serves the models whose workers are built; requests for the others return 400.
+            model.available = false;
+            std::cerr << "warning: " << missing << "; " << model.id << " is not served\n";
+#else
+            throw std::runtime_error(missing + " (build this worker first)");
+#endif
+        }
+        if (!server::config::default_model().available) {
+            throw std::runtime_error("default model " + server::config::default_model_id +
+                                     " has no worker; build it or choose another with --model");
         }
 
         // Startup fails early if the output directory cannot be created.

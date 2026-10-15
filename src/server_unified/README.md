@@ -59,7 +59,7 @@ cd server_running && ./vgf-serve -p 11283
 
 Workers support base-model inference only; LoRA adapters and LoRA command-line options are not supported.
 
-All five worker executables must exist before starting the server. Each runs in its own folder. Use `--model flux1-schnell` to change the default model; all five remain available. `-e`, `-w`, `-n`, `--seed` and `--steps` override only that default model, regardless of argument order:
+On Ubuntu all five worker executables must exist before starting the server (on Windows, see [Windows](#windows)). Each runs in its own folder. Use `--model flux1-schnell` to change the default model; all five remain available. `-e`, `-w`, `-n`, `--seed` and `--steps` override only that default model, regardless of argument order:
 
 ```bash
 ./vgf-serve -p 1128 --model flux1-schnell --seed 7 --steps 4
@@ -158,8 +158,21 @@ Keep image generation enabled in Admin Settings > Images (OpenAI engine, base UR
 python3 test_server.py ./vigenflow_ubuntu/vgf-serve
 ```
 
-This Ubuntu check uses the installed Pillow package and temporary fake workers; it verifies image pixels and orientation, raw/base64/URL responses, timings, model routing, model-specific paths/defaults, chat dropdown selection, short SSE image URLs, memory-cache eviction/restart, cleanup in no-save mode, persistent PNGs with `-k true`, serialized NPU access, failure handling, and the edit model (multipart/JSON edits, crop/resize of the input, chat follow-up edits, the `edit` shortcut) without using the NPU. Re-run the orientation check after upgrading Boost.GIL, since the current reader needs a top-down BMP workaround.
+On Windows run `python test_server.py vigenflow_win\vgf-serve.exe` after `build_windows.bat`; it adds the Windows worker lookup, missing workers and command-line quoting. The check uses the installed Pillow package and temporary fake workers; it verifies image pixels and orientation, raw/base64/URL responses, timings, model routing, model-specific paths/defaults, chat dropdown selection, short SSE image URLs, memory-cache eviction/restart, cleanup in no-save mode, persistent PNGs with `-k true`, serialized NPU access, failure handling, and the edit model (multipart/JSON edits, crop/resize of the input, chat follow-up edits, the `edit` shortcut) without using the NPU. Re-run the orientation check after upgrading Boost.GIL, since the current reader needs a top-down BMP workaround.
 
 ## Windows
 
-`build_windows.bat` builds `vigenflow_win\vgf-serve.exe` with MSVC (Boost, libpng and stb from vcpkg; see `VCPKG_ROOT` / `BOOST_FILESYSTEM_LIB` in the script). On Windows the worker is expected to be `host.exe`.
+```bat
+vcpkg install boost-asio boost-beast boost-filesystem boost-gil boost-process boost-system libpng nlohmann-json stb --triplet x64-windows
+build_windows.bat                              &rem -> vigenflow_win\vgf-serve.exe
+python test_server.py vigenflow_win\vgf-serve.exe
+```
+
+`build_windows.bat` builds `vigenflow_win\vgf-serve.exe` with MSVC (Boost, libpng and stb from vcpkg; see `VCPKG_ROOT` / `BOOST_FILESYSTEM_LIB` in the script), copies `libpng16.dll` and `zlib1.dll` next to it and embeds `utf8.manifest`, so prompts and paths reach the workers as UTF-8. It also builds `build-windows\test_worker_stub.exe`, which the check uses to run its Python fake worker as `run.exe`. In the package, `vgf-serve.exe` also needs the VC++ runtime DLLs (`msvcp140.dll`, `vcruntime140.dll`, `vcruntime140_1.dll`) beside it unless the VC++ redistributable is installed.
+
+The Windows package has the same layout as the Ubuntu one: `server_running\vgf-serve.exe`, `server_running\exe_models\<model>\run.exe` with each worker's DLLs, `all_npu_files\`, `prepare\prepare_base.exe`, and the weights in `all_model_weights\` next to the package folder. The Windows workers are built from the model hosts' Windows sources, which are not in this repository (`src/exe_models` holds the Ubuntu launchers). Differences from Ubuntu:
+
+- The worker is `exe_models\<model>\run.exe` (a package), or `..\<model>\build-windows\Release\run.exe` (a development tree of the hosts' CMake builds). Only Windows executables count, so a Linux `run.exe` copied into the folder is ignored; an older package's `host.exe` is used when there is no Windows `run.exe`.
+- A model without a worker is not served: startup prints a warning, `/v1/models` leaves it out and requests for it return 400. The server refuses to start only when the default model has no worker.
+- A model whose weights are only in the package's own `all_model_weights\` (where 0.2.0-beta.1 put them) is read from there; otherwise the weights are expected next to the package folder, as on Ubuntu.
+- The worker command line is quoted for the C runtime, so prompts with quotes, backslashes and newlines arrive unchanged.

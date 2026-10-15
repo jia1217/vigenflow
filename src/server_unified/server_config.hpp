@@ -17,8 +17,11 @@ inline constexpr const char* kEditModelId = "flux2-klein-4B-edit";
 
 struct ModelConfig {
     const char* id;
-    const char* directory;          // worker: ../<directory>/run.exe, else exe_models/<directory>/run.exe
-    const char* weights_directory;  // ../../all_model_weights/<weights_directory>
+    // worker: ../<directory>/run.exe, else exe_models/<directory>/run.exe; on Windows
+    // ../<directory>/build-windows/Release/run.exe, else exe_models/<directory>/run.exe
+    // (older Windows packages: host.exe).
+    const char* directory;
+    const char* weights_directory;  // ../../all_model_weights/<weights_directory> (Windows: else ../all_model_weights/...)
     const char* npu_directory;      // ../all_npu_files/<npu_directory>
     std::vector<int> supported_steps;
     int default_seed;
@@ -28,6 +31,7 @@ struct ModelConfig {
     std::string worker_exe;
     std::string weights_path;
     std::string npu_files_path;
+    bool available = true;  // false: no worker found (Windows only); requests return 400
 };
 
 // Configured at startup, then read-only while serving requests.
@@ -41,6 +45,7 @@ ModelConfig* find_model(const std::string& id);
 ModelConfig& default_model();
 void initialize_default_paths(const char* argv0);
 void make_paths_absolute();
+bool is_worker(const std::string& path);
 bool is_supported_steps(const ModelConfig& model, int steps);
 std::string supported_steps_text(const ModelConfig& model);
 

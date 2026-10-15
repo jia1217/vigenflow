@@ -7,6 +7,7 @@
 #if __has_include(<boost/process/v1/child.hpp>)
 #include <boost/process/v1/args.hpp>
 #include <boost/process/v1/child.hpp>
+#include <boost/process/v1/cmd.hpp>
 #include <boost/process/v1/io.hpp>
 #include <boost/process/v1/pipe.hpp>
 #include <boost/process/v1/start_dir.hpp>
@@ -14,6 +15,7 @@ namespace bp = boost::process::v1;
 #else
 #include <boost/process/args.hpp>
 #include <boost/process/child.hpp>
+#include <boost/process/cmd.hpp>
 #include <boost/process/io.hpp>
 #include <boost/process/pipe.hpp>
 #include <boost/process/start_dir.hpp>
@@ -63,9 +65,10 @@ std::optional<ProgressTiming> parse_progress_timing(
     return result;
 }
 
-// Parse run.exe's "E2E runtime: <value><unit>" line.
+// Parse run.exe's "E2E runtime: <value><unit>" or "E2E time: <value> s" line (the Windows FLUX.1, Z-Image and
+// FLUX.2 edit workers print the latter).
 std::optional<double> parse_e2e_runtime_seconds(const std::string& output) {
-    static const std::regex re(R"(E2E\s+runtime:\s*([0-9]+(?:\.[0-9]+)?)\s*(us|ms|s)?)");
+    static const std::regex re(R"(E2E\s+(?:runtime|time):\s*([0-9]+(?:\.[0-9]+)?)\s*(us|ms|s)?)");
 
     std::optional<double> result;
     for (std::sregex_iterator it(output.begin(), output.end(), re), end; it != end; ++it) {
@@ -98,6 +101,34 @@ GenerationTimingInfo parse_generation_timing_info(const std::string& output) {
 
     return timing;
 }
+
+#ifdef _WIN32
+// Quote one argument so the worker's C runtime splits the command line back into the same
+// argv element, including quotes, trailing backslashes and newlines in prompts.
+std::string quote_windows_arg(const std::string& arg) {
+    if (!arg.empty() && arg.find_first_of(" \t\n\v\"") == std::string::npos) return arg;
+    std::string quoted = "\"";
+    for (auto it = arg.begin();; ++it) {
+        std::size_t backslashes = 0;
+        while (it != arg.end() && *it == '\\') {
+            ++it;
+            ++backslashes;
+        }
+        if (it == arg.end()) {
+            quoted.append(backslashes * 2, '\\');  // before the closing quote
+            break;
+        }
+        if (*it == '"') {
+            quoted.append(backslashes * 2 + 1, '\\');
+        } else {
+            quoted.append(backslashes, '\\');
+        }
+        quoted.push_back(*it);
+    }
+    quoted.push_back('"');
+    return quoted;
+}
+#endif
 
 }  // namespace
 
@@ -146,11 +177,21 @@ WorkerResult run_worker(const GenParams& params) {
     std::string worker_output;
 
     // Start run.exe in its own folder so its relative default paths resolve.
+#ifdef _WIN32
+    // Boost.Process only doubles embedded quotes, which a backslash before a quote breaks.
+    std::string command_line = quote_windows_arg(model.worker_exe);
+    for (const auto& arg : exec_args) command_line += " " + quote_windows_arg(arg);
+    bp::child child(
+        bp::cmd(command_line),
+        (bp::std_out & bp::std_err) > child_output,
+        bp::start_dir = fs::path(model.worker_exe).parent_path().string());
+#else
     bp::child child(
         model.worker_exe,
         bp::args(exec_args),
         (bp::std_out & bp::std_err) > child_output,
         bp::start_dir = fs::path(model.worker_exe).parent_path().string());
+#endif
 
     std::thread output_reader([&]() {
         char ch = '\0';

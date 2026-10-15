@@ -2,15 +2,18 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 
 namespace server::config {
 namespace fs = std::filesystem;
 
 #ifdef _WIN32
-constexpr const char* kWorkerExeName = "host.exe";
+// Development tree: each host's CMake build.
+constexpr const char* kDevWorker = "build-windows/Release/run.exe";
 #else
-constexpr const char* kWorkerExeName = "run.exe";
+constexpr const char* kDevWorker = "run.exe";
 #endif
+constexpr const char* kPackagedWorker = "run.exe";
 
 std::array<ModelConfig, 5> models = {{
     {"z-image-turbo", "z_image_turbo", "z_image_turbo", "z_image_turbo", {4, 8}, 42},
@@ -46,11 +49,32 @@ void initialize_default_paths(const char* argv0) {
     const fs::path server_dir = fs::absolute(argv0 && *argv0 ? argv0 : "vgf-serve").parent_path();
     server_root = (server_dir / "..").lexically_normal();
     for (auto& model : models) {
-        // Development tree: ../<model>/run.exe. Packaged: exe_models/<model>/run.exe next to vgf-serve.
-        const fs::path dev = server_dir / ".." / model.directory / kWorkerExeName;
-        const fs::path packaged = server_dir / "exe_models" / model.directory / kWorkerExeName;
-        model.worker_exe = (fs::exists(dev) || !fs::exists(packaged) ? dev : packaged).lexically_normal().string();
+        // Development tree: ../<model>/run.exe (Windows: its build-windows/Release/run.exe).
+        // Packaged: exe_models/<model>/run.exe next to vgf-serve.
+        const fs::path dev = server_dir / ".." / model.directory / kDevWorker;
+        const fs::path package_dir = server_dir / "exe_models" / model.directory;
+        fs::path packaged = package_dir / kPackagedWorker;
+#ifdef _WIN32
+        // Older Windows packages use host.exe. Prefer a native run.exe when present,
+        // and ignore any Linux run.exe left beside the Windows worker.
+        const fs::path legacy = package_dir / "host.exe";
+        if (!is_worker(packaged.string()) && is_worker(legacy.string())) packaged = legacy;
+#endif
+        model.worker_exe = (is_worker(dev.string()) || !is_worker(packaged.string()) ? dev : packaged)
+                               .lexically_normal().string();
     }
+}
+
+bool is_worker(const std::string& path) {
+    if (!fs::is_regular_file(path)) return false;
+#ifdef _WIN32
+    // Only Windows executables: the Ubuntu run.exe files in the projects and exe_models are ELF.
+    std::ifstream in(fs::path(path), std::ios::binary);
+    char magic[2] = {};
+    return in.read(magic, 2) && magic[0] == 'M' && magic[1] == 'Z';
+#else
+    return true;
+#endif
 }
 
 void make_paths_absolute() {
@@ -58,7 +82,17 @@ void make_paths_absolute() {
         model.worker_exe = fs::absolute(model.worker_exe).lexically_normal().string();
         const auto& root = server_root;
         if (model.weights_path.empty()) {
-            model.weights_path = (root / ".." / "all_model_weights" / model.weights_directory).lexically_normal().string();
+            const fs::path shared = root / ".." / "all_model_weights" / model.weights_directory;
+#ifdef _WIN32
+            // Weights are beside the package folder, where prepare_base.exe puts them so that every package
+            // on the machine shares one copy. A model found only in the package's own all_model_weights is
+            // read from there: weights installed by 0.2.0-beta.1, which kept them inside the package.
+            const fs::path local = root / "all_model_weights" / model.weights_directory;
+            std::error_code ec;  // an unreadable folder counts as missing
+            model.weights_path = (!fs::is_directory(shared, ec) && fs::is_directory(local, ec) ? local : shared).string();
+#else
+            model.weights_path = shared.lexically_normal().string();
+#endif
         }
         if (model.npu_files_path.empty()) {
             model.npu_files_path = (root / "all_npu_files" / model.npu_directory).string();

@@ -5,6 +5,7 @@ cd /d "%~dp0"
 
 set "OUT_DIR=vigenflow_win"
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
+if not exist build-windows mkdir build-windows
 
 if defined VCPKG_ROOT (
     set "REQUESTED_VCPKG_ROOT=%VCPKG_ROOT%"
@@ -68,8 +69,13 @@ exit /b 1
 cl /utf-8 /O2 /EHsc /MD /std:c++17 /D_WIN32_WINNT=0x0A00 /DWIN32_LEAN_AND_MEAN ^
   /I . /I .\include /I "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\include" ^
   server_main.cpp server_config.cpp file_utils.cpp input_image.cpp request_parser.cpp worker.cpp http_handlers.cpp tcp_server.cpp cli.cpp ^
-  /Fo"%OUT_DIR%\\" /Fe"%OUT_DIR%\vgf-serve.exe" ^
-  /link "/LIBPATH:%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\lib" ws2_32.lib "%BOOST_FILESYSTEM_LIB%" libpng16.lib
+  /Fo"build-windows\\" /Fe"%OUT_DIR%\vgf-serve.exe" ^
+  /link "/LIBPATH:%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\lib" ws2_32.lib "%BOOST_FILESYSTEM_LIB%" libpng16.lib ^
+  /MANIFEST:EMBED /MANIFESTINPUT:utf8.manifest
+if errorlevel 1 exit /b 1
+
+rem Stand-in worker for test_server.py (runs its Python fake worker); not used when serving.
+cl /nologo /utf-8 /O2 /EHsc /MD /std:c++17 test_worker_stub.cpp /Fo"build-windows\\" /Fe"build-windows\test_worker_stub.exe"
 if errorlevel 1 exit /b 1
 
 set "BOOST_FILESYSTEM_DLL=%BOOST_FILESYSTEM_LIB:.lib=.dll%"

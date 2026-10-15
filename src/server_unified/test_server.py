@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Run with python3 test_server.py [./vgf-serve]; uses Pillow and a fake worker, no NPU."""
+"""Run with python3 test_server.py [./vgf-serve]; uses Pillow and a fake worker, no NPU.
+On Windows: python test_server.py [vigenflow_win\\vgf-serve.exe], after build_windows.bat."""
 import base64
 from concurrent.futures import ThreadPoolExecutor
 import io
 import json
+import os
 import shutil
 from pathlib import Path
 import socket
@@ -16,27 +18,42 @@ from urllib.request import Request, urlopen
 
 from PIL import Image
 
-binary = Path(sys.argv[1] if len(sys.argv) > 1 else './vgf-serve').resolve()
+windows = sys.platform == 'win32'
+binary = Path(sys.argv[1] if len(sys.argv) > 1 else
+              'vigenflow_win/vgf-serve.exe' if windows else './vgf-serve').resolve()
 with tempfile.TemporaryDirectory(prefix='vgf-server-check-') as tmp:
     root = Path(tmp) / 'NPU_server'
     root.mkdir()
     folders = ['z_image_turbo', 'flux1_schnell', 'flux2_klein_4B', 'krea2_turbo']
     model_ids = ['z-image-turbo', 'flux1-schnell', 'flux2-klein-4B', 'krea2-turbo']
-    worker = root / folders[0] / 'run.exe'
-    worker.parent.mkdir()
-    worker.write_text('''#!/usr/bin/env python3
-import fcntl, json, pathlib, random, shutil, struct, sys, time, zlib
+    # Ubuntu runs the fake worker script as run.exe; Windows runs it as run.py from a stub run.exe,
+    # in the build-windows/Release folder where the server looks for Windows development workers.
+    worker_dir = Path('build-windows/Release') if windows else Path('.')
+    worker = root / folders[0] / worker_dir / 'run.exe'
+    script = worker.with_name('run.py') if windows else worker
+    worker.parent.mkdir(parents=True)
+    script.write_text('''#!/usr/bin/env python3
+import json, pathlib, random, shutil, struct, sys, time, zlib
+# State files go in the model folder, also when the worker runs from build-windows/Release.
+state = pathlib.Path.cwd()
+if state.name == 'Release':
+    state = state.parent.parent
 # Fail immediately if two models use the simulated NPU together.
-lock = pathlib.Path('../npu.lock').open('w')
-fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+lock = (state.parent / 'npu.lock').open('w')
+if sys.platform == 'win32':
+    import msvcrt
+    msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+else:
+    import fcntl
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
 args = sys.argv[1:]
-pathlib.Path('last_args.json').write_text(json.dumps(args))
+(state / 'last_args.json').write_text(json.dumps(args))
 if '--input_image' in args:
-    shutil.copyfile(args[args.index('--input_image') + 1], 'last_input.bmp')
+    shutil.copyfile(args[args.index('--input_image') + 1], state / 'last_input.bmp')
 seed = int(args[args.index('--seed') + 1])
 prompt = next((arg[len('--prompt='):] for arg in args if arg.startswith('--prompt=')), None)
-pathlib.Path('last_prompt.json').write_text(json.dumps(prompt))
-with open('calls', 'a') as f:
+(state / 'last_prompt.json').write_text(json.dumps(prompt))
+with open(state / 'calls', 'a') as f:
     f.write('generation\\n')
 out = pathlib.Path(args[args.index('--output') + 1])
 if seed == -1:
@@ -68,15 +85,23 @@ if seed != 9:
     print('E2E runtime: 23ms')
 time.sleep(0.08)
 ''')
-    worker.chmod(0o755)
+    script.chmod(0o755)
+    if windows:
+        shutil.copy2(Path(__file__).resolve().parent / 'build-windows' / 'test_worker_stub.exe', worker)
+        os.environ['VGF_TEST_PYTHON'] = sys.executable  # inherited by the server and its workers
     edit_folder, edit_id = 'flux2_klein_4B_edit', 'flux2-klein-4B-edit'
     for folder in folders[1:] + [edit_folder]:
-        (root / folder).mkdir()
-        shutil.copy2(worker, root / folder / 'run.exe')
+        shutil.copytree(worker.parent, root / folder / worker_dir)
     server_dir = root / 'server_test'
     server_dir.mkdir()
-    test_binary = server_dir / 'vgf-serve'
-    test_binary.symlink_to(binary)
+    test_binary = server_dir / binary.name
+    if windows:
+        # Symlinks need extra rights on Windows: copy the server and its DLLs instead.
+        shutil.copy2(binary, test_binary)
+        for dll in binary.parent.glob('*.dll'):
+            shutil.copy2(dll, server_dir)
+    else:
+        test_binary.symlink_to(binary)
     for options in (['-k'], ['-k', 'yes'], ['-k', '1'], ['-k', ''],
                     ['--keep-images', 'true'], ['--no-keep-images'], ['--model', 'unknown'], ['--model', 'flux2-klein-4B', '--steps', '8'],
                     ['edit', '--steps', '8'],
@@ -156,11 +181,12 @@ time.sleep(0.08)
             check_png(data)
             assert not list(outdir.iterdir()), 'raw response should clean up temporary images'
 
-            assert json.loads((worker.parent / 'last_prompt.json').read_text()) is None
-            literal_prompt = "--a cat's \"hat\"; $(echo literal)\n猫 🐈"
+            assert json.loads((root / folders[0] / 'last_prompt.json').read_text()) is None
+            # Backslashes before quotes and at the end test the Windows command-line quoting.
+            literal_prompt = "--a cat's \"hat\"; $(echo literal) C:\\dir\\ \\\"q\\\"\n猫 🐈\\"
             _, prompted = request('/v1/images/generations', {'prompt': literal_prompt}, 'image/png')
             check_png(prompted)
-            assert json.loads((worker.parent / 'last_prompt.json').read_text()) == literal_prompt
+            assert json.loads((root / folders[0] / 'last_prompt.json').read_text()) == literal_prompt
             for invalid_prompt in (None, 7, [], {}, '', ' \t\n', 'a\0cat', 'a' * 16385):
                 request('/v1/images/generations', {'prompt': invalid_prompt}, status=400)
 
@@ -465,6 +491,65 @@ time.sleep(0.08)
             args, _ = edit_input()
             assert args[args.index('--weights_path') + 1] == str(root / 'edit weights')
             print('PASS: storage defaults/flags, bounded RAM URLs, failure cleanup, PNG retention with -k true, four-model routing, worker-written PNG passed through, chat SSE, PNG pixels/raw/base64/URL, timings and validation, edit model (multipart/JSON edits, crop+resize, chat follow-up edits, `edit` shortcut)')
+
+            if windows:
+                # Weights beside the package folder come first; a model only in the package's own folder
+                # (installed by 0.2.0-beta.1) is read from there; one that is nowhere is expected beside it.
+                shared, local = root.parent / 'all_model_weights', root / 'all_model_weights'
+                (shared / folders[0]).mkdir(parents=True)
+                (local / folders[1]).mkdir(parents=True)
+                proc = restart_server([])
+                for folder, weights in zip(folders[:3], (shared, local, shared)):
+                    request('/v1/images/generations', {'model': folder, 'prompt': 'x'}, 'image/png')
+                    args = json.loads((root / folder / 'last_args.json').read_text())
+                    assert args[args.index('--weights_path') + 1] == str(weights / folder), (folder, args)
+                shutil.rmtree(shared)
+                shutil.rmtree(local)
+
+                # Windows serves the models whose workers are built; the others are listed as missing.
+                shutil.rmtree(root / folders[2] / worker_dir)
+                result = subprocess.run([str(test_binary), '-p', str(port), '--model', model_ids[2]],
+                                        capture_output=True, timeout=5)
+                assert result.returncode != 0 and b'has no worker' in result.stderr, result.stderr
+                proc = restart_server([])
+                with urlopen(base + '/v1/models', timeout=5) as response:
+                    listed = [model['id'] for model in json.loads(response.read())['data']]
+                assert model_ids[2] not in listed and model_ids[0] in listed and edit_id in listed, listed
+                _, data = request('/v1/images/generations', {'model': model_ids[2], 'prompt': 'x'}, status=400)
+                assert b'not served' in data, data
+                _, data = request('/v1/images/generations', {'model': model_ids[1], 'prompt': 'x'}, 'image/png')
+                check_png(data)
+
+                # A package: exe_models/<model>/run.exe beside vgf-serve.exe, with the shared base/ NPU files.
+                package_dir = server_dir / 'exe_models' / folders[2]
+                shutil.copytree(root / folders[1] / worker_dir, package_dir)
+                proc = restart_server(['--model', folders[2]])
+                with urlopen(base + '/v1/models', timeout=5) as response:
+                    listed = [model['id'] for model in json.loads(response.read())['data']]
+                assert model_ids[2] in listed, listed
+                long_prompt = 'A mountain village with flowers and a river. ' * 60
+                _, data = request('/v1/images/generations', {'prompt': long_prompt}, 'image/png')
+                check_png(data)
+                args = json.loads((package_dir / 'last_args.json').read_text())
+                assert '--prompt=' + long_prompt in args, 'server must forward the complete Flux2 prompt'
+                assert args[args.index('--weights_path') + 1] == str(root.parent / 'all_model_weights' / folders[2])
+                assert args[args.index('--npu_files_path') + 1] == str(root / 'all_npu_files' / folders[2] / 'base')
+                assert args[args.index('--steps') + 1] == '4' and args[args.index('--seed') + 1] == '42'
+
+                # A native run.exe takes precedence over an older host.exe.
+                (package_dir / 'host.exe').write_bytes(b'MZinvalid test executable')
+                proc = restart_server([])
+                _, data = request('/v1/images/generations', {'model': folders[2], 'prompt': 'x'}, 'image/png')
+                check_png(data)
+
+                # Older host.exe packages still work, even beside a Linux run.exe.
+                shutil.copy2(package_dir / 'run.exe', package_dir / 'host.exe')
+                (package_dir / 'run.exe').write_bytes(b'\x7fELFtest Linux worker')
+                proc = restart_server([])
+                _, data = request('/v1/images/generations', {'model': model_ids[2], 'prompt': 'x'}, 'image/png')
+                check_png(data)
+                print('PASS (Windows): in-package weights fallback; models without a built worker are skipped, '
+                      'listed and rejected; run.exe packages, shared base/ NPU files, full prompts, host.exe fallback')
         except BaseException:
             log.flush()
             log.seek(0)

@@ -50,10 +50,17 @@ json parse_json_object(const std::string& body) {
     return j;
 }
 
+const config::ModelConfig& require_available(const config::ModelConfig& model) {
+    if (!model.available) {
+        throw BadRequest(std::string(model.id) + " is not served here (worker not built); see GET /v1/models");
+    }
+    return model;
+}
+
 // Shared by generation and edit requests; edit requests use the edit model by default.
 GenerationRequest parse_fields(const json& j, bool edit) {
     GenerationRequest request;
-    const auto& model = edit && !j.contains("model") ? *config::find_model(config::kEditModelId)
+    const auto& model = edit && !j.contains("model") ? require_available(*config::find_model(config::kEditModelId))
                                                      : parse_model(j);
     if (model.edits_image != edit) {
         throw BadRequest(edit ? std::string(model.id) + " does not edit images; use " +
@@ -202,7 +209,7 @@ const config::ModelConfig& parse_model(const json& body) {
     const auto id = body["model"].get<std::string>();
     const auto* model = config::find_model(id);
     if (!model) throw BadRequest("unknown model: " + id + "; see GET /v1/models");
-    return *model;
+    return require_available(*model);
 }
 
 std::string decode_image_data(const std::string& text) {

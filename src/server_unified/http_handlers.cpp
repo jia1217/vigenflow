@@ -121,6 +121,7 @@ std::string publish_image(const http::request<http::string_body>& req, const std
 http::message_generator handle_get_models(unsigned version, bool keep_alive) {
     json data = json::array();
     for (const auto& model : config::models) {
+        if (!model.available) continue;
         data.push_back({{"id", model.id}, {"object", "model"}, {"created", 0}, {"owned_by", "local"}});
     }
     return make_json_response(http::status::ok, version, keep_alive,

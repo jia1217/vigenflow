@@ -1,1 +1,3 @@
 release/
+build-windows/
+__pycache__/
