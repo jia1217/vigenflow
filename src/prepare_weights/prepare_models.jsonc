@@ -1,0 +1,78 @@
+// The models the prepare tools put under weights_root, one folder per model id:
+//   prepare.exe       downloads the upstream checkpoint ("source") and converts it to the NPU layout
+//   prepare_base.exe  downloads the pre-packed NPU folder ("packed_repo") as is: no conversion;
+//                     all four packed repos are public, so it needs no Hugging Face login;
+//                     before Krea it shows the Krea license and asks you to type I agree
+//
+// weights_root: where the model folders go, relative to this file. ../../all_model_weights is
+// two levels above prepare/, matching vgf-serve; the server passes each model path to its worker.
+// --weights_root overrides this setting.
+// packed_repo / packed_revision: the Hugging Face repo (and branch, tag or commit) holding the packed weights.
+// Each model has its own repo; packed_path "" reads its root. "main" follows the latest upload.
+//
+// Per model:
+//   id               output folder under weights_root (the --weights_path of that model's run.exe)
+//   recipe           prepare.exe: how the checkpoint maps to NPU files; a finetune must use the same architecture
+//   source           prepare.exe: Hugging Face repo in diffusers format; point it at a finetune to use that instead
+//   revision         prepare.exe: branch, tag or commit hash ("main" follows the latest upload)
+//   packed_path      prepare_base.exe: the model's folder in packed_repo (default: the id; "" = the repo root)
+//                    (packed_repo / packed_revision can also be set per model, e.g. one repo per model)
+//   enabled          false skips the entry
+//   keep_sources     true keeps the downloaded files after converting / unpacking (default false: deleted
+//                    once the NPU folder is in place; files in the shared Hugging Face cache are never deleted)
+//
+// JSON with // comments; no trailing commas.
+{
+  "weights_root": "../../all_model_weights",
+  "packed_revision": "main",
+  "models": [
+    {
+      "id": "flux2_klein_4B",
+      "packed_repo": "Kelsey1217/FLUX.2-klein-4B-NPU-BFP16",
+      "packed_path": "",
+      "recipe": "flux2_klein_4b",
+      "source": "black-forest-labs/FLUX.2-klein-4B",
+      "revision": "main",
+      "enabled": true,
+      "keep_sources": false
+    },
+    // Gated on Hugging Face: accept the terms at https://huggingface.co/black-forest-labs/FLUX.1-schnell
+    // with your account, then `huggingface-cli login` (or set HF_TOKEN) before running prepare.exe.
+    {
+      "id": "flux1_schnell",
+      "packed_repo": "Kelsey1217/FLUX.1-schnell-NPU-BFP16",
+      "packed_path": "",
+      "recipe": "flux1_schnell",
+      "source": "black-forest-labs/FLUX.1-schnell",
+      "revision": "main",
+      "enabled": true,
+      "keep_sources": false
+    },
+    {
+      "id": "z_image_turbo",
+      "packed_repo": "Kelsey1217/Z-Image-Turbo-NPU-BFP16",
+      "packed_path": "",
+      "recipe": "z_image_turbo",
+      "source": "Tongyi-MAI/Z-Image-Turbo",
+      "revision": "main",
+      "enabled": true,
+      "keep_sources": false
+    },
+    // Pre-packed only: prepare_base.exe downloads the packed repo root; prepare.exe has no krea2_turbo
+    // recipe yet and skips this entry ("source" is the checkpoint the packed weights were converted from).
+    // The packed repo is public: no Hugging Face login or access request. The weights are under the Krea 2
+    // Community License (not Apache 2.0), so prepare_base.exe prints the license links and downloads only
+    // after you type I agree (--accept_license answers for unattended runs). LICENSE.pdf and Notice are
+    // unpacked into the model folder.
+    {
+      "id": "krea2_turbo",
+      "packed_repo": "Kelsey1217/Krea-2-Turbo-NPU-BFP16",
+      "packed_path": "",
+      "recipe": "krea2_turbo",
+      "source": "krea/Krea-2-Turbo",
+      "revision": "main",
+      "enabled": true,
+      "keep_sources": false
+    }
+  ]
+}
