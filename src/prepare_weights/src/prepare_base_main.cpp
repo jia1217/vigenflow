@@ -219,7 +219,7 @@ void download_model(const ModelEntry& m, HfClient& hf, const Options& opt) {
     auto save_progress = [&] {
         const fs::path tmp = progress_file.string() + ".tmp";
         std::ofstream(tmp) << json{{"blobs", blobs}, {"done", done}}.dump() << "\n";
-        fs::rename(tmp, progress_file);
+        rename_retrying(tmp, progress_file);
     };
     const bool keep = opt.keep_sources || m.keep_sources;
     std::vector<const HfFile*> todo;

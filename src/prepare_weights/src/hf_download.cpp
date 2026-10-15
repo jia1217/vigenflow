@@ -1,4 +1,6 @@
 #include "hf_download.hpp"
+#include "curl_pipe.hpp"
+#include "fs_retry.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -12,18 +14,17 @@
 #include <sstream>
 #include <stdexcept>
 #include <thread>
-#ifndef _WIN32
-#include <sys/wait.h>
-#endif
 
 #include <nlohmann/json.hpp>
 
 #ifdef _WIN32
-#define popen _popen
-#define pclose _pclose
-constexpr const char* kPopenRead = "rb";
+constexpr const char* kCurl = "curl.exe";
+// Cache folders name the commit by its first 12 hex digits, which is enough to tell commits apart and keeps
+// these, the longest paths the tool writes, short for Windows' 260-character limit.
+constexpr size_t kCommitDirLength = 12;
 #else
-constexpr const char* kPopenRead = "r";
+constexpr const char* kCurl = "curl";
+constexpr size_t kCommitDirLength = 40;
 #endif
 // Range downloads read file data from curl's stdout, so their token comes from this environment variable
 // (curl --variable) instead of stdin; like stdin, and unlike the command line, other users cannot see it.
@@ -71,15 +72,7 @@ std::string url_encode(const std::string& s, bool keep_slash) {
     return o.str();
 }
 
-std::string quote(const std::string& s) {
-#ifdef _WIN32
-    return "\"" + s + "\"";
-#else
-    std::string q = "'";
-    for (char c : s) q += c == '\'' ? std::string("'\\''") : std::string(1, c);
-    return q + "'";
-#endif
-}
+std::string quote(const std::string& s) { return quote_curl_arg(s); }
 
 std::string repo_dir_name(const std::string& repo) {  // org/name -> org--name
     return std::regex_replace(repo, std::regex("/"), "--");
@@ -101,10 +94,10 @@ std::string read_text(const fs::path& p) {
 HfClient::HfClient(std::string token, fs::path cache_dir) : token_(std::move(token)), cache_dir_(std::move(cache_dir)) {
     if (token_.empty()) token_ = env("HF_TOKEN");
     if (token_.empty() && fs::exists(hf_home() / "token")) token_ = read_text(hf_home() / "token");
-    if (FILE* p = popen("curl --version", kPopenRead)) {
+    {
+        CurlPipe p(std::string(kCurl) + " --version", true);
         int major = 0, minor = 0;
-        if (std::fscanf(p, "curl %d.%d", &major, &minor) == 2) curl_has_variable_ = major > 8 || (major == 8 && minor >= 3);
-        pclose(p);
+        if (std::fscanf(p.get(), "curl %d.%d", &major, &minor) == 2) curl_has_variable_ = major > 8 || (major == 8 && minor >= 3);
     }
     if (!token_.empty()) {
 #ifdef _WIN32
@@ -118,31 +111,22 @@ HfClient::HfClient(std::string token, fs::path cache_dir) : token_(std::move(tok
 HfClient::~HfClient() = default;
 
 int HfClient::run_curl(const std::string& args, std::string* http) const {
-    std::string cmd = "curl -L --fail --silent --show-error --retry 3 --retry-delay 2 " + args;
+    std::string cmd = std::string(kCurl) + " -L --fail --silent --show-error --retry 3 --retry-delay 2 " + args;
     fs::path code_file;
     if (http) {
         code_file = fs::temp_directory_path() /
                     ("prepare_http_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
-        cmd += " -w %{http_code} > " + quote(code_file.string());
+        cmd += " -w " + quote("%{http_code}");
     }
-    int status;
-    if (token_.empty()) {
-        status = std::system(cmd.c_str());
-    } else {
-        // -H @- reads the header from stdin: nothing is left behind if prepare.exe is killed mid-download.
-        FILE* p = popen((cmd + " -H @-").c_str(), "w");
-        if (!p) return -1;
-        std::fputs(("Authorization: Bearer " + token_ + "\n").c_str(), p);
-        status = pclose(p);
-    }
+    // -H @- reads the header from stdin: nothing is left behind if prepare.exe is killed mid-download.
+    CurlPipe p(cmd + (token_.empty() ? "" : " -H @-"), false, code_file);
+    if (!token_.empty()) std::fputs(("Authorization: Bearer " + token_ + "\n").c_str(), p.get());
+    const int status = p.close();
     if (http) {
         *http = read_text(code_file);
         std::error_code ec;
         fs::remove(code_file, ec);
     }
-#ifndef _WIN32
-    if (status != -1) status = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-#endif
     return status;
 }
 
@@ -205,7 +189,7 @@ fs::path HfClient::fetch(const HfSnapshot& snap, const HfFile& file, const std::
     const fs::path hub = hub_repo_dir(snap.repo) / "snapshots" / snap.commit / file.path;
     if (complete(hub)) return hub;
     // 2. Our cache, keyed by commit so a new revision never mixes files with an old one.
-    const fs::path local = cache_dir_ / repo_dir_name(snap.repo) / snap.commit / file.path;
+    const fs::path local = cache_dir_ / repo_dir_name(snap.repo) / snap.commit.substr(0, kCommitDirLength) / file.path;
     if (complete(local)) return local;
     if (snap.offline) throw std::runtime_error("offline and " + file.path + " is not cached");
 
@@ -230,7 +214,11 @@ fs::path HfClient::fetch(const HfSnapshot& snap, const HfFile& file, const std::
         std::atomic<bool> done{false};
         int rc = 0;
         std::string http;
-        std::thread curl([&] { rc = run_curl(args, &http); done = true; });
+        std::exception_ptr curl_error;
+        std::thread curl([&] {
+            try { rc = run_curl(args, &http); } catch (...) { curl_error = std::current_exception(); }
+            done = true;
+        });
         auto last = std::chrono::steady_clock::now();
         while (!done) {
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -242,6 +230,7 @@ fs::path HfClient::fetch(const HfSnapshot& snap, const HfFile& file, const std::
             }
         }
         curl.join();
+        if (curl_error) std::rethrow_exception(curl_error);
         if (rc != 0) {
             const std::string why = http_problem(http, snap.repo + "/" + file.path);
             throw std::runtime_error(!why.empty() ? why
@@ -251,7 +240,7 @@ fs::path HfClient::fetch(const HfSnapshot& snap, const HfFile& file, const std::
     }
     if (file.size && fs::file_size(partial) != file.size)
         throw std::runtime_error(file.path + ": downloaded " + std::to_string(fs::file_size(partial)) + " of " + std::to_string(file.size) + " bytes");
-    fs::rename(partial, local);
+    rename_retrying(partial, local);
     if (progress) progress(fs::file_size(local), fs::file_size(local));
     return local;
 }
@@ -293,7 +282,7 @@ void HfClient::fetch_ranges(const std::string& url, const fs::path& partial, uin
     auto save = [&] {  // caller holds m
         const fs::path tmp = ranges_file.string() + ".tmp";
         std::ofstream(tmp) << nlohmann::json{{"size", size}, {"done", done}}.dump();
-        fs::rename(tmp, ranges_file);
+        rename_retrying(tmp, ranges_file);
     };
     {
         std::lock_guard<std::mutex> lock(m);
@@ -323,14 +312,12 @@ void HfClient::fetch_ranges(const std::string& url, const fs::path& partial, uin
                 if (attempt >= 6) throw std::runtime_error("download failed after 6 attempts: " + what + " (" + read_text(err) + ")");
                 if (attempt) std::this_thread::sleep_for(std::chrono::seconds(2 * attempt));
                 const uint64_t from = begin[i] + start, want = len[i] - start;
-                const std::string cmd = "curl -L --fail --silent --show-error" + auth + " -r " + std::to_string(from) + "-" +
-                                        std::to_string(begin[i] + len[i] - 1) + " -w %{stderr}HTTP=%{http_code} " + quote(url) +
-                                        " 2> " + quote(err.string());
-                FILE* p = popen(cmd.c_str(), kPopenRead);
-                if (!p) throw std::runtime_error("cannot start curl");
+                const std::string cmd = std::string(kCurl) + " -L --fail --silent --show-error" + auth + " -r " + std::to_string(from) + "-" +
+                                        std::to_string(begin[i] + len[i] - 1) + " -w " + quote("%{stderr}HTTP=%{http_code}") + " " + quote(url);
+                CurlPipe p(cmd, true, {}, err);
                 uint64_t got = 0, unsaved = 0;
                 bool overflow = false;
-                for (size_t k; (k = std::fread(buf.data(), 1, buf.size(), p)) > 0;) {
+                for (size_t k; (k = std::fread(buf.data(), 1, buf.size(), p.get())) > 0;) {
                     if (got + k > want) {  // more than asked for: not a range response
                         overflow = true;
                         break;
@@ -346,7 +333,7 @@ void HfClient::fetch_ranges(const std::string& url, const fs::path& partial, uin
                         unsaved = 0;
                     }
                 }
-                pclose(p);
+                p.close();
                 f.flush();
                 if (!f) throw std::runtime_error("cannot write " + partial.string());
                 const std::string e = read_text(err);

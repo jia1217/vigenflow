@@ -18,7 +18,14 @@
 
 #include <nlohmann/json.hpp>
 
-#ifndef _WIN32
+#include "fs_retry.hpp"
+
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#else
 #include <fcntl.h>
 #include <sys/file.h>
 #include <unistd.h>
@@ -49,9 +56,20 @@ inline std::string gib(uint64_t bytes) {
 // Folder of the running executable, so default paths do not depend on the current directory (vgf-serve
 // resolves its model folders the same way).
 inline fs::path exe_dir(const char* argv0) {
+#ifdef _WIN32
+    (void)argv0;
+    std::vector<wchar_t> path(512);
+    for (;;) {
+        const DWORD n = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+        if (!n) throw std::system_error(GetLastError(), std::system_category(), "GetModuleFileNameW");
+        if (n < path.size()) return fs::path(std::wstring(path.data(), n)).parent_path();
+        path.resize(path.size() * 2);
+    }
+#else
     std::error_code ec;
     const fs::path self = fs::read_symlink("/proc/self/exe", ec);
     return (ec ? fs::absolute(argv0) : self).parent_path();
+#endif
 }
 
 inline bool is_within(const fs::path& path, const fs::path& dir) {
@@ -148,8 +166,8 @@ inline void swap_in(const fs::path& stage, const fs::path& out) {
     std::error_code ec;
     const fs::path old = out.string() + ".old";
     fs::remove_all(old, ec);
-    if (fs::exists(out)) fs::rename(out, old);
-    fs::rename(stage, out);
+    if (fs::exists(out)) rename_retrying(out, old);
+    rename_retrying(stage, out);
     fs::remove_all(old, ec);
 }
 
@@ -174,8 +192,12 @@ inline void remove_downloads(const std::string& id, const std::vector<fs::path>&
     const fs::path root = fs::weakly_canonical(cache_dir);
     for (const auto& p : own_files) {
         std::error_code ec;
+        // Resolve while the path exists; a deleted Windows file can remain
+        // delete-pending until the last handle is closed.
+        fs::path d = fs::weakly_canonical(p).parent_path();
         fs::remove(p, ec);
-        for (fs::path d = fs::weakly_canonical(p).parent_path(); d != root && is_within(d, root); d = d.parent_path())
+        for (; d != root && !d.lexically_relative(root).empty() && *d.lexically_relative(root).begin() != "..";
+             d = d.parent_path())
             if (!fs::remove(d, ec)) break;  // stops at the first folder that is not empty
     }
     std::error_code ec;
@@ -184,13 +206,33 @@ inline void remove_downloads(const std::string& id, const std::vector<fs::path>&
 }
 
 // One prepare.exe / prepare_base.exe at a time per weights root: two runs would write the same .partial
-// files and download into the same cache. flock is released when the process exits, however it exits, so
-// a crash leaves no stale lock.
+// files and download into the same cache. The lock (flock, LockFileEx on Windows) is released when the
+// process exits, however it exits, so a crash leaves no stale lock.
 class WeightsLock {
 public:
     explicit WeightsLock(const fs::path& weights_root) {
-#ifndef _WIN32
         const fs::path file = weights_root / ".prepare.lock";
+#ifdef _WIN32
+        handle_ = CreateFileW(file.c_str(), GENERIC_READ | GENERIC_WRITE,
+                              FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS,
+                              FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (handle_ == INVALID_HANDLE_VALUE)
+            throw std::system_error(GetLastError(), std::system_category(), "cannot open " + file.string());
+        OVERLAPPED offset{};
+        if (!LockFileEx(handle_, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, MAXDWORD, MAXDWORD, &offset)) {
+            const DWORD error = GetLastError();
+            CloseHandle(handle_);
+            handle_ = INVALID_HANDLE_VALUE;
+            if (error == ERROR_LOCK_VIOLATION)
+                throw std::runtime_error("another prepare.exe or prepare_base.exe is working in " +
+                                         weights_root.string() + "; wait for it to finish");
+            throw std::system_error(error, std::system_category(), "cannot lock " + file.string());
+        }
+        const std::string me = std::to_string(GetCurrentProcessId());
+        DWORD written = 0;
+        SetEndOfFile(handle_);
+        WriteFile(handle_, me.data(), static_cast<DWORD>(me.size()), &written, nullptr);
+#else
         fd_ = ::open(file.c_str(), O_RDWR | O_CREAT, 0644);
         if (fd_ < 0) throw std::runtime_error("cannot open " + file.string());
         if (::flock(fd_, LOCK_EX | LOCK_NB) != 0) {
@@ -206,7 +248,13 @@ public:
 #endif
     }
     ~WeightsLock() {
-#ifndef _WIN32
+#ifdef _WIN32
+        if (handle_ != INVALID_HANDLE_VALUE) {
+            OVERLAPPED offset{};
+            UnlockFileEx(handle_, 0, MAXDWORD, MAXDWORD, &offset);
+            CloseHandle(handle_);
+        }
+#else
         if (fd_ >= 0) ::close(fd_);
 #endif
     }
@@ -214,7 +262,11 @@ public:
     WeightsLock& operator=(const WeightsLock&) = delete;
 
 private:
+#ifdef _WIN32
+    HANDLE handle_ = INVALID_HANDLE_VALUE;
+#else
     int fd_ = -1;
+#endif
 };
 
 inline std::string utc_stamp() {

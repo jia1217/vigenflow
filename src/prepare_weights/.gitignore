@@ -1,1 +1,4 @@
 prepare_base.exe
+/vigenflow_win/
+/build-windows/
+__pycache__/

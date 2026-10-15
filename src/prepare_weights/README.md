@@ -14,6 +14,32 @@ bash build_ubuntu.sh               # -> prepare_base.exe
 ./prepare_base.exe --help          # all options
 ```
 
+## Build and run (Windows)
+
+```bat
+vcpkg install nlohmann-json:x64-windows
+build_windows.bat                                  &rem -> vigenflow_win\prepare_base.exe
+vigenflow_win\prepare_base.exe --config prepare_models.jsonc --only flux2_klein_4B
+```
+
+`build_windows.bat` uses MSVC (it finds Visual Studio with `vswhere`) and `nlohmann/json.hpp` from vcpkg
+(`VCPKG_ROOT`, default `C:\dev\vcpkg`). The exe has the C runtime linked in, so in the package it needs only
+`prepare_models.jsonc` beside it (`prepare\`). It starts Windows' own `curl.exe` (Windows 10 1803 and later)
+directly, not through `cmd.exe`, so paths with spaces, `&` or `%` work. Its manifest allows paths longer
+than 260 characters where `LongPathsEnabled` is set in the registry; without that, the download cache names
+each commit by 12 hex digits instead of 40 to keep its paths short.
+
+## Check
+
+```bash
+python3 tests/test_prepare_base.py ./prepare_base.exe              # Ubuntu
+python tests\test_prepare_base.py vigenflow_win\prepare_base.exe   # Windows
+```
+
+The check runs the real tool against a local fake Hugging Face server (no network, models or login):
+packing, a resumed multi-shard download with parallel byte ranges, a byte-exact unpack, cleanup, the
+config found from the exe's folder, the Krea license prompt and the one-run-per-weights-root lock.
+
 `curl` (8.3 or newer) does the downloads. Paths do not depend on the current directory:
 `prepare_models.jsonc` is read from next to `prepare_base.exe`, and its `"weights_root"` is relative to that
 file. In the release package this folder is `prepare/`, so `../../all_model_weights` is the folder next to
@@ -75,8 +101,8 @@ keep them with any copy.
 - A folder is up to date when the same packed files (Hugging Face blob ids) were unpacked before, or when
   it was converted from the same source commit and recipe. A folder without `prepare_manifest.json` is
   only replaced with `--force`.
-- Only one run per weights root at a time (`flock` on `<weights_root>/.prepare.lock`, released however the
-  process exits).
+- Only one run per weights root at a time (`flock`, `LockFileEx` on Windows, on
+  `<weights_root>/.prepare.lock`, released however the process exits).
 - A token (`--hf_token`, `$HF_TOKEN` or the `huggingface-cli login` token) is only needed for private
   repos; it reaches curl through the environment, never the command line or a file.
 

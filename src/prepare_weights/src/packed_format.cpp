@@ -94,7 +94,7 @@ PackResult pack_folder(const fs::path& folder, const fs::path& out_dir, const st
             }
             if (!f) throw std::runtime_error("cannot write " + partial.string());
         }
-        fs::rename(partial, out);
+        rename_retrying(partial, out);
         result.shards.push_back(name);
         log(std::string(name) + ": " + std::to_string(shards[s].size()) + " files, " + gib(offset) + " GiB");
     }
