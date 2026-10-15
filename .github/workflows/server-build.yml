@@ -111,17 +111,25 @@ jobs:
         shell: cmd
         run: build_windows.bat
 
+      - name: Build prepare_base.exe
+        working-directory: ${{ env.PREPARE_DIR }}
+        shell: cmd
+        run: build_windows.bat
+
       - name: Smoke test
         shell: cmd
-        run: src\server_unified\vigenflow_win\vgf-serve.exe --help
+        run: |
+          src\server_unified\vigenflow_win\vgf-serve.exe --help || exit /b 1
+          src\prepare_weights\vigenflow_win\prepare_base.exe --help || exit /b 1
 
       - name: Stage artifact
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Path dist\windows -Force | Out-Null
-          Copy-Item "$env:SERVER_DIR\vigenflow_win\vgf-serve.exe" dist\windows\
-          Copy-Item "$env:SERVER_DIR\vigenflow_win\*.dll" dist\windows\ -ErrorAction SilentlyContinue
-          Copy-Item "$env:SERVER_DIR\README.md" dist\windows\
+          New-Item -ItemType Directory -Path dist\windows\server_running, dist\windows\prepare -Force | Out-Null
+          Copy-Item "$env:SERVER_DIR\vigenflow_win\vgf-serve.exe" dist\windows\server_running\
+          Copy-Item "$env:SERVER_DIR\vigenflow_win\*.dll" dist\windows\server_running\ -ErrorAction SilentlyContinue
+          Copy-Item "$env:SERVER_DIR\README.md" dist\windows\server_running\
+          Copy-Item "$env:PREPARE_DIR\vigenflow_win\prepare_base.exe", "$env:PREPARE_DIR\prepare_models.jsonc", "$env:PREPARE_DIR\README.md" dist\windows\prepare\
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
