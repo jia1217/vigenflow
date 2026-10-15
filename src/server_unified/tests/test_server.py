@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Run with python3 test_server.py [./vgf-serve]; uses Pillow and a fake worker, no NPU.
-On Windows: python test_server.py [vigenflow_win\\vgf-serve.exe], after build_windows.bat."""
+"""Run with python3 tests/test_server.py [vigenflow_ubuntu/vgf-serve]; uses Pillow and a fake worker, no NPU.
+On Windows: python tests\\test_server.py [vigenflow_win\\vgf-serve.exe], after build_windows.bat.
+Without an argument it tests the build in vigenflow_ubuntu/ or vigenflow_win/ of this folder."""
 import base64
 from concurrent.futures import ThreadPoolExecutor
 import io
@@ -19,8 +20,9 @@ from urllib.request import Request, urlopen
 from PIL import Image
 
 windows = sys.platform == 'win32'
-binary = Path(sys.argv[1] if len(sys.argv) > 1 else
-              'vigenflow_win/vgf-serve.exe' if windows else './vgf-serve').resolve()
+server_unified = Path(__file__).resolve().parent.parent
+binary = (Path(sys.argv[1]) if len(sys.argv) > 1 else
+          server_unified / ('vigenflow_win/vgf-serve.exe' if windows else 'vigenflow_ubuntu/vgf-serve')).resolve()
 with tempfile.TemporaryDirectory(prefix='vgf-server-check-') as tmp:
     root = Path(tmp) / 'NPU_server'
     root.mkdir()
@@ -87,7 +89,7 @@ time.sleep(0.08)
 ''')
     script.chmod(0o755)
     if windows:
-        shutil.copy2(Path(__file__).resolve().parent / 'build-windows' / 'test_worker_stub.exe', worker)
+        shutil.copy2(server_unified / 'build-windows' / 'test_worker_stub.exe', worker)
         os.environ['VGF_TEST_PYTHON'] = sys.executable  # inherited by the server and its workers
     edit_folder, edit_id = 'flux2_klein_4B_edit', 'flux2-klein-4B-edit'
     for folder in folders[1:] + [edit_folder]:

@@ -67,15 +67,16 @@ exit /b 1
 :have_boost_filesystem
 
 cl /utf-8 /O2 /EHsc /MD /std:c++17 /D_WIN32_WINNT=0x0A00 /DWIN32_LEAN_AND_MEAN ^
-  /I . /I .\include /I "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\include" ^
-  server_main.cpp server_config.cpp file_utils.cpp input_image.cpp request_parser.cpp worker.cpp http_handlers.cpp tcp_server.cpp cli.cpp ^
+  /I src /I .\include /I "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\include" ^
+  src\server_main.cpp src\server_config.cpp src\file_utils.cpp src\input_image.cpp src\request_parser.cpp ^
+  src\worker.cpp src\http_handlers.cpp src\tcp_server.cpp src\cli.cpp ^
   /Fo"build-windows\\" /Fe"%OUT_DIR%\vgf-serve.exe" ^
   /link "/LIBPATH:%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\lib" ws2_32.lib "%BOOST_FILESYSTEM_LIB%" libpng16.lib ^
-  /MANIFEST:EMBED /MANIFESTINPUT:utf8.manifest
+  /MANIFEST:EMBED /MANIFESTINPUT:src\utf8.manifest
 if errorlevel 1 exit /b 1
 
-rem Stand-in worker for test_server.py (runs its Python fake worker); not used when serving.
-cl /nologo /utf-8 /O2 /EHsc /MD /std:c++17 test_worker_stub.cpp /Fo"build-windows\\" /Fe"build-windows\test_worker_stub.exe"
+rem Stand-in worker for tests\test_server.py (runs its Python fake worker); not used when serving.
+cl /nologo /utf-8 /O2 /EHsc /MD /std:c++17 tests\test_worker_stub.cpp /Fo"build-windows\\" /Fe"build-windows\test_worker_stub.exe"
 if errorlevel 1 exit /b 1
 
 rem Copy the vcpkg DLLs vgf-serve.exe imports, and the ones those import, next to it. Which ones depends on

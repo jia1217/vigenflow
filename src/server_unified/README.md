@@ -12,7 +12,7 @@ Serves four text-to-image NPU workers and the Flux2 image-edit worker from one A
 
 All models produce one 1024x1024 image and default to 4 steps, except `krea2-turbo`, which is distilled for 8 steps and defaults to 8. Flux1 Schnell and Flux2 Klein are restricted to 4 steps and Krea 2 Turbo to 8; other step counts are rejected. An omitted `model` uses `z-image-turbo`, or the server's `--model` selection. Unknown model IDs return 400; they never silently select another worker.
 
-The model table and paths are in `server_config.cpp`. By default each worker is `../<worker folder>/run.exe` (a development tree), else `exe_models/<worker folder>/run.exe` next to `vgf-serve` (a package); weights are `../../all_model_weights/<weights folder>` and NPU files `../all_npu_files/<worker folder>`, relative to the `vgf-serve` folder. FLUX.2 Edit shares the `flux2_klein_4B` weights folder; **`/base` is appended to the NPU path for FLUX.2 text-to-image**. Startup prints the actual absolute paths for every served model. Every request gets its own model settings; choosing a model does not change another user's selection.
+The model table and paths are in `src/server_config.cpp`. By default each worker is `../<worker folder>/run.exe` (a development tree), else `exe_models/<worker folder>/run.exe` next to `vgf-serve` (a package); weights are `../../all_model_weights/<weights folder>` and NPU files `../all_npu_files/<worker folder>`, relative to the `vgf-serve` folder. FLUX.2 Edit shares the `flux2_klein_4B` weights folder; **`/base` is appended to the NPU path for FLUX.2 text-to-image**. Startup prints the actual absolute paths for every served model. Every request gets its own model settings; choosing a model does not change another user's selection.
 
 | Worker option | Comes from |
 |---|---|
@@ -65,7 +65,7 @@ On Ubuntu all five worker executables must exist before starting the server (on 
 ./vgf-serve -p 1128 --model flux1-schnell --seed 7 --steps 4
 ```
 
-For example, a request explicitly selecting `z-image-turbo` still uses its own seed and steps defaults. To customize paths for several models, edit the path setup in `server_config.cpp`.
+For example, a request explicitly selecting `z-image-turbo` still uses its own seed and steps defaults. To customize paths for several models, edit the path setup in `src/server_config.cpp`.
 
 ## Image editing
 
@@ -113,7 +113,7 @@ Workers use temporary image files during generation; with `-k false` these are r
 curl -s -d '{"model":"flux2-klein-4B","prompt":"a cat","seed":7,"steps":4}' http://127.0.0.1:11283/v1/images/generations
 ```
 
-The default response contains PNG bytes in `data[0].b64_json`. Set `"response_format":"url"` to receive a PNG URL instead. The server converts the worker's temporary BMP to a real PNG and removes the BMP. The `krea2-turbo` worker writes PNG itself (whatever the file name), so the server asks it for a `.png` and returns that file unchanged; `writes_png` in `server_config.cpp` marks such a worker.
+The default response contains PNG bytes in `data[0].b64_json`. Set `"response_format":"url"` to receive a PNG URL instead. The server converts the worker's temporary BMP to a real PNG and removes the BMP. The `krea2-turbo` worker writes PNG itself (whatever the file name), so the server asks it for a `.png` and returns that file unchanged; `writes_png` in `src/server_config.cpp` marks such a worker.
 
 For a direct image response, send `Accept: image/png`. The response is PNG bytes with `Content-Type: image/png` and `Content-Disposition: inline`:
 
@@ -155,20 +155,20 @@ Keep image generation enabled in Admin Settings > Images (OpenAI engine, base UR
 ## Check
 
 ```bash
-python3 test_server.py ./vigenflow_ubuntu/vgf-serve
+python3 tests/test_server.py ./vigenflow_ubuntu/vgf-serve
 ```
 
-On Windows run `python test_server.py vigenflow_win\vgf-serve.exe` after `build_windows.bat`; it adds the Windows worker lookup, missing workers and command-line quoting. The check uses the installed Pillow package and temporary fake workers; it verifies image pixels and orientation, raw/base64/URL responses, timings, model routing, model-specific paths/defaults, chat dropdown selection, short SSE image URLs, memory-cache eviction/restart, cleanup in no-save mode, persistent PNGs with `-k true`, serialized NPU access, failure handling, and the edit model (multipart/JSON edits, crop/resize of the input, chat follow-up edits, the `edit` shortcut) without using the NPU. Re-run the orientation check after upgrading Boost.GIL, since the current reader needs a top-down BMP workaround.
+On Windows run `python tests\test_server.py vigenflow_win\vgf-serve.exe` after `build_windows.bat`; it adds the Windows worker lookup, missing workers and command-line quoting. The check uses the installed Pillow package and temporary fake workers; it verifies image pixels and orientation, raw/base64/URL responses, timings, model routing, model-specific paths/defaults, chat dropdown selection, short SSE image URLs, memory-cache eviction/restart, cleanup in no-save mode, persistent PNGs with `-k true`, serialized NPU access, failure handling, and the edit model (multipart/JSON edits, crop/resize of the input, chat follow-up edits, the `edit` shortcut) without using the NPU. Re-run the orientation check after upgrading Boost.GIL, since the current reader needs a top-down BMP workaround.
 
 ## Windows
 
 ```bat
 vcpkg install boost-asio boost-beast boost-filesystem boost-gil boost-process boost-system libpng nlohmann-json stb --triplet x64-windows
 build_windows.bat                              &rem -> vigenflow_win\vgf-serve.exe
-python test_server.py vigenflow_win\vgf-serve.exe
+python tests\test_server.py vigenflow_win\vgf-serve.exe
 ```
 
-`build_windows.bat` builds `vigenflow_win\vgf-serve.exe` with MSVC (Boost, libpng and stb from vcpkg; see `VCPKG_ROOT` / `BOOST_FILESYSTEM_LIB` in the script), copies the vcpkg DLLs it loads next to it (found with vcpkg's `applocal.ps1`: `libpng16.dll` and `zlib1.dll`, plus Boost DLLs with newer vcpkg Boost versions) and embeds `utf8.manifest`, so prompts and paths reach the workers as UTF-8. It also builds `build-windows\test_worker_stub.exe`, which the check uses to run its Python fake worker as `run.exe`. In the package, `vgf-serve.exe` also needs the VC++ runtime DLLs (`msvcp140.dll`, `vcruntime140.dll`, `vcruntime140_1.dll`) beside it unless the VC++ redistributable is installed.
+`build_windows.bat` builds `vigenflow_win\vgf-serve.exe` with MSVC (Boost, libpng and stb from vcpkg; see `VCPKG_ROOT` / `BOOST_FILESYSTEM_LIB` in the script), copies the vcpkg DLLs it loads next to it (found with vcpkg's `applocal.ps1`: `libpng16.dll` and `zlib1.dll`, plus Boost DLLs with newer vcpkg Boost versions) and embeds `src/utf8.manifest`, so prompts and paths reach the workers as UTF-8. It also builds `build-windows\test_worker_stub.exe` (from `tests\test_worker_stub.cpp`), which the check uses to run its Python fake worker as `run.exe`. In the package, `vgf-serve.exe` also needs the VC++ runtime DLLs (`msvcp140.dll`, `vcruntime140.dll`, `vcruntime140_1.dll`) beside it unless the VC++ redistributable is installed.
 
 The Windows package has the same layout as the Ubuntu one: `server_running\vgf-serve.exe`, `server_running\exe_models\<model>\run.exe` with each worker's DLLs, `all_npu_files\`, `prepare\prepare_base.exe`, and the weights in `all_model_weights\` next to the package folder. The Windows workers are built from the model hosts' Windows sources, which are not in this repository (`src/exe_models` holds the Ubuntu launchers). Differences from Ubuntu:
 

@@ -11,20 +11,20 @@ OUT="${OUT:-${OUT_DIR}/vgf-serve}"
 mkdir -p "$(dirname "$OUT")"
 
 SOURCES=(
-  server_main.cpp
-  server_config.cpp
-  file_utils.cpp
-  input_image.cpp
-  request_parser.cpp
-  worker.cpp
-  http_handlers.cpp
-  tcp_server.cpp
-  cli.cpp
+  src/server_main.cpp
+  src/server_config.cpp
+  src/file_utils.cpp
+  src/input_image.cpp
+  src/request_parser.cpp
+  src/worker.cpp
+  src/http_handlers.cpp
+  src/tcp_server.cpp
+  src/cli.cpp
 )
 
 "$CXX" -std=c++17 -O2 ${CXXFLAGS:-} \
   "${SOURCES[@]}" \
-  -I. -I./include \
+  -I./src -I./include \
   -pthread \
   -lboost_system \
   -lboost_filesystem -lpng \
