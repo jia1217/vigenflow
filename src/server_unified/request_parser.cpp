@@ -3,325 +3,269 @@
 #include "file_utils.hpp"
 #include "server_config.hpp"
 
-#include <chrono>
-#include <cstdint>
-#include <filesystem>
-#include <fstream>
+#include <algorithm>
+#include <cctype>
 #include <iostream>
+#include <limits>
 #include <nlohmann/json.hpp>
-#include <regex>
-#include <set>
-#include <stdexcept>
-#include <utility>
+#include <optional>
+#include <string_view>
+#include <vector>
 
-namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 namespace server {
 
 namespace {
 
-void apply_cli_defaults(GenParams& params) {
-    params.seed = config::default_seed;
-    params.steps = config::default_steps;
-    params.H = config::default_height;
-    params.W = config::default_width;
-    params.prompt = config::default_prompt;
+bool is_blank(const std::string& body) {
+    return body.find_first_not_of(" \t\r\n") == std::string::npos;
 }
 
-void apply_size_preset(GenParams& params, const std::string& size) {
-    if (size == "3:4" || size == "768x1024") {
-        params.W = 768;
-        params.H = 1024;
-    } else if (size == "4:3" || size == "1024x768") {
-        params.W = 1024;
-        params.H = 768;
-    } else if (size == "9:16" || size == "576x1024") {
-        params.W = 576;
-        params.H = 1024;
-    } else if (size == "16:9" || size == "1024x576") {
-        params.W = 1024;
-        params.H = 576;
-    } else if (size == "1:1" || size == "1024x1024") {
-        params.W = 1024;
-        params.H = 1024;
-    } 
+std::string to_lower(std::string_view text) {
+    std::string out(text);
+    std::transform(out.begin(), out.end(), out.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return out;
 }
 
-void apply_size_from_body_fallback(GenParams& params, const std::string& body) {
-    if (body.find("3:4") != std::string::npos) {
-        params.H = 1024;
-        params.W = 768;
-    } else if (body.find("4:3") != std::string::npos) {
-        params.H = 768;
-        params.W = 1024;
-    } else if (body.find("9:16") != std::string::npos) {
-        params.H = 1024;
-        params.W = 576;
-    } else if (body.find("16:9") != std::string::npos) {
-        params.H = 576;
-        params.W = 1024;
-    } else if (body.find("1:1") != std::string::npos) {
-        params.H = 1024;
-        params.W = 1024;
+int get_int_field(const json& j, const char* key, int fallback) {
+    if (!j.contains(key)) {
+        return fallback;
+    }
+    if (!j[key].is_number_integer()) {
+        throw BadRequest(std::string(key) + " must be an integer");
+    }
+    const double value = j[key].get<double>();
+    if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max()) {
+        throw BadRequest(std::string(key) + " is outside the supported integer range");
+    }
+    return j[key].get<int>();
+}
+
+json parse_json_object(const std::string& body) {
+    // An empty body means "use the server defaults".
+    json j = is_blank(body) ? json::object() : json::parse(body, nullptr, false);
+    if (!j.is_object()) throw BadRequest("request body must be a JSON object");
+    return j;
+}
+
+// Shared by generation and edit requests; edit requests use the edit model by default.
+GenerationRequest parse_fields(const json& j, bool edit) {
+    GenerationRequest request;
+    const auto& model = edit && !j.contains("model") ? *config::find_model(config::kEditModelId)
+                                                     : parse_model(j);
+    if (model.edits_image != edit) {
+        throw BadRequest(edit ? std::string(model.id) + " does not edit images; use " +
+                                    config::kEditModelId
+                              : std::string(model.id) +
+                                    " edits an input image; send it to POST /v1/images/edits");
+    }
+    request.params.model = &model;
+    request.params.seed = model.default_seed;
+    request.params.steps = model.default_steps;
+
+    if (j.contains("prompt")) {
+        if (!j["prompt"].is_string()) {
+            throw BadRequest("prompt must be a string");
+        }
+        request.params.prompt = j["prompt"].get<std::string>();
+        if (is_blank(request.params.prompt) || request.params.prompt.find('\0') != std::string::npos) {
+            throw BadRequest("prompt must be non-empty and contain no NUL characters");
+        }
+        if (request.params.prompt.size() > 16 * 1024) {
+            throw BadRequest("prompt must be at most 16384 UTF-8 bytes");
+        }
+    } else if (edit) {
+        throw BadRequest("prompt is required for image edits");
+    }
+
+    request.params.seed = get_int_field(j, "seed", request.params.seed);
+    request.params.steps = get_int_field(j, "steps", request.params.steps);
+    if (j.contains("response_format")) {
+        if (!j["response_format"].is_string()) throw BadRequest("response_format must be a string");
+        request.response_format = j["response_format"].get<std::string>();
+    }
+    if (get_int_field(j, "n", 1) != 1) throw BadRequest("n must be 1");
+    if (j.contains("size") && j["size"] != "1024x1024" && !(edit && j["size"] == "auto")) {
+        throw BadRequest("size must be 1024x1024");
+    }
+
+    std::string ignored;
+    for (const auto& item : j.items()) {
+        if (item.key() != "seed" && item.key() != "steps" &&
+            item.key() != "response_format" && item.key() != "prompt" &&
+            item.key() != "model" && item.key() != "n" && item.key() != "size") {
+            ignored += (ignored.empty() ? "" : ", ") + item.key();
+        }
+    }
+    if (!ignored.empty()) {
+        std::cout << "[INFO] Ignoring request fields not supported by run.exe: "
+                  << ignored << "\n";
+    }
+
+    if (!config::is_supported_steps(model, request.params.steps)) {
+        throw BadRequest(std::string("steps for ") + model.id + " must be one of: " +
+                         config::supported_steps_text(model));
+    }
+    if (request.response_format != "b64_json" && request.response_format != "url") {
+        throw BadRequest("response_format must be b64_json or url");
+    }
+    return request;
+}
+
+struct FormPart {
+    std::string name;
+    std::string data;
+};
+
+// Value of `key` in a header such as: form-data; name="image"; filename="a.png"
+std::optional<std::string> header_param(std::string_view header, std::string_view key) {
+    std::size_t pos = header.find(';');
+    while (pos != std::string_view::npos && pos < header.size()) {
+        ++pos;
+        while (pos < header.size() && header[pos] == ' ') ++pos;
+        const std::size_t eq = header.find('=', pos);
+        if (eq == std::string_view::npos) return std::nullopt;
+        const std::string name = to_lower(header.substr(pos, eq - pos));
+        std::string value;
+        pos = eq + 1;
+        if (pos < header.size() && header[pos] == '"') {
+            for (++pos; pos < header.size() && header[pos] != '"'; ++pos) {
+                if (header[pos] == '\\' && pos + 1 < header.size()) ++pos;
+                value.push_back(header[pos]);
+            }
+            pos = header.find(';', pos);
+        } else {
+            const std::size_t end = header.find(';', pos);
+            value = std::string(header.substr(pos, end == std::string_view::npos ? end : end - pos));
+            pos = end;
+        }
+        if (name == key) return value;
+    }
+    return std::nullopt;
+}
+
+std::vector<FormPart> parse_multipart(const std::string& content_type, const std::string& body) {
+    auto boundary = header_param(content_type, "boundary");
+    if (!boundary || boundary->empty()) throw BadRequest("multipart body needs a boundary");
+    const std::string delimiter = "--" + *boundary;
+    const auto malformed = [] { return BadRequest("malformed multipart/form-data body"); };
+
+    std::vector<FormPart> parts;
+    std::size_t pos = body.find(delimiter);
+    if (pos == std::string::npos) throw malformed();
+    for (;;) {
+        pos += delimiter.size();
+        if (body.compare(pos, 2, "--") == 0) return parts;
+        if (body.compare(pos, 2, "\r\n") != 0) throw malformed();
+        pos += 2;
+        const std::size_t header_end = body.find("\r\n\r\n", pos);
+        if (header_end == std::string::npos) throw malformed();
+        const std::size_t next = body.find("\r\n" + delimiter, header_end + 4);
+        if (next == std::string::npos) throw malformed();
+
+        FormPart part;
+        const std::string_view headers(body.data() + pos, header_end - pos);
+        for (std::size_t line_start = 0; line_start < headers.size();) {
+            std::size_t line_end = headers.find("\r\n", line_start);
+            if (line_end == std::string_view::npos) line_end = headers.size();
+            const auto line = headers.substr(line_start, line_end - line_start);
+            if (to_lower(line.substr(0, 20)) == "content-disposition:") {
+                part.name = header_param(line, "name").value_or("");
+            }
+            line_start = line_end + 2;
+        }
+        part.data = body.substr(header_end + 4, next - header_end - 4);
+        parts.push_back(std::move(part));
+        pos = next + 2;
     }
 }
 
-bool parse_bool_field(const std::string& value) {
-    return value == "true" || value == "1" || value == "yes" || value == "on";
-}
-
-std::pair<std::size_t, std::uint64_t> image_part_signature(const std::string& data) {
-    std::uint64_t hash = 1469598103934665603ull;
-    for (const unsigned char ch : data) {
-        hash ^= ch;
-        hash *= 1099511628211ull;
+// Multipart fields arrive as text; convert the integer ones for parse_fields.
+json form_value(const std::string& key, const std::string& value) {
+    if (key != "n" && key != "seed" && key != "steps") return value;
+    try {
+        std::size_t used = 0;
+        const long long number = std::stoll(value, &used);
+        if (used == value.size()) return number;
+    } catch (const std::exception&) {
     }
-    return {data.size(), hash};
-}
-
-void apply_lora_json_options(GenParams& params, const json& j) {
-    if (j.contains("lora_dir") && j["lora_dir"].is_string()) {
-        params.lora_dir = j["lora_dir"].get<std::string>();
-    }
-    if (j.contains("lora_source") && j["lora_source"].is_string()) {
-        params.lora_source = j["lora_source"].get<std::string>();
-    }
-    if (j.contains("lora_file") && j["lora_file"].is_string()) {
-        params.lora_file = j["lora_file"].get<std::string>();
-    }
-    if (j.contains("lora_revision") && j["lora_revision"].is_string()) {
-        params.lora_revision = j["lora_revision"].get<std::string>();
-    }
-    if (j.contains("lora_cache_dir") && j["lora_cache_dir"].is_string()) {
-        params.lora_cache_dir = j["lora_cache_dir"].get<std::string>();
-    }
-    if (j.contains("lora_export_dir") && j["lora_export_dir"].is_string()) {
-        params.lora_export_dir = j["lora_export_dir"].get<std::string>();
-    }
-    if (j.contains("lora_force") && j["lora_force"].is_boolean()) {
-        params.lora_force = j["lora_force"].get<bool>();
-    }
-    if (j.contains("lora_keep_cache") && j["lora_keep_cache"].is_boolean()) {
-        params.lora_keep_cache = j["lora_keep_cache"].get<bool>();
-    }
-    if (j.contains("lora_rank") && j["lora_rank"].is_number_integer()) {
-        params.lora_rank = j["lora_rank"].get<int>();
-    }
-    if (j.contains("lora_scale") && j["lora_scale"].is_number()) {
-        params.lora_scale = j["lora_scale"].get<float>();
-    }
-}
-
-void apply_gguf_json_options(GenParams& params, const json& j) {
-    if (j.contains("gguf_path") && j["gguf_path"].is_string()) {
-        params.gguf_path = j["gguf_path"].get<std::string>();
-    }
-    if (j.contains("gguf_repo") && j["gguf_repo"].is_string()) {
-        params.gguf_repo = j["gguf_repo"].get<std::string>();
-    }
-    if (j.contains("gguf_file") && j["gguf_file"].is_string()) {
-        params.gguf_file = j["gguf_file"].get<std::string>();
-    }
-    if (j.contains("gguf_revision") && j["gguf_revision"].is_string()) {
-        params.gguf_revision = j["gguf_revision"].get<std::string>();
-    }
-    if (j.contains("gguf_hf_token") && j["gguf_hf_token"].is_string()) {
-        params.gguf_hf_token = j["gguf_hf_token"].get<std::string>();
-    }
-    if (j.contains("force_gguf_download") && j["force_gguf_download"].is_boolean()) {
-        params.force_gguf_download = j["force_gguf_download"].get<bool>();
-    }
+    throw BadRequest(key + " must be an integer");
 }
 
 }  // namespace
 
-std::string get_response_format(const std::string& body) {
-    try {
-        json j = json::parse(body);
-        if (j.contains("response_format") && j["response_format"].is_string()) {
-            return j["response_format"].get<std::string>();
-        }
-    } catch (...) {
-    }
-    return "b64_json";
+const config::ModelConfig& parse_model(const json& body) {
+    if (!body.contains("model")) return config::default_model();
+    if (!body["model"].is_string()) throw BadRequest("model must be a string");
+    const auto id = body["model"].get<std::string>();
+    const auto* model = config::find_model(id);
+    if (!model) throw BadRequest("unknown model: " + id + "; see GET /v1/models");
+    return *model;
 }
 
-GenParams parse_request(const std::string& body) {
-    std::cout << "========== RAW HTTP BODY ==========\n";
-    std::cout << body << "\n";
-    std::cout << "===================================\n";
-
-    GenParams params;
-    params.model = config::model_id;
-    apply_cli_defaults(params);
-
-    try {
-        json j = json::parse(body);
-
-        if (j.contains("model") && j["model"].is_string()) {
-            params.model = j["model"].get<std::string>();
+std::string decode_image_data(const std::string& text) {
+    std::string_view data(text);
+    if (data.rfind("data:", 0) == 0) {
+        const auto comma = data.find(',');
+        if (comma == std::string_view::npos ||
+            to_lower(data.substr(0, comma)).find(";base64") == std::string::npos) {
+            throw BadRequest("image data URLs must be base64 encoded");
         }
-        if (j.contains("prompt") && j["prompt"].is_string()) {
-            params.prompt = j["prompt"].get<std::string>();
-        }
-        if (j.contains("steps") && j["steps"].is_number_integer()) {
-            params.steps = j["steps"].get<int>();
-        }
-        if (j.contains("seed") && j["seed"].is_number_integer()) {
-            params.seed = j["seed"].get<int>();
-        }
-        if (j.contains("size") && j["size"].is_string()) {
-            apply_size_preset(params, j["size"].get<std::string>());
-        }
-        apply_lora_json_options(params, j);
-        apply_gguf_json_options(params, j);
-        return params;
-    } catch (...) {
+        data.remove_prefix(comma + 1);
     }
-
-    apply_size_from_body_fallback(params, body);
-
-    std::regex steps_regex(R"("steps"\s*:\s*(\d+))");
-    std::smatch match_steps;
-    if (std::regex_search(body, match_steps, steps_regex)) {
-        params.steps = std::stoi(match_steps[1].str());
+    auto image = base64_decode(data);
+    if (!image || image->empty()) {
+        throw BadRequest("image must be base64 or a data:image/...;base64 URL");
     }
-
-    std::regex seed_regex(R"("seed"\s*:\s*(\d+))");
-    std::smatch match_seed;
-    if (std::regex_search(body, match_seed, seed_regex)) {
-        params.seed = std::stoi(match_seed[1].str());
-    }
-
-    const std::string prompt_key = "\"prompt\":";
-    const size_t p_key_pos = body.find(prompt_key);
-    if (p_key_pos != std::string::npos) {
-        const size_t v_start = body.find("\"", p_key_pos + prompt_key.length());
-        const size_t v_end = body.find("\"", v_start + 1);
-        if (v_start != std::string::npos && v_end != std::string::npos) {
-            params.prompt = body.substr(v_start + 1, v_end - v_start - 1);
-        }
-    }
-
-    return params;
+    return std::move(*image);
 }
 
-GenParams parse_multipart_request(const http::request<http::string_body>& req) {
-    GenParams params;
-    params.model = config::model_id;
-    apply_cli_defaults(params);
-    ensure_output_dir();
+GenerationRequest parse_generation_request(const std::string& body) {
+    return parse_fields(parse_json_object(body), false);
+}
 
-    const std::string content_type(req[http::field::content_type]);
-    std::string boundary;
-    const auto pos = content_type.find("boundary=");
-    if (pos != std::string::npos) {
-        boundary = "--" + content_type.substr(pos + 9);
-    } else {
-        throw std::runtime_error("Missing multipart boundary");
-    }
-
-    const std::string& body = req.body();
-    size_t start_pos = 0;
-    std::set<std::pair<std::size_t, std::uint64_t>> saved_image_parts;
-
-    while ((start_pos = body.find(boundary, start_pos)) != std::string::npos) {
-        start_pos += boundary.length();
-        if (body.compare(start_pos, 2, "--") == 0) break;
-        start_pos += 2;
-
-        const size_t header_end = body.find("\r\n\r\n", start_pos);
-        if (header_end == std::string::npos) break;
-
-        const std::string headers = body.substr(start_pos, header_end - start_pos);
-        const size_t body_start = header_end + 4;
-        const size_t next_boundary = body.find(boundary, body_start);
-        if (next_boundary == std::string::npos) break;
-
-        const size_t data_len =
-            (next_boundary > body_start + 2) ? (next_boundary - body_start - 2) : 0;
-        const std::string part_data = body.substr(body_start, data_len);
-
-        std::smatch match;
-        if (std::regex_search(headers, match, std::regex(R"re(name="([^"]+)")re"))) {
-            const std::string name = match[1].str();
-
-            if (name == "prompt") {
-                params.prompt = part_data;
-            } else if (name == "size") {
-                apply_size_preset(params, part_data);
-            } else if (name == "model") {
-                params.model = part_data;
-            } else if (name == "lora_dir") {
-                params.lora_dir = part_data;
-            } else if (name == "lora_source") {
-                params.lora_source = part_data;
-            } else if (name == "lora_file") {
-                params.lora_file = part_data;
-            } else if (name == "lora_revision") {
-                params.lora_revision = part_data;
-            } else if (name == "lora_cache_dir") {
-                params.lora_cache_dir = part_data;
-            } else if (name == "lora_export_dir") {
-                params.lora_export_dir = part_data;
-            } else if (name == "lora_force") {
-                params.lora_force = parse_bool_field(part_data);
-            } else if (name == "lora_keep_cache") {
-                params.lora_keep_cache = parse_bool_field(part_data);
-            } else if (name == "lora_rank") {
-                params.lora_rank = std::stoi(part_data);
-            } else if (name == "lora_scale") {
-                params.lora_scale = std::stof(part_data);
-            } else if (name == "gguf_path") {
-                params.gguf_path = part_data;
-            } else if (name == "gguf_repo") {
-                params.gguf_repo = part_data;
-            } else if (name == "gguf_file") {
-                params.gguf_file = part_data;
-            } else if (name == "gguf_revision") {
-                params.gguf_revision = part_data;
-            } else if (name == "gguf_hf_token") {
-                params.gguf_hf_token = part_data;
-            } else if (name == "force_gguf_download") {
-                params.force_gguf_download = parse_bool_field(part_data);
-            } else if (name == "image[]" || name == "image") {
-                if (!params.input_images.empty()) {
-                    std::cout << "[INFO] Ignoring extra uploaded image part: "
-                              << name << "\n";
-                    start_pos = next_boundary;
-                    continue;
-                }
-
-                const auto signature = image_part_signature(part_data);
-                if (!saved_image_parts.insert(signature).second) {
-                    std::cout << "[INFO] Ignoring duplicate uploaded image part: "
-                              << name << "\n";
-                    start_pos = next_boundary;
-                    continue;
-                }
-
-                const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                    std::chrono::system_clock::now().time_since_epoch())
-                                    .count();
-
-                const std::string tmp_filename =
-                    "upload_" + std::to_string(ms) + "_" +
-                    std::to_string(params.input_images.size()) + ".png";
-                const std::string save_path =
-                    (fs::path(config::output_dir) / tmp_filename).string();
-
-                std::ofstream out(save_path, std::ios::binary);
-                out.write(part_data.data(), static_cast<std::streamsize>(part_data.size()));
-
-                std::cout << "[INFO] Received and saved input image: " << save_path << "\n";
-                params.input_images.push_back(save_path);
+GenerationRequest parse_edit_request(const std::string& content_type, const std::string& body) {
+    json fields = json::object();
+    std::string image;
+    int image_count = 0;
+    if (to_lower(content_type).rfind("multipart/form-data", 0) == 0) {
+        for (auto& part : parse_multipart(content_type, body)) {
+            if (part.name == "image" || part.name == "image[]") {
+                // Open WebUI lists the newest image first; the NPU pipeline takes one.
+                if (image_count++ == 0) image = std::move(part.data);
+            } else if (!part.name.empty()) {
+                fields[part.name] = form_value(part.name, part.data);
             }
         }
-        start_pos = next_boundary;
+    } else {
+        fields = parse_json_object(body);
+        if (fields.contains("image")) {
+            json value = fields["image"];
+            if (value.is_array() && !value.empty()) {
+                image_count = static_cast<int>(value.size());
+                value = value[0];
+            } else {
+                image_count = 1;
+            }
+            if (!value.is_string()) throw BadRequest("image must be a base64 string or data URL");
+            image = decode_image_data(value.get<std::string>());
+            fields.erase("image");
+        }
     }
+    if (image_count == 0) throw BadRequest("image edits need an input image");
+    if (image_count > 1) {
+        std::cout << "[INFO] Received " << image_count << " input images; editing the first\n";
+    }
+    return parse_edit_request(fields, std::move(image));
+}
 
-    return params;
+GenerationRequest parse_edit_request(const json& body, std::string image) {
+    if (image.empty()) throw BadRequest("input image is empty");
+    GenerationRequest request = parse_fields(body, true);
+    request.image = std::move(image);
+    return request;
 }
 
 }  // namespace server

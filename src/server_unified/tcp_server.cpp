@@ -6,6 +6,7 @@
 #include <boost/asio.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
+#include <filesystem>
 #include <iostream>
 #include <thread>
 
@@ -51,19 +52,25 @@ void do_session(tcp::socket socket) {
 
 }  // namespace
 
-void run_server(bool output_dir_is_temporary) {
+void run_server() {
     net::io_context ioc{1};
     tcp::acceptor acceptor{ioc, {net::ip::make_address("0.0.0.0"), config::port}};
 
     std::cout << "Server running on http://0.0.0.0:" << config::port << "\n";
-    std::cout << "Weights Path: " << config::weights_path << "\n";
-    std::cout << "NPU Base Dir: " << config::npu_base_dir << "\n";
-    std::cout << "Executable Base Dir: " << config::exe_base_dir << "\n";
-    std::cout << "Working Directory: " << config::workdir << "\n";
+    std::cout << "Default Model: " << config::default_model_id << "\n";
+    for (const auto& model : config::models) {
+        std::cout << "Model ID: " << model.id << "\n"
+                  << "  run.exe: " << model.worker_exe << "\n"
+                  << "  Weights Path: " << model.weights_path << "\n"
+                  << "  NPU Files Path: " << model.npu_files_path << "\n"
+                  << "  Supported steps: " << config::supported_steps_text(model) << "\n";
+    }
     std::cout << "Image Output Dir: " << config::output_dir
-              << (output_dir_is_temporary ? " (Temporary)" : "") << "\n";
-    std::cout << "Public Base URL: " << config::public_base_url << "\n";
-    std::cout << "Model ID: " << config::model_id << "\n";
+              << (config::keep_images ? " (PNGs saved)" : " (temporary files removed after generation)") << "\n";
+
+    if (!config::keep_images) {
+        std::cout << "Image URLs: last " << config::kMemoryImageLimit << " images in memory; cleared on restart\n";
+    }
 
     for (;;) {
         tcp::socket socket{ioc};

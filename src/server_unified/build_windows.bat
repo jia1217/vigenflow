@@ -67,14 +67,16 @@ exit /b 1
 
 cl /utf-8 /O2 /EHsc /MD /std:c++17 /D_WIN32_WINNT=0x0A00 /DWIN32_LEAN_AND_MEAN ^
   /I . /I .\include /I "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\include" ^
-  server_main.cpp server_config.cpp file_utils.cpp request_parser.cpp z_image_bf16_export.cpp flux_klein_bf16_export.cpp worker.cpp http_handlers.cpp tcp_server.cpp cli.cpp ^
+  server_main.cpp server_config.cpp file_utils.cpp input_image.cpp request_parser.cpp worker.cpp http_handlers.cpp tcp_server.cpp cli.cpp ^
   /Fo"%OUT_DIR%\\" /Fe"%OUT_DIR%\vgf-serve.exe" ^
-  /link "/LIBPATH:%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\lib" ws2_32.lib "%BOOST_FILESYSTEM_LIB%"
+  /link "/LIBPATH:%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\lib" ws2_32.lib "%BOOST_FILESYSTEM_LIB%" libpng16.lib
 if errorlevel 1 exit /b 1
 
 set "BOOST_FILESYSTEM_DLL=%BOOST_FILESYSTEM_LIB:.lib=.dll%"
 set "BOOST_SYSTEM_DLL=%BOOST_FILESYSTEM_DLL:boost_filesystem=boost_system%"
 if exist "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin\%BOOST_FILESYSTEM_DLL%" copy /Y "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin\%BOOST_FILESYSTEM_DLL%" "%OUT_DIR%\" >nul
 if exist "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin\%BOOST_SYSTEM_DLL%" copy /Y "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin\%BOOST_SYSTEM_DLL%" "%OUT_DIR%\" >nul
+
+for %%D in (libpng16.dll zlib1.dll) do if exist "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin\%%D" copy /Y "%VCPKG_ROOT%\installed\%VCPKG_TRIPLET%\bin\%%D" "%OUT_DIR%\" >nul
 
 echo Built %CD%\%OUT_DIR%\vgf-serve.exe

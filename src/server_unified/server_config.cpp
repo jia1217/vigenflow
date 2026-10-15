@@ -1,156 +1,85 @@
 #include "server_config.hpp"
 
+#include <algorithm>
 #include <filesystem>
-#include <string>
-#include <vector>
 
 namespace server::config {
-
-namespace {
-
 namespace fs = std::filesystem;
 
-bool looks_like_install_root(const fs::path& path) {
-    std::error_code ec;
-    return fs::is_directory(path / "exe_models", ec) &&
-           fs::is_directory(path / "npu_files", ec);
+#ifdef _WIN32
+constexpr const char* kWorkerExeName = "host.exe";
+#else
+constexpr const char* kWorkerExeName = "run.exe";
+#endif
+
+std::array<ModelConfig, 5> models = {{
+    {"z-image-turbo", "z_image_turbo", "z_image_turbo", "z_image_turbo", {4, 8}, 42},
+    {"flux1-schnell", "flux1_schnell", "flux1_schnell", "flux1_schnell", {4}, 0},
+    {"flux2-klein-4B", "flux2_klein_4B", "flux2_klein_4B", "flux2_klein_4B/base", {4}, 42},
+    // Distilled for 8 steps, so 8 is also its default. Its worker writes PNG whatever the file name.
+    {"krea2-turbo", "krea2_turbo", "krea2_turbo", "krea2_turbo", {8}, 42, false, 8, true},
+    // Shares the Flux2 weights; the worker reads base/ and edit/ under its NPU folder.
+    {kEditModelId, "flux2_klein_4B_edit", "flux2_klein_4B", "flux2_klein_4B", {4}, 42, true},
+}};
+std::string default_model_id = "z-image-turbo";
+std::string output_dir = "./images";
+unsigned short port = 11283;
+bool keep_images = false;  // Set true, or pass -k true, to save generated PNGs on disk.
+
+ModelConfig* find_model(const std::string& id) {
+    for (auto& model : models) {
+        if (id == model.id || id == model.directory) return &model;
+    }
+    return nullptr;
 }
 
-std::vector<fs::path> path_and_parents(fs::path path) {
-    std::vector<fs::path> out;
-    if (path.empty()) {
-        return out;
-    }
-
-    std::error_code ec;
-    path = fs::absolute(path, ec);
-    if (ec) {
-        return out;
-    }
-
-    for (;;) {
-        out.push_back(path);
-        const fs::path parent = path.parent_path();
-        if (parent.empty() || parent == path) {
-            break;
-        }
-        path = parent;
-    }
-    return out;
+ModelConfig& default_model() {
+    return *find_model(default_model_id);  // Validated by parse_cli before serving.
 }
 
-fs::path discover_install_root(const char* argv0) {
-    std::vector<fs::path> search_roots;
-
-    std::error_code ec;
-    search_roots.push_back(fs::current_path(ec));
-
-    if (argv0 != nullptr && *argv0 != '\0') {
-        fs::path exe_path(argv0);
-        if (exe_path.is_relative()) {
-            exe_path = fs::absolute(exe_path, ec);
-        }
-        if (!ec) {
-            search_roots.push_back(exe_path.parent_path());
-        }
-    }
-
-    for (const auto& root : search_roots) {
-        for (const auto& candidate : path_and_parents(root)) {
-            if (looks_like_install_root(candidate)) {
-                return candidate;
-            }
-
-            const fs::path vigenflow_win = candidate / "vigenflow_win";
-            if (looks_like_install_root(vigenflow_win)) {
-                return vigenflow_win;
-            }
-        }
-    }
-
-    return {};
-}
-
-std::string normalized_string(const fs::path& path) {
-    std::error_code ec;
-    const fs::path absolute = fs::absolute(path, ec).lexically_normal();
-    return ec ? path.lexically_normal().string() : absolute.string();
-}
-
+namespace {
+// NPU files are one level above vgf-serve; model weights are two levels above.
+fs::path server_root;
 }  // namespace
 
-// const std::string kInstallDir = "/opt/vigenflow";
-const std::string kInstallDir = ".";
-
-std::string model_id = "flux.2-klein-4B";
-std::string served_model_id;
-std::string weights_path = kInstallDir + "/model_weights";
-std::string npu_base_dir = kInstallDir + "/npu_files";
-std::string exe_base_dir = kInstallDir + "/exe_models";
-std::string custom_exe;
-std::string workdir = kInstallDir;
-
-std::string lora_dir;
-std::string lora_catalog_dir;
-std::string lora_model_list;
-std::string lora_model_list_q41;
-std::string lora_model_list_bf16;
-std::string lora_model_list_flux;
-std::string lora_model_list_flux_edit;
-std::string lora_source;
-std::string lora_file;
-std::string lora_revision = "main";
-std::string lora_cache_dir;
-std::string lora_export_dir;
-bool lora_force = false;
-bool lora_keep_cache = false;
-int lora_rank = 0;
-
-std::string gguf_path;
-std::string gguf_repo;
-std::string gguf_file;
-std::string gguf_revision;
-std::string gguf_hf_token;
-bool force_gguf_download = false;
-
-bool auto_download_z_image_bf16 = true;
-bool force_z_image_bf16_download = false;
-std::string z_image_bf16_repo = "Tongyi-MAI/Z-Image-Turbo";
-std::string z_image_bf16_revision = "main";
-std::string z_image_bf16_cache_dir;
-std::string z_image_bf16_hf_token;
-
-bool auto_download_flux_klein_bf16 = true;
-bool force_flux_klein_bf16_download = false;
-std::string flux_klein_bf16_repo = "Kelsey1217/FLUX.2-klein-4B-npu";
-std::string flux_klein_bf16_revision = "main";
-std::string flux_klein_bf16_cache_dir;
-std::string flux_klein_bf16_hf_token;
-
-unsigned short port = 11283;
-std::string public_base_url = "http://127.0.0.1:" + std::to_string(port);
-std::string output_dir = "../images";
-
-bool keep_images = false;
-
-int default_seed = 42;
-int default_steps = 4;
-int default_height = 1024;
-int default_width = 1024;
-std::string default_prompt =
-    "Young Chinese woman in red Hanfu, intricate embroidery. Impeccable makeup...";
-
 void initialize_default_paths(const char* argv0) {
-    const fs::path install_root = discover_install_root(argv0);
-    if (install_root.empty()) {
-        return;
+    const fs::path server_dir = fs::absolute(argv0 && *argv0 ? argv0 : "vgf-serve").parent_path();
+    server_root = (server_dir / "..").lexically_normal();
+    for (auto& model : models) {
+        // Development tree: ../<model>/run.exe. Packaged: exe_models/<model>/run.exe next to vgf-serve.
+        const fs::path dev = server_dir / ".." / model.directory / kWorkerExeName;
+        const fs::path packaged = server_dir / "exe_models" / model.directory / kWorkerExeName;
+        model.worker_exe = (fs::exists(dev) || !fs::exists(packaged) ? dev : packaged).lexically_normal().string();
     }
+}
 
-    const std::string root = normalized_string(install_root);
-    workdir = root;
-    weights_path = normalized_string(install_root / "model_weights");
-    npu_base_dir = normalized_string(install_root / "npu_files");
-    exe_base_dir = normalized_string(install_root / "exe_models");
+void make_paths_absolute() {
+    for (auto& model : models) {
+        model.worker_exe = fs::absolute(model.worker_exe).lexically_normal().string();
+        const auto& root = server_root;
+        if (model.weights_path.empty()) {
+            model.weights_path = (root / ".." / "all_model_weights" / model.weights_directory).lexically_normal().string();
+        }
+        if (model.npu_files_path.empty()) {
+            model.npu_files_path = (root / "all_npu_files" / model.npu_directory).string();
+        }
+        model.weights_path = fs::absolute(model.weights_path).lexically_normal().string();
+        model.npu_files_path = fs::absolute(model.npu_files_path).lexically_normal().string();
+    }
+    output_dir = fs::absolute(output_dir).lexically_normal().string();
+}
+
+bool is_supported_steps(const ModelConfig& model, int steps) {
+    return std::find(model.supported_steps.begin(), model.supported_steps.end(), steps)
+           != model.supported_steps.end();
+}
+
+std::string supported_steps_text(const ModelConfig& model) {
+    std::string result;
+    for (int steps : model.supported_steps) {
+        result += (result.empty() ? "" : ", ") + std::to_string(steps);
+    }
+    return result;
 }
 
 }  // namespace server::config

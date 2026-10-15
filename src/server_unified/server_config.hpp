@@ -1,68 +1,47 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <string>
+#include <vector>
 
 namespace server::config {
 
-extern const std::string kInstallDir;
+// All compiled NPU pipelines currently produce 1024x1024 images.
+inline constexpr int kImageHeight = 1024;
+inline constexpr int kImageWidth = 1024;
+inline constexpr std::size_t kMemoryImageLimit = 32;
 
-extern std::string model_id;
-extern std::string served_model_id;
-extern std::string weights_path;
-extern std::string npu_base_dir;
-extern std::string exe_base_dir;
-extern std::string custom_exe;
-extern std::string workdir;
+// Image-edit model; POST /v1/images/edits uses it when no model is given.
+inline constexpr const char* kEditModelId = "flux2-klein-4B-edit";
 
-extern std::string lora_dir;
-extern std::string lora_catalog_dir;
-extern std::string lora_model_list;
-extern std::string lora_model_list_q41;
-extern std::string lora_model_list_bf16;
-extern std::string lora_model_list_flux;
-extern std::string lora_model_list_flux_edit;
-extern std::string lora_source;
-extern std::string lora_file;
-extern std::string lora_revision;
-extern std::string lora_cache_dir;
-extern std::string lora_export_dir;
-extern bool lora_force;
-extern bool lora_keep_cache;
-extern int lora_rank;
+struct ModelConfig {
+    const char* id;
+    const char* directory;          // worker: ../<directory>/run.exe, else exe_models/<directory>/run.exe
+    const char* weights_directory;  // ../../all_model_weights/<weights_directory>
+    const char* npu_directory;      // ../all_npu_files/<npu_directory>
+    std::vector<int> supported_steps;
+    int default_seed;
+    bool edits_image = false;  // worker needs --input_image
+    int default_steps = 4;
+    bool writes_png = false;  // worker saves the final PNG itself; the others save a BMP the server converts
+    std::string worker_exe;
+    std::string weights_path;
+    std::string npu_files_path;
+};
 
-extern std::string gguf_path;
-extern std::string gguf_repo;
-extern std::string gguf_file;
-extern std::string gguf_revision;
-extern std::string gguf_hf_token;
-extern bool force_gguf_download;
-
-extern bool auto_download_z_image_bf16;
-extern bool force_z_image_bf16_download;
-extern std::string z_image_bf16_repo;
-extern std::string z_image_bf16_revision;
-extern std::string z_image_bf16_cache_dir;
-extern std::string z_image_bf16_hf_token;
-
-extern bool auto_download_flux_klein_bf16;
-extern bool force_flux_klein_bf16_download;
-extern std::string flux_klein_bf16_repo;
-extern std::string flux_klein_bf16_revision;
-extern std::string flux_klein_bf16_cache_dir;
-extern std::string flux_klein_bf16_hf_token;
-
-extern unsigned short port;
-extern std::string public_base_url;
+// Configured at startup, then read-only while serving requests.
+extern std::array<ModelConfig, 5> models;
+extern std::string default_model_id;
 extern std::string output_dir;
+extern unsigned short port;
+extern bool keep_images;  // false: delete temporary files and serve image URLs from memory
 
-extern bool keep_images;
-
-extern int default_seed;
-extern int default_steps;
-extern int default_height;
-extern int default_width;
-extern std::string default_prompt;
-
+ModelConfig* find_model(const std::string& id);
+ModelConfig& default_model();
 void initialize_default_paths(const char* argv0);
+void make_paths_absolute();
+bool is_supported_steps(const ModelConfig& model, int steps);
+std::string supported_steps_text(const ModelConfig& model);
 
 }  // namespace server::config

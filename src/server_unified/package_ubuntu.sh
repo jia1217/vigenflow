@@ -1,42 +1,34 @@
 #!/usr/bin/env bash
+# Builds vgf-serve and prepare_base.exe and creates the Ubuntu release zip:
+#
+#   vigenflow_<VERSION>_ubuntu_amd64/
+#     server_running/vgf-serve
+#     server_running/exe_models/<model>/run.exe   launchers from src/exe_models
+#     server_running/lib/libhost_<model>.so        from src/lib (the launchers' RUNPATH is $ORIGIN/../../lib)
+#     server_running/images/
+#     all_npu_files/<model>/                       from src/npu_files
+#     prepare/prepare_base.exe, prepare_models.jsonc
+#     LICENSE, MODEL_LICENSES.md, THIRD_PARTY_NOTICES.md
+#
+# The model weights are not packaged: prepare/prepare_base.exe downloads them into
+# all_model_weights/ next to the extracted package folder, where vgf-serve reads them.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(cd "$SRC_ROOT/.." && pwd)"
+PREPARE_DIR="$SRC_ROOT/prepare_weights"
 
-VERSION="${VERSION:-0.1.2}"
+VERSION="${VERSION:-0.2.0-beta.2}"
 ARCH="${ARCH:-amd64}"
 PACKAGE_NAME="${PACKAGE_NAME:-vigenflow_${VERSION}_ubuntu_${ARCH}}"
 OUT_ROOT="${OUT_ROOT:-$SCRIPT_DIR/release}"
 SERVER_OUT_DIR="${SERVER_OUT_DIR:-$SCRIPT_DIR/vigenflow_ubuntu}"
+EXE_MODELS_DIR="${EXE_MODELS_DIR:-$SRC_ROOT/exe_models}"
+LIB_DIR="${LIB_DIR:-$SRC_ROOT/lib}"
+NPU_FILES_DIR="${NPU_FILES_DIR:-$SRC_ROOT/npu_files}"
 
-resolve_dir() {
-  local label="$1"
-  local env_name="$2"
-  shift 2
-
-  local override="${!env_name:-}"
-  if [[ -n "$override" ]]; then
-    if [[ -d "$override" ]]; then
-      printf '%s\n' "$override"
-      return
-    fi
-    echo "$env_name points to a missing directory: $override" >&2
-    exit 1
-  fi
-
-  local candidate
-  for candidate in "$@"; do
-    if [[ -d "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return
-    fi
-  done
-
-  echo "Could not find $label. Set $env_name=/path/to/$label and rerun." >&2
-  exit 1
-}
+MODELS=(flux1_schnell flux2_klein_4B flux2_klein_4B_edit krea2_turbo z_image_turbo)
 
 if ! command -v zip >/dev/null 2>&1; then
   echo "zip is required to create the release package." >&2
@@ -44,29 +36,34 @@ if ! command -v zip >/dev/null 2>&1; then
   exit 1
 fi
 
-EXE_MODELS_DIR="$(resolve_dir "exe_models" EXE_MODELS_DIR \
-  "$SRC_ROOT/exe_models" \
-  "$REPO_ROOT/deb_lib/vigenflow/exe_models" \
-  "$REPO_ROOT/deb_lib/vgf-zip/vigenflow/exe_models")"
-NPU_FILES_DIR="$(resolve_dir "npu_files" NPU_FILES_DIR \
-  "$SRC_ROOT/npu_files" \
-  "$REPO_ROOT/deb_lib/vigenflow/npu_files" \
-  "$REPO_ROOT/deb_lib/vgf-zip/vigenflow/npu_files")"
-MODEL_WEIGHTS_DIR="$(resolve_dir "model_weights" MODEL_WEIGHTS_DIR \
-  "$SRC_ROOT/model_weights" \
-  "$REPO_ROOT/deb_lib/vigenflow/model_weights" \
-  "$REPO_ROOT/deb_lib/vgf-zip/vigenflow/model_weights")"
+for dir in "$EXE_MODELS_DIR" "$LIB_DIR" "$NPU_FILES_DIR"; do
+  if [[ ! -d "$dir" ]]; then
+    echo "Missing directory: $dir" >&2
+    exit 1
+  fi
+done
+# vgf-serve refuses to start unless every worker exists.
+for model in "${MODELS[@]}"; do
+  if [[ ! -f "$EXE_MODELS_DIR/$model/run.exe" ]]; then
+    echo "Missing worker: $EXE_MODELS_DIR/$model/run.exe (build it with make -C src/models/$model)" >&2
+    exit 1
+  fi
+done
 
 if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
   OUT_DIR="$SERVER_OUT_DIR" bash "$SCRIPT_DIR/build_ubuntu.sh"
+  bash "$PREPARE_DIR/build_ubuntu.sh"
 fi
 
 SERVER_BIN="${SERVER_BIN:-$SERVER_OUT_DIR/vgf-serve}"
-if [[ ! -f "$SERVER_BIN" ]]; then
-  echo "Server binary not found: $SERVER_BIN" >&2
-  echo "Run build_ubuntu.sh first or set SERVER_BIN=/path/to/vgf-serve." >&2
-  exit 1
-fi
+PREPARE_BIN="${PREPARE_BIN:-$PREPARE_DIR/prepare_base.exe}"
+for bin in "$SERVER_BIN" "$PREPARE_BIN"; do
+  if [[ ! -f "$bin" ]]; then
+    echo "Binary not found: $bin" >&2
+    echo "Build it first or unset SKIP_BUILD." >&2
+    exit 1
+  fi
+done
 
 mkdir -p "$OUT_ROOT"
 OUT_ROOT="$(cd "$OUT_ROOT" && pwd)"
@@ -74,38 +71,26 @@ STAGE_DIR="$OUT_ROOT/$PACKAGE_NAME"
 ZIP_PATH="$OUT_ROOT/$PACKAGE_NAME.zip"
 
 rm -rf "$STAGE_DIR" "$ZIP_PATH"
-mkdir -p "$STAGE_DIR"
+mkdir -p "$STAGE_DIR/server_running/images" "$STAGE_DIR/server_running/exe_models" \
+  "$STAGE_DIR/server_running/lib" "$STAGE_DIR/prepare"
 
-install -m 0755 "$SERVER_BIN" "$STAGE_DIR/vgf-serve"
-cp -a "$EXE_MODELS_DIR" "$STAGE_DIR/exe_models"
-cp -a "$NPU_FILES_DIR" "$STAGE_DIR/npu_files"
-cp -a "$MODEL_WEIGHTS_DIR" "$STAGE_DIR/model_weights"
-
-find "$STAGE_DIR/model_weights" -type d -name '.*_hf_cache' -prune -exec rm -rf {} +
-find "$STAGE_DIR/model_weights" -type d -name '.cache' -prune -exec rm -rf {} +
-find "$STAGE_DIR/model_weights" -type f \( \
-  -name '*.safetensors' -o \
-  -name '*.incomplete' -o \
-  -name '*.metadata' \
-\) -delete
-
-for catalog in \
-  z_image_q41_lora_models.jsonc \
-  z_image_bf16_lora_models.jsonc \
-  flux_klein_lora_models.jsonc \
-  flux_klein_edit_lora_models.jsonc; do
-  cp "$SCRIPT_DIR/$catalog" "$STAGE_DIR/$catalog"
+install -m 0755 "$SERVER_BIN" "$STAGE_DIR/server_running/vgf-serve"
+for model in "${MODELS[@]}"; do
+  install -D -m 0755 "$EXE_MODELS_DIR/$model/run.exe" "$STAGE_DIR/server_running/exe_models/$model/run.exe"
 done
+cp -a "$LIB_DIR"/libhost_*.so "$STAGE_DIR/server_running/lib/"
+cp -a "$NPU_FILES_DIR" "$STAGE_DIR/all_npu_files"
+
+install -m 0755 "$PREPARE_BIN" "$STAGE_DIR/prepare/prepare_base.exe"
+cp "$PREPARE_DIR/prepare_models.jsonc" "$STAGE_DIR/prepare/"
 
 for doc in LICENSE MODEL_LICENSES.md THIRD_PARTY_NOTICES.md; do
-  cp "$SRC_ROOT/../$doc" "$STAGE_DIR/$doc"
+  cp "$REPO_ROOT/$doc" "$STAGE_DIR/$doc"
 done
-
-find "$STAGE_DIR/exe_models" -type f -name 'run.exe' -exec chmod +x {} +
 
 (
   cd "$OUT_ROOT"
-  zip -r "$ZIP_PATH" "$PACKAGE_NAME"
+  zip -qr "$ZIP_PATH" "$PACKAGE_NAME"
 )
 
 echo "Created $ZIP_PATH"

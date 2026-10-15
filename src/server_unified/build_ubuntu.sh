@@ -8,15 +8,14 @@ CXX="${CXX:-g++}"
 OUT_DIR="${OUT_DIR:-vigenflow_ubuntu}"
 OUT="${OUT:-${OUT_DIR}/vgf-serve}"
 
-mkdir -p "$OUT_DIR"
+mkdir -p "$(dirname "$OUT")"
 
 SOURCES=(
   server_main.cpp
   server_config.cpp
   file_utils.cpp
+  input_image.cpp
   request_parser.cpp
-  z_image_bf16_export.cpp
-  flux_klein_bf16_export.cpp
   worker.cpp
   http_handlers.cpp
   tcp_server.cpp
@@ -27,7 +26,9 @@ SOURCES=(
   "${SOURCES[@]}" \
   -I. -I./include \
   -pthread \
+  -lboost_system \
+  -lboost_filesystem -lpng \
   ${LDFLAGS:-} \
   -o "$OUT"
 
-echo "Built $SCRIPT_DIR/$OUT"
+echo "Built $(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT")"

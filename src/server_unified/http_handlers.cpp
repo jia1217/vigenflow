@@ -1,24 +1,22 @@
 #include "http_handlers.hpp"
 
 #include "file_utils.hpp"
+#include "input_image.hpp"
 #include "request_parser.hpp"
 #include "server_config.hpp"
 #include "worker.hpp"
 
-#include <algorithm>
-#include <chrono>
+#include <atomic>
 #include <cctype>
-#include <cstdint>
 #include <ctime>
+#include <deque>
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <optional>
-#include <set>
 #include <sstream>
-#include <thread>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -28,26 +26,12 @@ namespace server {
 
 namespace {
 
+// ponytail: all models share one NPU; use per-device locks if more NPUs are added.
 std::mutex g_infer_mutex;
-std::mutex g_openwebui_model_mutex;
-std::mutex g_automatic1111_model_mutex;
-std::mutex g_last_generation_info_mutex;
-std::string g_last_openwebui_model;
-std::string g_last_openwebui_edit_model;
-std::string g_automatic1111_model;
-json g_last_generation_info = json::object();
-std::uint64_t g_openwebui_model_generation = 0;
-std::uint64_t g_openwebui_edit_model_generation = 0;
-std::chrono::steady_clock::time_point g_last_openwebui_model_at{};
-std::chrono::steady_clock::time_point g_last_openwebui_edit_model_at{};
 
-constexpr auto kRecentOpenWebUIModelWindow = std::chrono::seconds(20);
-
-struct RememberedOpenWebUIModel {
-    std::optional<std::string> model;
-    std::uint64_t generation = 0;
-    std::chrono::steady_clock::time_point remembered_at{};
-};
+// Keep only the latest kMemoryImageLimit image URLs; -k true preserves older chats on disk.
+std::mutex g_images_mutex;
+std::deque<std::pair<std::string, std::vector<char>>> g_images;
 
 http::response<http::string_body> make_json_response(
     http::status status, unsigned version, bool keep_alive, const json& body) {
@@ -63,6 +47,7 @@ http::response<http::vector_body<char>> make_image_response(
     unsigned version, bool keep_alive, std::vector<char>&& data, const std::string& mime) {
     http::response<http::vector_body<char>> res{http::status::ok, version};
     res.set(http::field::content_type, mime);
+    res.set(http::field::content_disposition, "inline");
     res.keep_alive(keep_alive);
     res.body() = std::move(data);
     res.prepare_payload();
@@ -80,24 +65,22 @@ std::string format_whole_seconds(double seconds) {
     return std::to_string(rounded) + "s";
 }
 
-nlohmann::ordered_json build_openwebui_generation_info(
+nlohmann::ordered_json build_generation_info(
     const GenParams& params,
     const GenerationTimingInfo& timing) {
     nlohmann::ordered_json info;
-    info["1_Image_H"] = params.H;
-    info["2_Image_W"] = params.W;
-    info["3_Denoising_steps"] = timing.denoising_steps.value_or(params.steps);
+    info["0_Model"] = params.model->id;
+    info["1_Image_H"] = config::kImageHeight;
+    info["2_Image_W"] = config::kImageWidth;
+    info["3_Denoising_steps"] = params.steps;
+    info["4_Seed"] = params.seed;
 
-    if (timing.vae_encoder_seconds) {
-        info["4_Vae_encoder"] = format_seconds(*timing.vae_encoder_seconds);
-    }
     if (timing.text_encoder_seconds) {
         info["5_Text_encoder"] = format_seconds(*timing.text_encoder_seconds);
     }
     if (timing.denoising_seconds_per_step) {
         const double total_seconds = timing.denoising_total_seconds.value_or(
-            *timing.denoising_seconds_per_step *
-            static_cast<double>(timing.denoising_steps.value_or(params.steps)));
+            *timing.denoising_seconds_per_step * params.steps);
         info["6_Denoising"] =
             format_seconds(*timing.denoising_seconds_per_step) + "/step, " +
             format_whole_seconds(total_seconds);
@@ -109,915 +92,39 @@ nlohmann::ordered_json build_openwebui_generation_info(
         info["8_E2E_runtime"] = format_seconds(*timing.e2e_runtime_seconds);
     }
 
+    info["9_Worker_wall_time"] = format_seconds(timing.worker_wall_seconds);
     return info;
 }
 
-json generation_info_as_json(const nlohmann::ordered_json& info) {
-    return json::parse(info.dump());
+// Base URL as the client reached us, so returned image URLs work off-machine too.
+std::string request_base_url(const http::request<http::string_body>& req) {
+    const auto host = req[http::field::host];
+    if (!host.empty()) {
+        return "http://" + std::string(host);
+    }
+    return "http://127.0.0.1:" + std::to_string(config::port);
 }
 
-void remember_generation_info(const json& info) {
-    std::lock_guard<std::mutex> lock(g_last_generation_info_mutex);
-    g_last_generation_info = info;
-}
-
-json last_generation_info_or_default() {
-    std::lock_guard<std::mutex> lock(g_last_generation_info_mutex);
-    if (!g_last_generation_info.empty()) {
-        return g_last_generation_info;
+// Both chat and image API URLs obey the same storage setting.
+std::string publish_image(const http::request<http::string_body>& req, const std::string& path) {
+    const auto filename = fs::path(path).filename().string();
+    if (!config::keep_images) {
+        auto data = read_binary_file(path);
+        cleanup_generated_image(path, false);
+        std::lock_guard<std::mutex> lock(g_images_mutex);
+        g_images.emplace_back(filename, std::move(data));
+        while (g_images.size() > config::kMemoryImageLimit) g_images.pop_front();
     }
-    return json::object();
-}
-
-json build_image_response_body(const GenParams& params, const WorkerResult& result) {
-    const auto data = read_binary_file(result.image_path);
-    const auto ordered_info = build_openwebui_generation_info(params, result.timing);
-    const std::string info_text = ordered_info.dump();
-    const json metadata = generation_info_as_json(ordered_info);
-    remember_generation_info(metadata);
-
-    const json item = {
-        {"b64_json", base64_encode(data)},
-        {"revised_prompt", params.prompt},
-        {"info", info_text},
-        {"metadata", metadata}};
-    return {
-        {"created", static_cast<long long>(std::time(nullptr))},
-        {"data", json::array({item})},
-        {"info", info_text},
-        {"metadata", metadata}};
-}
-
-constexpr const char* kZImageTurboQ41ModelId = "z-image-turbo-Q4_1-GGUF";
-constexpr const char* kZImageTurboQ41LoraModelId = "z-image-turbo-Q4_1-lora";
-constexpr const char* kZImageTurboQ41GgufLoraModelId = "z-image-turbo-Q4_1-GGUF-lora";
-constexpr const char* kZImageTurboBf16ModelId = "z-image-turbo-BF16";
-constexpr const char* kZImageTurboBf16LoraModelId = "z-image-turbo-BF16-lora";
-
-std::string configured_served_model_id() {
-    const std::string model_id = !config::served_model_id.empty()
-        ? config::served_model_id
-        : config::model_id;
-
-    if (model_id == "flux.2-klein-4B (lora)" || model_id == "flux.2-klein-4B(lora)" ||
-        model_id == "flux.2-klein-lora" || model_id == "flux.2-klein (lora)" ||
-        model_id == "flux.2-klein(lora)") {
-        return "flux.2-klein-4B-lora";
-    }
-    if (model_id == "flux.2-klein-4B-edit (lora)" ||
-        model_id == "flux.2-klein-4B-edit(lora)" ||
-        model_id == "flux.2-klein-edit-lora" ||
-        model_id == "flux.2-klein-edit (lora)" ||
-        model_id == "flux.2-klein-edit(lora)") {
-        return "flux.2-klein-4B-edit-lora";
-    }
-    if (model_id == "z-image-turbo" || model_id == "z-image-turbo-q41") {
-        return kZImageTurboQ41ModelId;
-    }
-    if (model_id == "z-image-turbo-q41-lora" || model_id == "z-image-turbo-q41_lora" ||
-        model_id == "z-image-turbo-lora" || model_id == "z-image-turbo-lora-q41" ||
-        model_id == kZImageTurboQ41GgufLoraModelId) {
-        return kZImageTurboQ41LoraModelId;
-    }
-    if (model_id == "z-image-turbo-bf16") {
-        return kZImageTurboBf16ModelId;
-    }
-    if (model_id == "z-image-turbo-bf16 (lora)" || model_id == "z-image-turbo-bf16(lora)" ||
-        model_id == "z-image-turbo-bf16-lora") {
-        return kZImageTurboBf16LoraModelId;
-    }
-
-    return model_id;
-}
-
-std::string current_automatic1111_model_id() {
-    std::lock_guard<std::mutex> lock(g_automatic1111_model_mutex);
-    return g_automatic1111_model.empty() ? configured_served_model_id() : g_automatic1111_model;
-}
-
-void set_current_automatic1111_model_id(const std::string& model_id) {
-    if (model_id.empty()) {
-        return;
-    }
-
-    std::lock_guard<std::mutex> lock(g_automatic1111_model_mutex);
-    g_automatic1111_model = model_id;
-    std::cout << "[INFO] Selected Automatic1111/OpenWebUI model: "
-              << g_automatic1111_model << "\n";
-}
-
-bool is_flux_klein_model(const std::string& model_id) {
-    return model_id == "flux.2-klein-4B" || model_id == "flux.2-klein" ||
-           model_id == "flux.2-klein-4B (lora)" || model_id == "flux.2-klein-4B(lora)" ||
-           model_id == "flux.2-klein-4B-lora" || model_id == "flux.2-klein (lora)" ||
-           model_id == "flux.2-klein(lora)" || model_id == "flux.2-klein-lora" ||
-           model_id == "flux.2-klein-4B-edit" || model_id == "flux.2-klein-edit" ||
-           model_id == "flux.2-klein-4B-edit (lora)" ||
-           model_id == "flux.2-klein-4B-edit(lora)" ||
-           model_id == "flux.2-klein-4B-edit-lora" ||
-           model_id == "flux.2-klein-edit (lora)" ||
-           model_id == "flux.2-klein-edit(lora)" ||
-           model_id == "flux.2-klein-edit-lora";
-}
-
-bool is_flux_klein_lora_model(const std::string& model_id) {
-    return model_id == "flux.2-klein-4B (lora)" || model_id == "flux.2-klein-4B(lora)" ||
-           model_id == "flux.2-klein-4B-lora" || model_id == "flux.2-klein (lora)" ||
-           model_id == "flux.2-klein(lora)" || model_id == "flux.2-klein-lora" ||
-           model_id == "flux.2-klein-4B-edit (lora)" ||
-           model_id == "flux.2-klein-4B-edit(lora)" ||
-           model_id == "flux.2-klein-4B-edit-lora" ||
-           model_id == "flux.2-klein-edit (lora)" ||
-           model_id == "flux.2-klein-edit(lora)" ||
-           model_id == "flux.2-klein-edit-lora";
-}
-
-bool has_prefix(const std::string& value, const char* prefix) {
-    return value.rfind(prefix, 0) == 0;
-}
-
-std::optional<std::string> canonical_lora_model_id(const std::string& model_id);
-
-bool is_flux_klein_edit_model_id(const std::string& model_id) {
-    return model_id == "flux.2-klein-4B-edit" ||
-           model_id == "flux.2-klein-edit" ||
-           model_id == "flux.2-klein-4B-edit (lora)" ||
-           model_id == "flux.2-klein-4B-edit(lora)" ||
-           model_id == "flux.2-klein-4B-edit-lora" ||
-           model_id == "flux.2-klein-edit (lora)" ||
-           model_id == "flux.2-klein-edit(lora)" ||
-           model_id == "flux.2-klein-edit-lora" ||
-           has_prefix(model_id, "flux.2-klein-4B-edit-lora:") ||
-           has_prefix(model_id, "flux.2-klein-4B-edit-lora-") ||
-           has_prefix(model_id, "flux.2-klein-edit-lora:") ||
-           has_prefix(model_id, "flux.2-klein-edit-lora-");
-}
-
-std::optional<std::string> canonical_edit_model_id(const std::string& model_id) {
-    const std::string selected_model =
-        canonical_lora_model_id(model_id).value_or(model_id);
-
-    if (!is_flux_klein_edit_model_id(selected_model)) {
-        return std::nullopt;
-    }
-
-    if (selected_model == "flux.2-klein-edit") {
-        return std::string("flux.2-klein-4B-edit");
-    }
-    return selected_model;
-}
-
-std::optional<std::string> canonical_specific_edit_lora_model_id(const std::string& model_id) {
-    const auto canonical_model = canonical_lora_model_id(model_id);
-    if (!canonical_model || !is_flux_klein_edit_model_id(*canonical_model)) {
-        return std::nullopt;
-    }
-
-    if (has_prefix(*canonical_model, "flux.2-klein-4B-edit-lora-") ||
-        has_prefix(*canonical_model, "flux.2-klein-4B-edit-lora:") ||
-        has_prefix(*canonical_model, "flux.2-klein-edit-lora-") ||
-        has_prefix(*canonical_model, "flux.2-klein-edit-lora:")) {
-        return canonical_model;
-    }
-
-    return std::nullopt;
-}
-
-bool is_z_image_bf16_model(const std::string& model_id) {
-    return model_id == "z-image-turbo-bf16" || model_id == kZImageTurboBf16ModelId ||
-           model_id == "z-image-turbo-bf16 (lora)" || model_id == "z-image-turbo-bf16(lora)" ||
-           model_id == "z-image-turbo-bf16-lora" || model_id == kZImageTurboBf16LoraModelId;
-}
-
-bool is_z_image_bf16_lora_model(const std::string& model_id) {
-    return model_id == "z-image-turbo-bf16 (lora)" || model_id == "z-image-turbo-bf16(lora)" ||
-           model_id == "z-image-turbo-bf16-lora" || model_id == kZImageTurboBf16LoraModelId;
-}
-
-bool is_z_image_q41_lora_model(const std::string& model_id) {
-    return model_id == "z-image-turbo-q41-lora" ||
-           model_id == "z-image-turbo-q41_lora" ||
-           model_id == "z-image-turbo-lora" ||
-           model_id == "z-image-turbo-lora-q41" ||
-           model_id == kZImageTurboQ41LoraModelId ||
-           model_id == kZImageTurboQ41GgufLoraModelId;
-}
-
-bool is_z_image_lora_model(const std::string& model_id) {
-    return is_z_image_q41_lora_model(model_id) ||
-           is_z_image_bf16_lora_model(model_id);
-}
-
-bool is_z_image_q41_model(const std::string& model_id) {
-    return model_id == "z-image-turbo" || model_id == "z-image-turbo-q41" ||
-           model_id == kZImageTurboQ41ModelId ||
-           is_z_image_q41_lora_model(model_id);
-}
-
-bool serving_z_image_bf16(const std::string& served_model_id) {
-    return is_z_image_bf16_model(served_model_id) || is_z_image_bf16_model(config::model_id);
-}
-
-bool serving_z_image_q41(const std::string& served_model_id) {
-    return is_z_image_q41_model(served_model_id) || is_z_image_q41_model(config::model_id);
-}
-
-void add_model_entry(json& data, std::set<std::string>& seen, const std::string& model_id) {
-    if (model_id.empty() || !seen.insert(model_id).second) {
-        return;
-    }
-
-    data.push_back(
-        {{"id", model_id},
-         {"object", "model"},
-         {"created", 0},
-         {"owned_by", "local"}});
-}
-
-void add_sd_model_entry(json& data, std::set<std::string>& seen, const std::string& model_id) {
-    if (model_id.empty() || !seen.insert(model_id).second) {
-        return;
-    }
-
-    data.push_back(
-        {{"title", model_id},
-         {"model_name", model_id},
-         {"hash", nullptr},
-         {"sha256", nullptr},
-         {"filename", model_id},
-         {"config", nullptr}});
-}
-
-bool is_local_model_alias(const std::string& model_id) {
-    return model_id.empty() ||
-           model_id == "local-model" ||
-           model_id == "local_model" ||
-           model_id == "local-models" ||
-           model_id == "local_models" ||
-           model_id == "local-model-1" ||
-           model_id == "local_model_1" ||
-           model_id == "local-model-npu" ||
-           model_id == "local_model_npu" ||
-           model_id == "local-model-npu-1" ||
-           model_id == "local_model_npu_1" ||
-           model_id == "edit_model";
-}
-
-std::optional<std::string> canonical_lora_model_id(const std::string& model_id) {
-    const auto entry = resolve_lora_model_entry(model_id);
-    if (!entry) {
-        return std::nullopt;
-    }
-    return entry->model_id;
-}
-
-bool is_generic_flux_klein_lora_model(const std::string& model_id) {
-    if (canonical_lora_model_id(model_id)) {
-        return false;
-    }
-    if (is_flux_klein_lora_model(model_id)) {
-        return true;
-    }
-    if (is_local_model_alias(model_id)) {
-        if (is_flux_klein_lora_model(config::model_id) &&
-            !canonical_lora_model_id(config::model_id)) {
-            return true;
-        }
-        return !config::served_model_id.empty() &&
-               is_flux_klein_lora_model(config::served_model_id) &&
-               !canonical_lora_model_id(config::served_model_id);
-    }
-    return false;
-}
-
-bool is_generic_z_image_lora_model(const std::string& model_id) {
-    if (canonical_lora_model_id(model_id)) {
-        return false;
-    }
-    if (is_z_image_lora_model(model_id)) {
-        return true;
-    }
-    if (is_local_model_alias(model_id)) {
-        if (is_z_image_lora_model(config::model_id) &&
-            !canonical_lora_model_id(config::model_id)) {
-            return true;
-        }
-        return !config::served_model_id.empty() &&
-               is_z_image_lora_model(config::served_model_id) &&
-               !canonical_lora_model_id(config::served_model_id);
-    }
-    return false;
-}
-
-bool is_generic_lora_model(const std::string& model_id) {
-    return is_generic_flux_klein_lora_model(model_id) ||
-           is_generic_z_image_lora_model(model_id);
-}
-
-bool should_apply_remembered_model(
-    const std::string& requested_model,
-    const std::string& remembered_model) {
-    if (is_local_model_alias(requested_model)) {
-        return !is_local_model_alias(remembered_model);
-    }
-    if (canonical_lora_model_id(requested_model)) {
-        return false;
-    }
-    if (requested_model == "flux.2-klein-4B" ||
-        requested_model == "flux.2-klein" ||
-        requested_model == "flux.2-klein-4B-edit" ||
-        requested_model == "flux.2-klein-edit") {
-        return false;
-    }
-    return normalize_model_target(requested_model) == normalize_model_target(remembered_model);
-}
-
-
-bool contains_string(const std::vector<std::string>& values, const std::string& needle) {
-    return std::find(values.begin(), values.end(), needle) != values.end();
-}
-
-std::vector<std::string> lora_prompt_match_tokens(std::string value) {
-    std::vector<std::string> tokens;
-    std::string token;
-
-    auto flush_token = [&]() {
-        if (token.size() < 3) {
-            token.clear();
-            return;
-        }
-        static const std::vector<std::string> ignored = {
-            "flux", "klein", "lora", "edit", "model", "safetensors", "fal", "the", "and", "with"
-        };
-        if (!contains_string(ignored, token) && !contains_string(tokens, token)) {
-            tokens.push_back(token);
-        }
-        token.clear();
-    };
-
-    for (unsigned char ch : value) {
-        if (std::isalnum(ch)) {
-            token.push_back(static_cast<char>(std::tolower(ch)));
-        } else {
-            flush_token();
-        }
-    }
-    flush_token();
-    return tokens;
-}
-
-int lora_prompt_match_score(const LoraModelEntry& entry, const std::string& prompt) {
-    const auto prompt_tokens = lora_prompt_match_tokens(prompt);
-    if (prompt_tokens.empty()) {
-        return 0;
-    }
-
-    const auto entry_tokens = lora_prompt_match_tokens(
-        entry.model_id + " " + entry.lora_source + " " + entry.lora_file);
-    int score = 0;
-    for (const auto& entry_token : entry_tokens) {
-        for (const auto& prompt_token : prompt_tokens) {
-            if (entry_token == prompt_token ||
-                (entry_token.size() >= 4 && prompt_token.find(entry_token) != std::string::npos) ||
-                (prompt_token.size() >= 4 && entry_token.find(prompt_token) != std::string::npos)) {
-                ++score;
-                break;
-            }
-        }
-    }
-    return score;
-}
-
-std::optional<std::string> prompt_matched_lora_model_id(
-    const std::string& requested_model,
-    const std::string& prompt) {
-    const std::string requested_target = normalize_model_target(requested_model);
-    std::optional<LoraModelEntry> best_entry;
-    int best_score = 0;
-    bool tied = false;
-
-    for (const auto& entry : list_lora_model_entries()) {
-        if (normalize_model_target(entry.model_id) != requested_target) {
-            continue;
-        }
-        const int score = lora_prompt_match_score(entry, prompt);
-        if (score > best_score) {
-            best_score = score;
-            best_entry = entry;
-            tied = false;
-        } else if (score > 0 && score == best_score) {
-            tied = true;
-        }
-    }
-
-    if (best_score > 0 && best_entry && !tied) {
-        return best_entry->model_id;
-    }
-    return std::nullopt;
-}
-
-std::optional<std::string> request_model_from_json_body(const std::string& body) {
-    try {
-        const json parsed = json::parse(body);
-        if (parsed.contains("model") && parsed["model"].is_string()) {
-            return parsed["model"].get<std::string>();
-        }
-    } catch (...) {
-    }
-    return std::nullopt;
-}
-
-std::optional<std::string> edit_model_from_json_value(const json& value) {
-    if (value.is_string()) {
-        return canonical_edit_model_id(value.get<std::string>());
-    }
-
-    if (value.is_array()) {
-        for (const auto& item : value) {
-            if (const auto edit_model = edit_model_from_json_value(item)) {
-                return edit_model;
-            }
-        }
-        return std::nullopt;
-    }
-
-    if (value.is_object()) {
-        static const std::vector<std::string> preferred_keys = {
-            "model",
-            "model_id",
-            "modelId",
-            "selected_model",
-            "selectedModel",
-            "image_model",
-            "imageModel",
-            "image_model_id",
-            "imageModelId"
-        };
-
-        for (const auto& key : preferred_keys) {
-            if (value.contains(key)) {
-                if (const auto edit_model = edit_model_from_json_value(value.at(key))) {
-                    return edit_model;
-                }
-            }
-        }
-
-        for (auto it = value.begin(); it != value.end(); ++it) {
-            if (const auto edit_model = edit_model_from_json_value(it.value())) {
-                return edit_model;
-            }
-        }
-    }
-
-    return std::nullopt;
-}
-
-std::optional<std::string> specific_edit_lora_model_from_json_value(const json& value) {
-    if (value.is_string()) {
-        return canonical_specific_edit_lora_model_id(value.get<std::string>());
-    }
-
-    if (value.is_array()) {
-        for (const auto& item : value) {
-            if (const auto edit_model = specific_edit_lora_model_from_json_value(item)) {
-                return edit_model;
-            }
-        }
-        return std::nullopt;
-    }
-
-    if (value.is_object()) {
-        for (auto it = value.begin(); it != value.end(); ++it) {
-            if (const auto edit_model = specific_edit_lora_model_from_json_value(it.value())) {
-                return edit_model;
-            }
-        }
-    }
-
-    return std::nullopt;
-}
-
-std::optional<std::string> request_edit_model_from_json_body(const std::string& body) {
-    try {
-        const json parsed = json::parse(body);
-        if (const auto specific_edit_lora = specific_edit_lora_model_from_json_value(parsed)) {
-            return specific_edit_lora;
-        }
-        return edit_model_from_json_value(parsed);
-    } catch (...) {
-    }
-    return std::nullopt;
-}
-
-std::optional<std::string> edit_model_from_text(const std::string& text) {
-    for (const auto& entry : list_lora_model_entries()) {
-        const auto edit_model = canonical_edit_model_id(entry.model_id);
-        if (!edit_model) {
-            continue;
-        }
-        if (text.find(entry.model_id) != std::string::npos) {
-            return edit_model;
-        }
-    }
-
-    for (const auto& entry : list_lora_model_entries()) {
-        const auto edit_model = canonical_specific_edit_lora_model_id(entry.model_id);
-        if (!edit_model) {
-            continue;
-        }
-
-        const auto name_pos = entry.model_id.rfind("-lora-");
-        if (name_pos == std::string::npos) {
-            continue;
-        }
-
-        const std::string lora_name = entry.model_id.substr(name_pos + 6);
-        if (!lora_name.empty() && text.find(lora_name) != std::string::npos) {
-            return edit_model;
-        }
-    }
-
-    const std::vector<std::string> base_edit_models = {
-        "flux.2-klein-4B-edit-lora",
-        "flux.2-klein-edit-lora",
-        "flux.2-klein-4B-edit",
-        "flux.2-klein-edit"
-    };
-
-    for (const auto& model_id : base_edit_models) {
-        if (text.find(model_id) != std::string::npos) {
-            if (const auto edit_model = canonical_edit_model_id(model_id)) {
-                return edit_model;
-            }
-        }
-    }
-
-    return std::nullopt;
-}
-
-void remember_openwebui_model_id(
-    const std::string& model_id,
-    const char* source_label = nullptr) {
-    if (is_local_model_alias(model_id)) {
-        return;
-    }
-
-    std::lock_guard<std::mutex> lock(g_openwebui_model_mutex);
-    const auto canonical_model = canonical_lora_model_id(model_id);
-    const std::string selected_model = canonical_model ? *canonical_model : model_id;
-    if (g_last_openwebui_model != selected_model) {
-        std::cout << "[INFO] Remembered OpenWebUI";
-        if (source_label != nullptr && *source_label != '\0') {
-            std::cout << " " << source_label;
-        }
-        std::cout << " model: " << selected_model << "\n";
-    }
-    g_last_openwebui_model = selected_model;
-    ++g_openwebui_model_generation;
-    g_last_openwebui_model_at = std::chrono::steady_clock::now();
-}
-
-void remember_openwebui_edit_model_id(const std::string& model_id) {
-    const auto edit_model = canonical_edit_model_id(model_id);
-    if (!edit_model) {
-        return;
-    }
-
-    std::lock_guard<std::mutex> lock(g_openwebui_model_mutex);
-    if (g_last_openwebui_edit_model != *edit_model) {
-        std::cout << "[INFO] Remembered OpenWebUI image edit model: "
-                  << *edit_model << "\n";
-    }
-    g_last_openwebui_edit_model = *edit_model;
-    ++g_openwebui_edit_model_generation;
-    g_last_openwebui_edit_model_at = std::chrono::steady_clock::now();
-}
-
-void remember_openwebui_model(const std::string& body) {
-    if (const auto edit_model = request_edit_model_from_json_body(body)) {
-        remember_openwebui_edit_model_id(*edit_model);
-        return;
-    }
-
-    const auto model = request_model_from_json_body(body);
-    if (model) {
-        if (canonical_edit_model_id(*model)) {
-            remember_openwebui_edit_model_id(*model);
-            return;
-        }
-
-        if (!is_local_model_alias(*model)) {
-            remember_openwebui_model_id(*model);
-            return;
-        }
-    }
-}
-
-RememberedOpenWebUIModel remembered_openwebui_model() {
-    std::lock_guard<std::mutex> lock(g_openwebui_model_mutex);
-    if (g_last_openwebui_model.empty()) {
-        return {std::nullopt, g_openwebui_model_generation, {}};
-    }
-    return {g_last_openwebui_model, g_openwebui_model_generation, g_last_openwebui_model_at};
-}
-
-RememberedOpenWebUIModel remembered_openwebui_edit_model() {
-    std::lock_guard<std::mutex> lock(g_openwebui_model_mutex);
-    if (g_last_openwebui_edit_model.empty()) {
-        return {std::nullopt, g_openwebui_edit_model_generation, {}};
-    }
-    return {
-        g_last_openwebui_edit_model,
-        g_openwebui_edit_model_generation,
-        g_last_openwebui_edit_model_at};
-}
-
-bool is_recent_openwebui_model(const RememberedOpenWebUIModel& remembered_model) {
-    return remembered_model.model &&
-           remembered_model.remembered_at != std::chrono::steady_clock::time_point{} &&
-           std::chrono::steady_clock::now() - remembered_model.remembered_at <=
-               kRecentOpenWebUIModelWindow;
-}
-
-std::optional<RememberedOpenWebUIModel> wait_for_openwebui_model_update(
-    const std::string& requested_model,
-    std::uint64_t after_generation) {
-    for (int attempt = 0; attempt < 60; ++attempt) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        const auto remembered_model = remembered_openwebui_model();
-        if (remembered_model.generation == after_generation) {
-            continue;
-        }
-        if (remembered_model.model &&
-            should_apply_remembered_model(requested_model, *remembered_model.model)) {
-            return remembered_model;
-        }
-        return remembered_model;
-    }
-    return std::nullopt;
-}
-
-std::optional<RememberedOpenWebUIModel> wait_for_openwebui_edit_model_update(
-    std::uint64_t after_generation) {
-    for (int attempt = 0; attempt < 60; ++attempt) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        const auto remembered_model = remembered_openwebui_edit_model();
-        if (remembered_model.generation == after_generation) {
-            continue;
-        }
-        return remembered_model;
-    }
-    return std::nullopt;
-}
-
-void apply_openwebui_image_model_alias(GenParams& params) {
-    const bool requested_local_model_alias = is_local_model_alias(params.model);
-
-    if (const auto canonical_model = canonical_lora_model_id(params.model)) {
-        if (*canonical_model != params.model) {
-            std::cout << "[INFO] OpenWebUI sent image model " << params.model
-                      << "; using canonical LoRA model " << *canonical_model << "\n";
-            params.model = *canonical_model;
-        }
-        return;
-    }
-
-    RememberedOpenWebUIModel remembered_model = remembered_openwebui_model();
-    if (requested_local_model_alias) {
-        if (is_recent_openwebui_model(remembered_model) &&
-            should_apply_remembered_model(params.model, *remembered_model.model)) {
-            std::cout << "[INFO] OpenWebUI sent image model " << params.model
-                      << "; using recent OpenWebUI model selected before image edit "
-                      << *remembered_model.model << "\n";
-            params.model = *remembered_model.model;
-            return;
-        }
-
-        if (const auto fresh_model =
-                wait_for_openwebui_model_update(params.model, remembered_model.generation)) {
-            remembered_model = *fresh_model;
-            if (remembered_model.model &&
-                should_apply_remembered_model(params.model, *remembered_model.model)) {
-                std::cout << "[INFO] OpenWebUI sent image model " << params.model
-                          << "; using fresh OpenWebUI model "
-                          << *remembered_model.model << "\n";
-                params.model = *remembered_model.model;
-                return;
-            }
-        }
-
-        std::cout << "[INFO] OpenWebUI sent image model " << params.model
-                  << "; no fresh OpenWebUI model update arrived, using configured model "
-                  << config::model_id << "\n";
-        params.model = config::model_id;
-    }
-
-    if (is_generic_lora_model(params.model)) {
-        if (!requested_local_model_alias) {
-            if (const auto fresh_model =
-                    wait_for_openwebui_model_update(params.model, remembered_model.generation)) {
-                remembered_model = *fresh_model;
-                if (remembered_model.model &&
-                    should_apply_remembered_model(params.model, *remembered_model.model)) {
-                    std::cout << "[INFO] OpenWebUI sent image model " << params.model
-                              << "; using fresh LoRA model " << *remembered_model.model << "\n";
-                    params.model = *remembered_model.model;
-                }
-                return;
-            }
-        }
-        if (const auto prompt_model = prompt_matched_lora_model_id(params.model, params.prompt)) {
-            std::cout << "[INFO] OpenWebUI sent image model " << params.model
-                      << "; using prompt-matched LoRA model " << *prompt_model << "\n";
-            params.model = *prompt_model;
-            return;
-        }
-        if (!requested_local_model_alias &&
-            remembered_model.model &&
-            should_apply_remembered_model(params.model, *remembered_model.model)) {
-            std::cout << "[INFO] OpenWebUI sent generic image model " << params.model
-                      << "; using remembered LoRA model "
-                      << *remembered_model.model << "\n";
-            params.model = *remembered_model.model;
-            return;
-        }
-        return;
-    }
-
-    if (remembered_model.model && *remembered_model.model != params.model) {
-        std::cout << "[INFO] OpenWebUI sent image model " << params.model
-                  << "; ignoring stale remembered OpenWebUI model "
-                  << *remembered_model.model << "\n";
-    }
-}
-
-void apply_openwebui_image_edit_model_alias(GenParams& params) {
-    if (const auto edit_model = canonical_edit_model_id(params.model)) {
-        if (*edit_model != params.model) {
-            std::cout << "[INFO] OpenWebUI sent image edit model " << params.model
-                      << "; using canonical edit model " << *edit_model << "\n";
-            params.model = *edit_model;
-        }
-        remember_openwebui_edit_model_id(params.model);
-        return;
-    }
-
-    if (!is_local_model_alias(params.model)) {
-        std::cout << "[INFO] OpenWebUI sent image edit model " << params.model
-                  << "; not an image-edit model, leaving unchanged\n";
-        return;
-    }
-
-    RememberedOpenWebUIModel remembered_model = remembered_openwebui_edit_model();
-    if (is_recent_openwebui_model(remembered_model) && remembered_model.model) {
-        std::cout << "[INFO] OpenWebUI sent image edit model " << params.model
-                  << "; using recent OpenWebUI image edit model "
-                  << *remembered_model.model << "\n";
-        params.model = *remembered_model.model;
-        return;
-    }
-
-    if (const auto fresh_model =
-            wait_for_openwebui_edit_model_update(remembered_model.generation)) {
-        remembered_model = *fresh_model;
-        if (remembered_model.model) {
-            std::cout << "[INFO] OpenWebUI sent image edit model " << params.model
-                      << "; using fresh OpenWebUI image edit model "
-                      << *remembered_model.model << "\n";
-            params.model = *remembered_model.model;
-            return;
-        }
-    }
-
-    if (const auto configured_edit_model = canonical_edit_model_id(config::model_id)) {
-        std::cout << "[INFO] OpenWebUI sent image edit model " << params.model
-                  << "; using configured image edit model "
-                  << *configured_edit_model << "\n";
-        params.model = *configured_edit_model;
-        return;
-    }
-
-    std::cout << "[INFO] OpenWebUI sent image edit model " << params.model
-              << "; no image edit model was remembered or configured\n";
-}
-
-GenParams parse_automatic1111_txt2img_request(const std::string& body) {
-    GenParams params;
-    params.model = current_automatic1111_model_id();
-    params.seed = config::default_seed;
-    params.steps = config::default_steps;
-    params.H = config::default_height;
-    params.W = config::default_width;
-    params.prompt = config::default_prompt;
-
-    try {
-        const json j = json::parse(body);
-        if (j.contains("prompt") && j["prompt"].is_string()) {
-            params.prompt = j["prompt"].get<std::string>();
-        }
-        if (j.contains("steps") && j["steps"].is_number_integer()) {
-            params.steps = j["steps"].get<int>();
-        }
-        if (j.contains("seed") && j["seed"].is_number_integer()) {
-            params.seed = j["seed"].get<int>();
-        }
-        if (j.contains("height") && j["height"].is_number_integer()) {
-            params.H = j["height"].get<int>();
-        }
-        if (j.contains("width") && j["width"].is_number_integer()) {
-            params.W = j["width"].get<int>();
-        }
-        if (j.contains("model") && j["model"].is_string()) {
-            params.model = j["model"].get<std::string>();
-        }
-        apply_openwebui_image_model_alias(params);
-    } catch (...) {
-    }
-
-    return params;
-}
-
-json request_parameters_or_empty_object(const std::string& body) {
-    try {
-        const json parsed = json::parse(body);
-        if (parsed.is_object()) {
-            return parsed;
-        }
-    } catch (...) {
-    }
-    return json::object();
-}
-
-json build_automatic1111_response_body(
-    const GenParams& params,
-    const WorkerResult& result,
-    const std::string& request_body) {
-    const auto data = read_binary_file(result.image_path);
-    const auto ordered_info = build_openwebui_generation_info(params, result.timing);
-    const json metadata = generation_info_as_json(ordered_info);
-    remember_generation_info(metadata);
-
-    return {
-        {"images", json::array({base64_encode(data)})},
-        {"parameters", request_parameters_or_empty_object(request_body)},
-        {"info", ordered_info.dump()}};
+    return request_base_url(req) + "/images/" + filename;
 }
 
 http::message_generator handle_get_models(unsigned version, bool keep_alive) {
-    // Advertise base models. Catalog entries below add selectable per-LoRA model IDs.
     json data = json::array();
-    std::set<std::string> seen;
-
-    add_model_entry(data, seen, "flux.2-klein-4B");
-    add_model_entry(data, seen, "flux.2-klein-4B-edit");
-    add_model_entry(data, seen, kZImageTurboQ41ModelId);
-    add_model_entry(data, seen, kZImageTurboBf16ModelId);
-
-    for (const auto& entry : list_lora_model_entries()) {
-        add_model_entry(data, seen, entry.model_id);
+    for (const auto& model : config::models) {
+        data.push_back({{"id", model.id}, {"object", "model"}, {"created", 0}, {"owned_by", "local"}});
     }
-
-    const json body = {{"object", "list"}, {"data", data}};
-    return make_json_response(http::status::ok, version, keep_alive, body);
-}
-
-http::message_generator handle_get_sd_models(unsigned version, bool keep_alive) {
-    json data = json::array();
-    std::set<std::string> seen;
-
-    add_sd_model_entry(data, seen, "flux.2-klein-4B");
-    add_sd_model_entry(data, seen, "flux.2-klein-4B-edit");
-    add_sd_model_entry(data, seen, kZImageTurboQ41ModelId);
-    add_sd_model_entry(data, seen, kZImageTurboBf16ModelId);
-
-    for (const auto& entry : list_lora_model_entries()) {
-        add_sd_model_entry(data, seen, entry.model_id);
-    }
-
-    return make_json_response(http::status::ok, version, keep_alive, data);
-}
-
-http::message_generator handle_get_sd_options(unsigned version, bool keep_alive) {
-    return make_json_response(
-        http::status::ok,
-        version,
-        keep_alive,
-        json{{"sd_model_checkpoint", current_automatic1111_model_id()}});
-}
-
-http::message_generator handle_post_sd_options(
-    const std::string& request_body,
-    unsigned version,
-    bool keep_alive) {
-    try {
-        const json body = json::parse(request_body);
-        if (body.contains("sd_model_checkpoint") && body["sd_model_checkpoint"].is_string()) {
-            set_current_automatic1111_model_id(body["sd_model_checkpoint"].get<std::string>());
-        }
-    } catch (...) {
-    }
-
-    return handle_get_sd_options(version, keep_alive);
+    return make_json_response(http::status::ok, version, keep_alive,
+                              json{{"object", "list"}, {"data", data}});
 }
 
 http::message_generator handle_get_image_file(
@@ -1028,7 +135,18 @@ http::message_generator handle_get_image_file(
             http::status::bad_request, version, keep_alive, json{{"error", "invalid filename"}});
     }
 
-    const std::string fullpath = config::output_dir + "/" + filename;
+    {
+        std::lock_guard<std::mutex> lock(g_images_mutex);
+        for (const auto& image : g_images) {
+            if (image.first == filename) {
+                auto res = make_image_response(version, keep_alive, std::vector<char>(image.second), "image/png");
+                res.set(http::field::cache_control, "no-store");
+                return res;
+            }
+        }
+    }
+
+    const std::string fullpath = (fs::path(config::output_dir) / filename).string();
     if (!fs::exists(fullpath)) {
         return make_json_response(
             http::status::not_found, version, keep_alive, json{{"error", "image not found"}});
@@ -1036,86 +154,331 @@ http::message_generator handle_get_image_file(
 
     auto data = read_binary_file(fullpath);
     const std::string ext = fs::path(fullpath).extension().string();
-    std::string mime = "image/png";
-    if (ext == ".jpg" || ext == ".jpeg") {
-        mime = "image/jpeg";
-    } else if (ext == ".webp") {
-        mime = "image/webp";
-    }
-
+    const std::string mime = ext == ".bmp" ? "image/bmp" : "image/png";
     return make_image_response(version, keep_alive, std::move(data), mime);
 }
 
-http::message_generator handle_image_generation(
-    GenParams params,
-    const std::string& request_body,
-    unsigned version,
-    bool keep_alive) {
-    const std::string response_format = get_response_format(request_body);
-    apply_openwebui_image_model_alias(params);
-    WorkerResult result;
+// A PNG this server returned earlier, from the memory cache or the output directory.
+std::optional<std::vector<char>> find_published_image(const std::string& filename) {
+    if (!is_safe_filename(filename)) return std::nullopt;
     {
-        std::lock_guard<std::mutex> lock(g_infer_mutex);
-        result = run_worker(params);
+        std::lock_guard<std::mutex> lock(g_images_mutex);
+        for (const auto& image : g_images) {
+            if (image.first == filename) return image.second;
+        }
+    }
+    const auto path = fs::path(config::output_dir) / filename;
+    if (!fs::is_regular_file(path)) return std::nullopt;
+    return read_binary_file(path.string());
+}
+
+// Edit inputs are decoded before waiting for the NPU, so bad images fail fast.
+WorkerResult run_generation(GenerationRequest& request) {
+    std::optional<WorkerInputImage> input;
+    if (!request.image.empty()) {
+        input.emplace(request.image);
+        request.params.input_image = input->path();
+    }
+    std::lock_guard<std::mutex> lock(g_infer_mutex);
+    return run_worker(request.params);
+}
+
+http::message_generator make_generation_response(
+    const http::request<http::string_body>& req, const GenerationRequest& request,
+    const WorkerResult& result, unsigned version, bool keep_alive) {
+    if (req[http::field::accept] == "image/png") {
+        auto data = read_binary_file(result.image_path);
+        cleanup_generated_image(result.image_path, config::keep_images);
+        auto res = make_image_response(version, keep_alive, std::move(data), "image/png");
+        std::string timing = "worker;dur=" + std::to_string(result.timing.worker_wall_seconds * 1000.0);
+        if (result.timing.e2e_runtime_seconds) {
+            timing += ", inference;dur=" + std::to_string(*result.timing.e2e_runtime_seconds * 1000.0);
+        }
+        res.set("Server-Timing", timing);
+        res.set("X-Image-Model", request.params.model->id);
+        return res;
     }
 
-    const json body = build_image_response_body(params, result);
-    const bool keep_output = config::keep_images || response_format == "url";
-    cleanup_generated_image(result.image_path, keep_output);
+    const bool return_url = request.response_format == "url";
+    json item;
+    if (return_url) {
+        item["url"] = publish_image(req, result.image_path);
+    } else {
+        item["b64_json"] = base64_encode(read_binary_file(result.image_path));
+    }
+
+    const auto info = build_generation_info(request.params, result.timing);
+    const json body = {
+        {"created", static_cast<long long>(std::time(nullptr))},
+        {"model", request.params.model->id},
+        {"data", json::array({item})},
+        {"info", info.dump()},
+        {"metadata", json::parse(info.dump())}};
+
+    if (!return_url) cleanup_generated_image(result.image_path, config::keep_images);
 
     return make_json_response(http::status::ok, version, keep_alive, body);
 }
 
-http::message_generator handle_automatic1111_txt2img(
-    GenParams params,
-    const std::string& request_body,
-    unsigned version,
-    bool keep_alive) {
-    WorkerResult result;
-    {
-        std::lock_guard<std::mutex> lock(g_infer_mutex);
-        result = run_worker(params);
-    }
-
-    const json body = build_automatic1111_response_body(params, result, request_body);
-    cleanup_generated_image(result.image_path, config::keep_images);
-
-    return make_json_response(http::status::ok, version, keep_alive, body);
+http::message_generator handle_image_generation(
+    const http::request<http::string_body>& req, unsigned version, bool keep_alive) {
+    GenerationRequest request = parse_generation_request(req.body());
+    const WorkerResult result = run_generation(request);
+    return make_generation_response(req, request, result, version, keep_alive);
 }
 
 http::message_generator handle_image_edit(
     const http::request<http::string_body>& req, unsigned version, bool keep_alive) {
-    if (req[http::field::content_type].find("multipart/form-data") == std::string::npos) {
-        return make_json_response(
-            http::status::bad_request,
-            version,
-            keep_alive,
-            json{{"error", "Content-Type must be multipart/form-data"}});
-    }
+    GenerationRequest request =
+        parse_edit_request(std::string(req[http::field::content_type]), req.body());
+    const WorkerResult result = run_generation(request);
+    return make_generation_response(req, request, result, version, keep_alive);
+}
 
-    GenParams params = parse_multipart_request(req);
-    if (is_local_model_alias(params.model)) {
-        if (const auto edit_model = edit_model_from_text(req.body())) {
-            std::cout << "[INFO] OpenWebUI image edit request included edit model "
-                      << *edit_model << "\n";
-            params.model = *edit_model;
+bool is_image_tool(const json& name) {
+    return name == "generate_image" || name == "edit_image";
+}
+
+// Resolve an image reference from a chat message to encoded image bytes.
+std::string load_chat_image(const std::string& url) {
+    if (url.rfind("data:", 0) == 0) return decode_image_data(url);
+    const auto at = url.rfind("/images/");
+    if (at != std::string::npos) {
+        const auto filename = url.substr(at + 8, url.find_first_of("?#", at) - (at + 8));
+        if (auto image = find_published_image(filename)) return std::string(image->begin(), image->end());
+        throw BadRequest("the image to edit has expired; attach it again, or start the server "
+                         "with -k true to keep images");
+    }
+    throw BadRequest("cannot read image " + url.substr(0, 200) + "; attach the image to your message");
+}
+
+void add_markdown_images(const std::string& text, std::vector<std::string>& urls) {
+    for (auto pos = text.find("!["); pos != std::string::npos; pos = text.find("![", pos + 2)) {
+        const auto close = text.find("](", pos + 2);
+        if (close == std::string::npos) return;
+        const auto end = text.find_first_of(") \t\r\n", close + 2);
+        if (end != std::string::npos && text[end] == ')') {
+            urls.push_back(text.substr(close + 2, end - close - 2));
         }
     }
-    apply_openwebui_image_edit_model_alias(params);
-    WorkerResult result;
-    try {
-        std::lock_guard<std::mutex> lock(g_infer_mutex);
-        result = run_worker(params);
-    } catch (...) {
-        cleanup_uploaded_images(params.input_images);
-        throw;
+}
+
+bool is_tag_name_char(char c) {
+    return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '-' || c == ':';
+}
+
+// Index just past the '>' that closes a tag, ignoring '>' inside quoted attributes.
+std::size_t find_tag_end(const std::string& text, std::size_t pos) {
+    char quote = 0;
+    for (; pos < text.size(); ++pos) {
+        const char c = text[pos];
+        if (quote) {
+            if (c == quote) quote = 0;
+        } else if (c == '"' || c == '\'') {
+            quote = c;
+        } else if (c == '>') {
+            return pos + 1;
+        }
+    }
+    return std::string::npos;
+}
+
+// Remove complete <tag ...>...</tag> and <tag .../> elements, or with keep_inner only
+// their tags. A '<' that does not start such an element stays, e.g. "I <3 cats".
+std::string strip_markup(const std::string& text, bool keep_inner) {
+    std::string out;
+    std::size_t pos = 0;
+    while (pos < text.size()) {
+        const auto lt = text.find('<', pos);
+        if (lt == std::string::npos) {
+            out.append(text, pos, std::string::npos);
+            break;
+        }
+        out.append(text, pos, lt - pos);
+        std::size_t name_end = lt + 1;
+        while (name_end < text.size() && is_tag_name_char(text[name_end])) ++name_end;
+        const std::string name = text.substr(lt + 1, name_end - lt - 1);
+        const bool name_ok = !name.empty() && std::isalpha(static_cast<unsigned char>(name[0])) &&
+                             name_end < text.size() &&
+                             std::string(" \t\r\n/>").find(text[name_end]) != std::string::npos;
+        const auto open_end = name_ok ? find_tag_end(text, name_end) : std::string::npos;
+        if (open_end != std::string::npos && text[open_end - 2] == '/') {
+            pos = open_end;  // <tag .../>
+            continue;
+        }
+        const std::string close_tag = "</" + name + ">";
+        const auto close = open_end == std::string::npos ? std::string::npos : text.find(close_tag, open_end);
+        if (close == std::string::npos) {
+            out.push_back('<');
+            pos = lt + 1;
+            continue;
+        }
+        if (keep_inner) out += strip_markup(text.substr(open_end, close - open_end), true);
+        pos = close + close_tag.size();
+    }
+    return out;
+}
+
+std::string trim(const std::string& text) {
+    const auto first = text.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) return "";
+    return text.substr(first, text.find_last_not_of(" \t\r\n") - first + 1);
+}
+
+// Open WebUI puts markup such as <attached_files>...</attached_files> in the user's
+// message; the text encoder should see only what the user typed. If everything was
+// markup, keep the text inside the tags, e.g. <user_query>a cat</user_query>.
+std::string clean_chat_prompt(const std::string& text) {
+    std::string prompt = trim(strip_markup(text, false));
+    if (prompt.empty()) prompt = trim(strip_markup(text, true));
+    return prompt;
+}
+
+// Newest image in the chat: an attached image, or a Markdown image this server
+// returned earlier, so follow-up messages keep editing the latest result.
+std::optional<std::string> find_chat_image(const json& messages) {
+    for (auto it = messages.rbegin(); it != messages.rend(); ++it) {
+        const json role = it->value("role", json());
+        if (role != "user" && role != "assistant") continue;
+        const json content = it->value("content", json());
+        std::vector<std::string> urls;
+        if (content.is_string()) {
+            add_markdown_images(content.get<std::string>(), urls);
+        } else if (content.is_array()) {
+            for (const auto& part : content) {
+                if (!part.is_object()) continue;
+                const json type = part.value("type", json());
+                if (type == "text" && part.contains("text") && part["text"].is_string()) {
+                    add_markdown_images(part["text"].get<std::string>(), urls);
+                } else if (type == "image_url" && part.contains("image_url")) {
+                    // Open WebUI sends either {"url": ...} or a plain string.
+                    const json& image_url = part["image_url"];
+                    if (image_url.is_string()) {
+                        urls.push_back(image_url.get<std::string>());
+                    } else if (image_url.is_object() && image_url.contains("url") &&
+                               image_url["url"].is_string()) {
+                        urls.push_back(image_url["url"].get<std::string>());
+                    }
+                }
+            }
+        }
+        if (!urls.empty()) return load_chat_image(urls.back());
+    }
+    return std::nullopt;
+}
+
+
+// The image tool in Native mode signals that the user enabled Image.
+// Generate here so the chat's model selects the worker, independent of WebUI's
+// global image-engine model. Background chat calls must not start another worker.
+http::message_generator handle_chat_completion(
+    const http::request<http::string_body>& req, unsigned version, bool keep_alive) {
+    const json body = json::parse(req.body(), nullptr, false);
+    if (!body.is_object() || !body.contains("messages") ||
+        !body["messages"].is_array() || body["messages"].empty()) {
+        throw BadRequest("messages must be a non-empty array");
+    }
+    for (const auto& message : body["messages"]) {
+        if (!message.is_object() || !message.contains("role") || !message["role"].is_string()) {
+            throw BadRequest("each message must have a string role");
+        }
+    }
+    if (body.contains("stream") && !body["stream"].is_boolean()) {
+        throw BadRequest("stream must be a boolean");
+    }
+    const auto& model = parse_model(body);
+    const json tools = body.value("tools", json::array());
+    if (!tools.is_null() && !tools.is_array()) {
+        throw BadRequest("tools must be an array");
     }
 
-    const json body = build_image_response_body(params, result);
-    cleanup_generated_image(result.image_path, config::keep_images);
-    cleanup_uploaded_images(params.input_images);
+    static std::atomic<unsigned long long> counter{0};
+    const std::string id = "chatcmpl-" + std::to_string(std::time(nullptr)) + "-" +
+                           std::to_string(++counter);
+    json message = {{"role", "assistant"}, {"content", " "}};
+    json metadata;
+    const auto& last = body["messages"].back();
+    const json choice = body.value("tool_choice", json("auto"));
+    if (choice.is_object()) {
+        if (choice.value("type", json()) != "function" || !choice.contains("function") ||
+            !choice["function"].is_object() ||
+            !is_image_tool(choice["function"].value("name", json()))) {
+            throw BadRequest("only the generate_image and edit_image tools are supported");
+        }
+    } else if (!choice.is_null() && choice != "auto" && choice != "none" && choice != "required") {
+        throw BadRequest("invalid tool_choice");
+    }
+    const bool allow_image = choice != "none";
+    if (last["role"] == "user" && allow_image) {
+        for (const auto& tool : tools) {
+            if (!tool.is_object() || tool.value("type", json()) != "function" ||
+                !tool.contains("function") || !tool["function"].is_object() ||
+                !is_image_tool(tool["function"].value("name", json()))) {
+                continue;
+            }
+            std::string prompt;
+            const json content = last.value("content", json());
+            if (content.is_string()) {
+                prompt = content.get<std::string>();
+            } else if (content.is_array()) {
+                for (const auto& part : content) {
+                    if (part.is_object() && part.value("type", json()) == "text" &&
+                        part.contains("text") && part["text"].is_string()) {
+                        if (!prompt.empty()) prompt += "\n";
+                        prompt += part["text"].get<std::string>();
+                    }
+                }
+            }
+            prompt = clean_chat_prompt(prompt);
+            if (prompt.empty()) {
+                throw BadRequest("image generation requires a text message");
+            }
+            json image_body = {{"model", model.id}, {"prompt", prompt}};
+            for (const char* field : {"seed", "steps"}) {
+                if (body.contains(field)) image_body[field] = body[field];
+            }
+            GenerationRequest request;
+            if (model.edits_image) {
+                auto image = find_chat_image(body["messages"]);
+                if (!image) {
+                    throw BadRequest(std::string(model.id) + " edits an image: attach one to your "
+                                     "message, or generate one earlier in this chat");
+                }
+                request = parse_edit_request(image_body, std::move(*image));
+            } else {
+                request = parse_generation_request(image_body.dump());
+            }
+            const WorkerResult result = run_generation(request);
+            message["content"] = std::string(model.edits_image ? "![Edited image](" : "![Generated image](") +
+                                 publish_image(req, result.image_path) + ")";
+            metadata = build_generation_info(request.params, result.timing);
+            break;
+        }
+    }
 
-    return make_json_response(http::status::ok, version, keep_alive, body);
+    json reply = {{"id", id}, {"object", "chat.completion"},
+                  {"created", static_cast<long long>(std::time(nullptr))},
+                  {"model", model.id},
+                  {"choices", json::array({{{"index", 0}, {"message", message},
+                                             {"finish_reason", "stop"}}})}};
+    if (!metadata.is_null()) reply["metadata"] = metadata;
+    if (!body.value("stream", false)) {
+        return make_json_response(http::status::ok, version, keep_alive, reply);
+    }
+
+    reply["object"] = "chat.completion.chunk";
+    http::response<http::string_body> res{http::status::ok, version};
+    res.set(http::field::content_type, "text/event-stream");
+    res.set(http::field::cache_control, "no-cache");
+    res.keep_alive(keep_alive);
+    // Send the complete image Markdown in one small event, with no Base64 text fragments.
+    reply["choices"] = json::array({{{"index", 0}, {"delta", message}, {"finish_reason", nullptr}}});
+    res.body() = "data: " + reply.dump() + "\n\n";
+    reply["choices"] = json::array({{{"index", 0}, {"delta", json::object()},
+                                    {"finish_reason", "stop"}}});
+    res.body() += "data: " + reply.dump() + "\n\ndata: [DONE]\n\n";
+    res.prepare_payload();
+    return res;
 }
 
 }  // namespace
@@ -1126,81 +489,49 @@ http::message_generator handle_request(http::request<http::string_body>&& req) {
     std::cout << "[REQ] " << req.method_string() << " " << target << "\n";
 
     try {
-        if (req.method() == http::verb::get && target == "/health") {
+        const bool is_get = req.method() == http::verb::get;
+        const bool is_post = req.method() == http::verb::post;
+
+        if (target == "/health") {
+            if (is_get) {
+                return make_json_response(
+                    http::status::ok, req.version(), keep_alive, json{{"status", "ok"}});
+            }
+        } else if (target == "/v1/models") {
+            if (is_get) {
+                return handle_get_models(req.version(), keep_alive);
+            }
+        } else if (target == "/v1/chat/completions") {
+            if (is_post) {
+                return handle_chat_completion(req, req.version(), keep_alive);
+            }
+        } else if (target == "/v1/images/generations") {
+            if (is_post) {
+                return handle_image_generation(req, req.version(), keep_alive);
+            }
+        } else if (target == "/v1/images/edits") {
+            if (is_post) {
+                return handle_image_edit(req, req.version(), keep_alive);
+            }
+        } else if (target.rfind("/images/", 0) == 0) {
+            if (is_get) {
+                return handle_get_image_file(target, req.version(), keep_alive);
+            }
+        } else {
             return make_json_response(
-                http::status::ok, req.version(), keep_alive, json{{"status", "ok"}});
-        }
-
-        if (req.method() == http::verb::get && target == "/v1/models") {
-            return handle_get_models(req.version(), keep_alive);
-        }
-
-        if (req.method() == http::verb::get && target == "/sdapi/v1/sd-models") {
-            return handle_get_sd_models(req.version(), keep_alive);
-        }
-
-        if (req.method() == http::verb::get && target == "/sdapi/v1/options") {
-            return handle_get_sd_options(req.version(), keep_alive);
-        }
-
-        if (req.method() == http::verb::post && target == "/sdapi/v1/options") {
-            return handle_post_sd_options(req.body(), req.version(), keep_alive);
-        }
-
-        if (req.method() == http::verb::get && target.rfind("/images/", 0) == 0) {
-            return handle_get_image_file(target, req.version(), keep_alive);
-        }
-
-        if (req.method() == http::verb::post && target == "/v1/images/generations") {
-            return handle_image_generation(
-                parse_request(req.body()), req.body(), req.version(), keep_alive);
-        }
-
-        if (req.method() == http::verb::post && target == "/sdapi/v1/txt2img") {
-            return handle_automatic1111_txt2img(
-                parse_automatic1111_txt2img_request(req.body()),
-                req.body(),
-                req.version(),
-                keep_alive);
-        }
-
-        if (req.method() == http::verb::post && target == "/v1/images/edits") {
-            return handle_image_edit(req, req.version(), keep_alive);
-        }
-
-        if (req.method() == http::verb::post && target == "/v1/chat/completions") {
-            remember_openwebui_model(req.body());
-
-            const json generation_info = last_generation_info_or_default();
-            const json body = {
-                {"id", "chatcmpl-local"},
-                {"object", "chat.completion"},
-                {"created", static_cast<long long>(std::time(nullptr))},
-                {"model", configured_served_model_id()},
-                {"choices",
-                 json::array(
-                     {{{"index", 0},
-                       {"message", {{"role", "assistant"}, {"content", " "}}},
-                       {"finish_reason", "stop"}}})},
-                {"usage", generation_info},
-                {"info", generation_info},
-                {"metadata", generation_info}};
-            return make_json_response(http::status::ok, req.version(), keep_alive, body);
-        }
-
-        if (target == "/v1/models" || target == "/v1/images/generations" ||
-            target == "/sdapi/v1/sd-models" || target == "/sdapi/v1/options" ||
-            target == "/sdapi/v1/txt2img" || target == "/health" ||
-            target.rfind("/images/", 0) == 0) {
-            return make_json_response(
-                http::status::method_not_allowed,
-                req.version(),
-                keep_alive,
-                json{{"error", "method not allowed"}});
+                http::status::not_found, req.version(), keep_alive, json{{"error", "not found"}});
         }
 
         return make_json_response(
-            http::status::not_found, req.version(), keep_alive, json{{"error", "not found"}});
+            http::status::method_not_allowed,
+            req.version(),
+            keep_alive,
+            json{{"error", "method not allowed"}});
+    } catch (const BadRequest& e) {
+        std::cerr << "[ERROR] " << req.method_string() << " " << target
+                  << ": " << e.what() << "\n";
+        return make_json_response(
+            http::status::bad_request, req.version(), keep_alive, json{{"error", e.what()}});
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] " << req.method_string() << " " << target
                   << ": " << e.what() << "\n";

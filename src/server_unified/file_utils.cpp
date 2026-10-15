@@ -85,4 +85,30 @@ std::string base64_encode(const std::vector<char>& data) {
     return out;
 }
 
+std::optional<std::string> base64_decode(std::string_view text) {
+    std::string out;
+    out.reserve(text.size() / 4 * 3);
+    unsigned int bits = 0;
+    int bit_count = 0;
+    bool padding = false;
+    for (const char c : text) {
+        int value = -1;
+        if (c >= 'A' && c <= 'Z') value = c - 'A';
+        else if (c >= 'a' && c <= 'z') value = c - 'a' + 26;
+        else if (c >= '0' && c <= '9') value = c - '0' + 52;
+        else if (c == '+') value = 62;
+        else if (c == '/') value = 63;
+        else if (c == '=') { padding = true; continue; }
+        else if (c == ' ' || c == '\t' || c == '\r' || c == '\n') continue;
+        if (value < 0 || padding) return std::nullopt;
+        bits = (bits << 6) | static_cast<unsigned int>(value);
+        bit_count += 6;
+        if (bit_count >= 8) {
+            bit_count -= 8;
+            out.push_back(static_cast<char>((bits >> bit_count) & 0xFF));
+        }
+    }
+    return out;
+}
+
 }  // namespace server
