@@ -108,7 +108,7 @@ All times are for one 1024 × 1024 image, and both FLUX comparisons use 4 steps.
 
 Planned for a future release:
 
-- [ ] **Qwen-Image 2.1** support.
+- [ ] **Qwen-Image 2.1-Turbo** support.
 - [ ] **LoRA support** for the BFP16 model pipelines. If you need LoRA today, use [v0.1.2](https://github.com/jia1217/vigenflow/releases/tag/v0.1.2).
 
 ---
