@@ -12,16 +12,16 @@ The latest release, **[v0.2.0 Beta 2](https://github.com/jia1217/vigenflow/relea
 
 ## 🎨 Gallery
 
-The Qwen Image 2.1 Turbo images below preview the upcoming text-to-image release at 1024 × 1024. Their captions describe the images.
+The Qwen Image 2.1 Turbo images below preview the upcoming text-to-image release at 1024 × 1024. The exact input prompt is shown below each image.
 
 <details open>
 <summary><b>Qwen Image 2.1 Turbo — Coming soon</b></summary>
 <br>
 <table>
   <tr>
-    <td width="33%" valign="top"><a href="assets/gallery/qwen_image_2_1_turbo_1.png"><img src="assets/gallery/qwen_image_2_1_turbo_1.png" width="100%" alt="A woman winking and making a peace sign, with a white sticker outline on a purple background"></a><br><sub>Portrait with a sticker outline on a purple background.</sub></td>
-    <td width="33%" valign="top"><a href="assets/gallery/qwen_image_2_1_turbo_2.png"><img src="assets/gallery/qwen_image_2_1_turbo_2.png" width="100%" alt="An illustrated Paris travel journal featuring the Eiffel Tower, a riverside cafe, a compass and a fountain pen"></a><br><sub>Illustrated Paris travel journal.</sub></td>
-    <td width="33%" valign="top"><a href="assets/gallery/qwen_image_2_1_turbo_3.png"><img src="assets/gallery/qwen_image_2_1_turbo_3.png" width="100%" alt="A warmly lit Qwen Coffee storefront with Chinese and English signage and a portrait poster"></a><br><sub>Cafe storefront with Chinese and English signage.</sub></td>
+    <td width="33%" valign="top"><a href="assets/gallery/qwen_image_2_1_turbo_1.png"><img src="assets/gallery/qwen_image_2_1_turbo_1.png" width="100%" alt="A woman winking and making a peace sign, with a white sticker outline on a purple background"></a><br><sub>A photorealistic die-cut sticker of a 28-year-old Scandinavian woman with natural freckles and wind-blown blonde hair. She is looking directly at the camera, winking playfully, and holding up a clear peace sign with her hand. She is wearing a cozy oversized knit sweater. The image is shot on an 85mm lens with hyper-detailed skin texture, fine pores, and realistic studio lighting. The portrait is perfectly encased in a thick, crisp white outer sticker border. Completely isolated on a transparent background, pure alpha channel cutout, no background environment, floating, 8k resolution.</sub></td>
+    <td width="33%" valign="top"><a href="assets/gallery/qwen_image_2_1_turbo_2.png"><img src="assets/gallery/qwen_image_2_1_turbo_2.png" width="100%" alt="An illustrated Paris travel journal featuring the Eiffel Tower, a riverside cafe, a compass and a fountain pen"></a><br><sub>Create an open travel journal for Paris, France on a textured surface, featuring a passport page with a fictional decorative PARIS travel stamp and a 3D pop-up watercolor scene of the Eiffel Tower, a stone Seine bridge, rooftops of Montmartre, and a sidewalk cafe. Add a PARIS heading, pressed flowers, and vintage cultural icons around the header. Surround the journal with a metro ticket, a small brass compass, a fountain pen, an old postcard, and a sprig of lavender. Style: handcrafted travel scrapbook, rich watercolor, delicate ink lines, realistic paper texture, soft shadows, layered pop-up depth, nostalgic and elegant. Subject/variable fill: No people in the image.</sub></td>
+    <td width="33%" valign="top"><a href="assets/gallery/qwen_image_2_1_turbo_3.png"><img src="assets/gallery/qwen_image_2_1_turbo_3.png" width="100%" alt="A warmly lit Qwen Coffee storefront with Chinese and English signage and a portrait poster"></a><br><sub>A coffee shop entrance features a chalkboard sign reading "Qwen Coffee 😊 $2 per cup," with a neon light beside it displaying "通义千问". Next to it hangs a poster showing a beautiful Chinese woman, and beneath the poster is written "π≈3.1415926-53589793-23846264-33832795-02384197". Ultra HD, 4K, cinematic composition, Ultra HD, 4K, cinematic composition.</sub></td>
   </tr>
 </table>
 </details>
