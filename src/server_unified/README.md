@@ -166,6 +166,7 @@ On Windows run `python tests\test_server.py vigenflow_win\vgf-serve.exe` after `
 vcpkg install boost-asio boost-beast boost-filesystem boost-gil boost-process boost-system libpng nlohmann-json stb --triplet x64-windows
 build_windows.bat                              &rem -> vigenflow_win\vgf-serve.exe
 python tests\test_server.py vigenflow_win\vgf-serve.exe
+powershell -ExecutionPolicy Bypass -File package_windows.ps1 -Version 0.2.0-beta.2   &rem -> release\vigenflow_0.2.0-beta.2_windows_amd64.zip
 ```
 
 `build_windows.bat` builds `vigenflow_win\vgf-serve.exe` with MSVC (Boost, libpng and stb from vcpkg; see `VCPKG_ROOT` / `BOOST_FILESYSTEM_LIB` in the script), copies the vcpkg DLLs it loads next to it (found with vcpkg's `applocal.ps1`: `libpng16.dll` and `zlib1.dll`, plus Boost DLLs with newer vcpkg Boost versions) and embeds `src/utf8.manifest`, so prompts and paths reach the workers as UTF-8. It also builds `build-windows\test_worker_stub.exe` (from `tests\test_worker_stub.cpp`), which the check uses to run its Python fake worker as `run.exe`. In the package, `vgf-serve.exe` also needs the VC++ runtime DLLs (`msvcp140.dll`, `vcruntime140.dll`, `vcruntime140_1.dll`) beside it unless the VC++ redistributable is installed.

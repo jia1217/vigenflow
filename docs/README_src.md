@@ -166,6 +166,17 @@ If the DLL is missing, `run.exe` exits with code 127 and names the folder it
 looked in. The launchers need no DLLs of their own: they use the static C
 runtime.
 
+`check_windows.ps1` checks the result without the NPU: each launcher imports
+only `KERNEL32` and its host DLL, each host DLL exports its entry point, and
+`src/lib` has every DLL they need that is not part of Windows (so a package
+runs without the VC++ redistributable). On a CPU with AVX-512, which the host
+DLLs are built for, it also runs each launcher with `--help`. The
+`windows-build.yml` workflow runs both scripts on GitHub's Windows runners.
+
+```bat
+powershell -ExecutionPolicy Bypass -File check_windows.ps1
+```
+
 ## Optional CMake Build for a Model Launcher
 
 Each model launcher folder also includes a `CMakeLists.txt`. This is useful if
@@ -217,6 +228,33 @@ src/server_unified/release/vigenflow_0.2.0-beta.2_ubuntu_amd64.zip
 
 The model weights are not packaged. `prepare/prepare_base.exe` downloads them
 into `all_model_weights/`, next to the package folder.
+
+## Create a Windows Release Package
+
+On Windows, `package_windows.ps1` does the same with Visual Studio 2022 and
+vcpkg (see `src/server_unified/README.md` and `src/prepare_weights/README.md`
+for their dependencies). It builds `vgf-serve.exe`, `prepare_base.exe` and the
+five launchers, then writes the folder and its ZIP:
+
+```bat
+cd vigenflow\src\server_unified
+powershell -ExecutionPolicy Bypass -File package_windows.ps1 -Version 0.2.0-beta.2
+powershell -ExecutionPolicy Bypass -File package_windows.ps1 -Version 0.2.0-beta.2 -SkipBuild
+```
+
+`-SkipBuild` packages the binaries that are already built.
+
+```text
+src/server_unified/vigenflow_win  -> server_running (vgf-serve.exe and its DLLs)
+src/exe_models_win                -> server_running/exe_models
+src/lib/*.dll                     -> server_running/lib
+src/npu_files                     -> all_npu_files
+src/prepare_weights/vigenflow_win -> prepare
+```
+
+The output is `src/server_unified/release/vigenflow_<version>_windows_amd64/`
+and its `.zip`. The weights again go to `all_model_weights\` next to the
+extracted package folder.
 
 ## Run the Built Server
 
