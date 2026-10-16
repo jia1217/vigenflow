@@ -134,6 +134,38 @@ src/exe_models/z_image_turbo/run.exe
 src/exe_models/krea2_turbo/run.exe
 ```
 
+## Compile Model Worker Launchers on Windows
+
+Windows uses the same launcher sources. Their prebuilt host libraries are in
+`src/lib` next to the Ubuntu ones: `host_<model>.dll` with its import library
+`host_<model>.lib`, and the runtime DLLs they load (Boost.Program_options,
+XRT `xrt_coreutil.dll`, LLVM OpenMP and the VC++ runtime).
+
+From a Developer Command Prompt, or any prompt with Visual Studio 2022
+installed:
+
+```bat
+cd vigenflow\src\models
+build_windows.bat                    &rem all five launchers
+build_windows.bat flux2_klein_4B     &rem or only some
+..\exe_models_win\flux2_klein_4B\run.exe --help
+```
+
+The launchers are written to `src/exe_models_win/<model>/run.exe` (the folder
+name keeps them apart from the Ubuntu ones). A launcher loads its
+`host_<model>.dll` from `..\..\lib\` relative to its own folder, as the Ubuntu
+launcher finds `libhost_<model>.so` through its `$ORIGIN/../../lib` RUNPATH, so
+it runs in place in the repository and, with the same layout, in a package:
+
+```text
+src/exe_models_win/<model>/run.exe  -> server_running/exe_models/<model>/run.exe
+src/lib/*.dll                       -> server_running/lib/
+```
+
+If the DLL is missing, `run.exe` exits with code 127 and names the folder it
+looked in. The launchers need no DLLs of their own: they use the static C
+runtime.
+
 ## Optional CMake Build for a Model Launcher
 
 Each model launcher folder also includes a `CMakeLists.txt`. This is useful if
