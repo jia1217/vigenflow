@@ -1,0 +1,56 @@
+name: Vigenflow Windows Worker Build
+
+on:
+  push:
+    paths:
+      - "src/models/**"
+      - "src/lib/**"
+      - ".github/workflows/windows-build.yml"
+  pull_request:
+    paths:
+      - "src/models/**"
+      - "src/lib/**"
+      - ".github/workflows/windows-build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build worker run.exe launchers
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build run.exe launchers
+        shell: cmd
+        run: src\models\build_windows.bat
+
+      # Imports, the exported entry points and that src/lib has every DLL the host DLLs need. The launchers
+      # only run where the runner's CPU has AVX-512, which the host DLLs are built for.
+      - name: Check launchers and host DLLs
+        shell: pwsh
+        run: src\models\check_windows.ps1
+
+      - name: Stage artifact
+        shell: pwsh
+        run: |
+          $out = 'dist\windows-exe'
+          New-Item -ItemType Directory -Force "$out\exe_models", "$out\lib" | Out-Null
+          Copy-Item -Recurse src\exe_models_win\* "$out\exe_models\"
+          Copy-Item src\lib\*.dll "$out\lib\"
+          Get-ChildItem $out -Recurse -File | ForEach-Object { $_.FullName }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vigenflow-windows-run-exe
+          path: dist/windows-exe
+          if-no-files-found: error
