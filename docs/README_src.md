@@ -256,6 +256,11 @@ The output is `src/server_unified/release/vigenflow_<version>_windows_amd64/`
 and its `.zip`. The weights again go to `all_model_weights\` next to the
 extracted package folder.
 
+To check a package on the NPU (one image per model), see
+[npu_runner.md](npu_runner.md): `tests/run_npu_check.ps1` builds, unpacks and
+checks a Windows package by hand, and the `npu-test.yml` workflow does the same
+on a self-hosted runner.
+
 ## Run the Built Server
 
 For normal NPU execution, run the package on a host with the AMD XDNA driver

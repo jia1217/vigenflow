@@ -1,0 +1,60 @@
+name: Vigenflow NPU Test
+
+# Generates one image per model on a real Ryzen AI NPU, on a self-hosted Windows runner with the label
+# "npu" (setup: docs/npu_runner.md). Skipped unless the repository variable VGF_NPU_RUNNER is "true".
+# Never runs for pull requests: they could run their own code on the runner's PC.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - ".github/workflows/npu-test.yml"
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "Comma-separated model IDs (empty: all five)"
+        required: false
+        default: ""
+
+# One NPU job at a time; a newer push waits instead of cancelling a run in progress.
+concurrency:
+  group: npu-test
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  npu:
+    name: Five-model NPU check
+    if: vars.VGF_NPU_RUNNER == 'true'
+    runs-on: [self-hosted, windows, npu]
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Builds the package, unpacks it next to VGF_WEIGHTS_ROOT (set in the runner's .env), generates
+      # with every model and removes the unpacked package again.
+      # From cmd with -ExecutionPolicy Bypass, so the PC's PowerShell script policy does not matter.
+      - name: Build the package and generate on the NPU
+        shell: cmd
+        env:
+          MODELS: ${{ github.event.inputs.models }}
+        run: |
+          set "CHECK=powershell -NoProfile -ExecutionPolicy Bypass -File src\server_unified\tests\run_npu_check.ps1 -WeightsRoot "%VGF_WEIGHTS_ROOT%" -Out "%RUNNER_TEMP%\npu_check""
+          if not defined MODELS goto all_models
+          %CHECK% -Models "%MODELS%"
+          goto :eof
+          :all_models
+          %CHECK%
+
+      - name: Upload images and log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vigenflow-npu-check
+          path: ${{ runner.temp }}/npu_check
+          if-no-files-found: ignore
