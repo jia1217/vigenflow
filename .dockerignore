@@ -1,0 +1,19 @@
+# Build context of docker/Dockerfile (and of the build-environment Dockerfile, which copies nothing).
+.git
+.github
+assets
+docs
+external_lib
+**/__pycache__
+**/*.dll
+**/*.lib
+src/exe_models_win
+src/models/*/.build
+src/models/*/build
+src/models/*/build-windows
+src/server_unified/release
+src/server_unified/vigenflow_ubuntu
+src/server_unified/vigenflow_win
+src/prepare_weights/prepare_base.exe
+src/prepare_weights/vigenflow_win
+src/prepare_weights/build-windows

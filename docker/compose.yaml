@@ -1,0 +1,52 @@
+# VigenFlow with Docker Compose (docs/docker.md). From the repository root:
+#
+#   docker compose -f docker/compose.yaml run --rm vigenflow prepare   # download the weights once
+#   docker compose -f docker/compose.yaml up -d                        # vgf-serve on 127.0.0.1:11283
+#   docker compose -f docker/compose.yaml --profile webui up -d        # and OpenWebUI on port 8080
+
+services:
+  vigenflow:
+    image: ${VIGENFLOW_IMAGE:-ghcr.io/jia1217/vigenflow:latest}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    devices:
+      - /dev/accel:/dev/accel
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      # Or the all_model_weights folder of a release package: - /path/to/all_model_weights:/opt/vigenflow/all_model_weights
+      - vigenflow-weights:/opt/vigenflow/all_model_weights
+    ports:
+      # vgf-serve has no authentication: only this machine can reach it.
+      - "127.0.0.1:11283:11283"
+    # Server options go after serve, for example: command: ["serve", "--model", "flux2-klein-4B"]
+    command: ["serve"]
+    restart: unless-stopped
+
+  # OpenWebUI uses the host network so that it reaches vgf-serve at 127.0.0.1:11283, which vgf-serve
+  # publishes only to this computer.
+  open-webui:
+    profiles: ["webui"]
+    image: ghcr.io/open-webui/open-webui:v0.11.4
+    network_mode: host
+    environment:
+      # Read on the first start only; later, change them in Admin Panel > Settings.
+      ENABLE_OLLAMA_API: "False"
+      OPENAI_API_BASE_URL: http://127.0.0.1:11283/v1
+      OPENAI_API_KEY: vigenflow
+      ENABLE_IMAGE_GENERATION: "True"
+      IMAGE_GENERATION_ENGINE: openai
+      IMAGES_OPENAI_API_BASE_URL: http://127.0.0.1:11283/v1
+      IMAGES_OPENAI_API_KEY: vigenflow
+    volumes:
+      - open-webui:/app/backend/data
+    depends_on:
+      - vigenflow
+    restart: unless-stopped
+
+volumes:
+  vigenflow-weights:
+  open-webui:
