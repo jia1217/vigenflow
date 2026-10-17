@@ -151,6 +151,20 @@ Check that you have everything below before you download VigenFlow:
 
 ---
 
+## 🐳 Quick Install with Docker (Ubuntu)
+
+If you use Docker or Podman, or just want the quickest way to try VigenFlow on Ubuntu, one command sets everything up:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jia1217/vigenflow/main/docker/install.sh | bash
+```
+
+The installer checks for the NPU driver and offers to install it, installs Docker if you have neither Docker nor Podman, asks which models to download (press Enter for FLUX.2-klein-4B, 8 GB), and starts VigenFlow together with OpenWebUI. When it finishes, open the address it prints, usually http://localhost:8080. Run the same command again to update VigenFlow or add models.
+
+[docs/docker.md](docs/docker.md) shows the same steps by hand, with Podman and Docker Compose. To use the release packages instead, follow the steps below.
+
+---
+
 ## 📦 Installation
 
 Download the package for your system, extract it, download the model weights once, and start the server. The weights are not included in the packages; Step 3 downloads them from Hugging Face.
