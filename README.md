@@ -138,7 +138,14 @@ Check that you have everything below before you download VigenFlow:
 - [ ] **Windows x64 or Ubuntu 24.04 x86_64.**
 - [ ] **The NPU driver is installed.**
   - Windows: install the NPU driver from AMD's [Driver Download](https://www.amd.com/en/support/download/drivers.html) page. **NPU Compute Accelerator Device** should then appear in Device Manager.
-  - Ubuntu: install the AMD XDNA driver and a matching XRT runtime by following the [AMD XDNA / MLIR-AIE installation guide](https://github.com/Xilinx/mlir-aie). `xrt-smi examine` should then list the NPU.
+  - Ubuntu: install the AMD XDNA driver and XRT from the [Lemonade PPA](https://launchpad.net/~lemonade-team/+archive/ubuntu/stable), then reboot. Ubuntu has no official XRT packages, and the PPA's `amdxdna-dkms` driver replaces the one built into the kernel, which does not work with XRT 2.25 on some kernels (see [Troubleshooting](#-troubleshooting)). `xrt-smi examine` should then list the NPU.
+
+    ```bash
+    sudo add-apt-repository ppa:lemonade-team/stable
+    sudo apt update
+    sudo apt install amdxdna-dkms libxrt-npu2 libxrt-utils
+    sudo reboot
+    ```
 - [ ] **About 75 GB of free disk space** for all four sets of model weights: 65 GB of weights, plus up to 10 GB while downloading. You can download fewer models (see [Step 3](#-step-3-download-the-model-weights-one-time)).
 - [ ] **OpenWebUI Desktop** is installed.
 
@@ -246,6 +253,30 @@ After launching `vgf-serve`, open **OpenWebUI Desktop** and configure it for you
 The screenshot shows the **Images** settings page set up for VigenFlow.
 
 <img src="assets/openwebUI.png" width="500" alt="OpenWebUI Images settings for VigenFlow" />
+
+---
+
+## 🔧 Troubleshooting
+
+### Ubuntu: `run.exe failed with exit code 134` for every model
+
+The AMD XDNA driver built into some Linux kernels rejects the messages that XRT 2.25 sends to the NPU. This was reported on kernel `7.0.0-38`. Every model worker then stops, `vgf-serve` prints `run.exe failed with exit code 134`, and `sudo dmesg` shows lines like these:
+
+```text
+Message callback ret -22
+Channel in bad state
+```
+
+To fix it, install the driver from the Lemonade PPA and reboot. The `amdxdna-dkms` package builds the driver for your kernel, and it is loaded instead of the built-in one:
+
+```bash
+sudo add-apt-repository ppa:lemonade-team/stable
+sudo apt update
+sudo apt install amdxdna-dkms
+sudo reboot
+```
+
+After the reboot, `modinfo -n amdxdna` should print a path that contains `updates/dkms`, and `xrt-smi examine` should list the NPU.
 
 ---
 
