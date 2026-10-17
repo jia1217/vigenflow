@@ -17,6 +17,7 @@
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <sstream>
+#include <string_view>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -95,6 +96,21 @@ nlohmann::ordered_json build_generation_info(
     info["9_Worker_wall_time"] = format_seconds(timing.worker_wall_seconds);
     return info;
 }
+
+// The line under a chat image: chat clients do not show the response metadata.
+std::string generation_summary(const GenParams& params, const GenerationTimingInfo& timing) {
+    std::ostringstream out;
+    out << std::fixed << std::setprecision(2) << '*' << (params.model->edits_image ? "Edited" : "Generated")
+        << " by " << params.model->id;
+    if (timing.e2e_runtime_seconds) out << " in " << *timing.e2e_runtime_seconds << " s";
+    out << " (seed " << params.seed << ", " << params.steps << " steps; " << timing.worker_wall_seconds
+        << " s in total with model loading)*";
+    return out.str();
+}
+
+// Streamed chat replies carry the image in delta.images and name it in a Markdown link reference
+// definition, which Markdown renderers do not show, so that a follow-up edit can find it.
+constexpr std::string_view kChatImageRef = "[vigenflow-image]: ";
 
 // Base URL as the client reached us, so returned image URLs work off-machine too.
 std::string request_base_url(const http::request<http::string_body>& req) {
@@ -256,11 +272,17 @@ std::string load_chat_image(const std::string& url) {
 void add_markdown_images(const std::string& text, std::vector<std::string>& urls) {
     for (auto pos = text.find("!["); pos != std::string::npos; pos = text.find("![", pos + 2)) {
         const auto close = text.find("](", pos + 2);
-        if (close == std::string::npos) return;
+        if (close == std::string::npos) break;
         const auto end = text.find_first_of(") \t\r\n", close + 2);
         if (end != std::string::npos && text[end] == ')') {
             urls.push_back(text.substr(close + 2, end - close - 2));
         }
+    }
+    for (auto pos = text.find(kChatImageRef); pos != std::string::npos; pos = text.find(kChatImageRef, pos + 1)) {
+        if (pos != 0 && text[pos - 1] != '\n') continue;
+        const auto start = pos + kChatImageRef.size();
+        const auto end = text.find_first_of(" \t\r\n", start);
+        urls.push_back(text.substr(start, end == std::string::npos ? std::string::npos : end - start));
     }
 }
 
@@ -398,6 +420,8 @@ http::message_generator handle_chat_completion(
                            std::to_string(++counter);
     json message = {{"role", "assistant"}, {"content", " "}};
     json metadata;
+    json images;  // streamed replies only
+    const bool stream = body.value("stream", false);
     const auto& last = body["messages"].back();
     const json choice = body.value("tool_choice", json("auto"));
     if (choice.is_object()) {
@@ -450,8 +474,19 @@ http::message_generator handle_chat_completion(
                 request = parse_generation_request(image_body.dump());
             }
             const WorkerResult result = run_generation(request);
-            message["content"] = std::string(model.edits_image ? "![Edited image](" : "![Generated image](") +
-                                 publish_image(req, result.image_path) + ")";
+            std::string data_uri;
+            if (stream) data_uri = "data:image/png;base64," + base64_encode(read_binary_file(result.image_path));
+            const std::string url = publish_image(req, result.image_path);  // edits read it back from here
+            const std::string summary = generation_summary(request.params, result.timing);
+            if (stream) {
+                // Open WebUI saves delta.images as files of the message and shows them from its own server,
+                // so the image also appears in a browser that cannot reach this server.
+                message["content"] = std::string(kChatImageRef) + url + "\n\n" + summary;
+                images = json::array({{{"type", "image_url"}, {"image_url", {{"url", data_uri}}}}});
+            } else {
+                message["content"] = std::string(model.edits_image ? "![Edited image](" : "![Generated image](") +
+                                     url + ")\n\n" + summary;
+            }
             metadata = build_generation_info(request.params, result.timing);
             break;
         }
@@ -463,7 +498,7 @@ http::message_generator handle_chat_completion(
                   {"choices", json::array({{{"index", 0}, {"message", message},
                                              {"finish_reason", "stop"}}})}};
     if (!metadata.is_null()) reply["metadata"] = metadata;
-    if (!body.value("stream", false)) {
+    if (!stream) {
         return make_json_response(http::status::ok, version, keep_alive, reply);
     }
 
@@ -472,8 +507,10 @@ http::message_generator handle_chat_completion(
     res.set(http::field::content_type, "text/event-stream");
     res.set(http::field::cache_control, "no-cache");
     res.keep_alive(keep_alive);
-    // Send the complete image Markdown in one small event, with no Base64 text fragments.
-    reply["choices"] = json::array({{{"index", 0}, {"delta", message}, {"finish_reason", nullptr}}});
+    // The text and the whole image in one event, with no Base64 text fragments.
+    json delta = message;
+    if (!images.is_null()) delta["images"] = images;
+    reply["choices"] = json::array({{{"index", 0}, {"delta", delta}, {"finish_reason", nullptr}}});
     res.body() = "data: " + reply.dump() + "\n\n";
     reply["choices"] = json::array({{{"index", 0}, {"delta", json::object()},
                                     {"finish_reason", "stop"}}});

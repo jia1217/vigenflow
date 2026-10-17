@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import io
 import json
 import os
+import re
 import shutil
 from pathlib import Path
 import socket
@@ -250,11 +251,21 @@ time.sleep(0.08)
             def call_counts():
                 return [(root / folder / 'calls').read_text().count('generation') for folder in folders]
 
-            def chat_png(content):
-                prefix = '![Generated image]('
-                assert content.startswith(prefix) and content.endswith('.png)'), content[:100]
+            def chat_url(content):
+                # A Markdown image, or in streamed replies the hidden reference (the PNG is in delta.images),
+                # then a line with the timings.
+                image, summary = content.split('\n\n')
+                assert re.fullmatch(r'\*(Generated|Edited) by \S+( in \d+\.\d\d s)? \(seed -?\d+, \d+ steps; '
+                                    r'\d+\.\d\d s in total with model loading\)\*', summary), summary
                 assert 'base64' not in content and len(content) < 1024
-                url = content[len(prefix):-1]
+                if image.startswith('[vigenflow-image]: '):
+                    return image[len('[vigenflow-image]: '):]
+                prefix = '![Generated image]('
+                assert image.startswith(prefix) and image.endswith('.png)'), content[:100]
+                return image[len(prefix):-1]
+
+            def chat_png(content):
+                url = chat_url(content)
                 assert url.startswith(base + '/images/')
                 assert (outdir / url.rsplit('/', 1)[-1]).is_file() == keep_on_disk
                 with urlopen(url, timeout=5) as response:
@@ -295,13 +306,21 @@ time.sleep(0.08)
             assert headers.get_content_type() == 'text/event-stream'
             events = [line[6:] for line in data.decode().splitlines() if line.startswith('data: ')]
             assert events[-1] == '[DONE]' and len(events) == 3
-            assert len(data) < 5000 and b'base64' not in data, 'chat must send a URL, not PNG bytes'
             chunks = [json.loads(event) for event in events[:-1]]
             assert all(c['model'] == 'flux2-klein-4B' for c in chunks)
             assert chunks[-1]['choices'][0]['finish_reason'] == 'stop'
-            content = chunks[0]['choices'][0]['delta']['content']
-            assert 'content' not in chunks[1]['choices'][0]['delta'], 'image Markdown must arrive complete'
-            with Image.open(io.BytesIO(chat_png(content))) as image:
+            delta = chunks[0]['choices'][0]['delta']
+            content = delta['content']
+            assert content.startswith('[vigenflow-image]: ') and '![' not in content, 'only the timings may render'
+            assert 'content' not in chunks[1]['choices'][0]['delta'] and 'images' not in chunks[1]['choices'][0]['delta'], \
+                'text and image must arrive complete'
+            # Open WebUI stores delta.images in its own files, so the image shows wherever Open WebUI does.
+            [image_part] = delta['images']
+            data_prefix = 'data:image/png;base64,'
+            assert image_part['type'] == 'image_url' and image_part['image_url']['url'].startswith(data_prefix)
+            png = base64.b64decode(image_part['image_url']['url'][len(data_prefix):])
+            assert png == chat_png(content), 'delta.images and the hidden reference must be the same PNG'
+            with Image.open(io.BytesIO(png)) as image:
                 assert image.size == (80, 80)
             before = call_counts()
             for body in ({**chat, 'messages': chat['messages'] + [{'role': 'tool', 'content': '{"success":true}'}]},
@@ -331,7 +350,7 @@ time.sleep(0.08)
             for _ in range(32):
                 _, data = request('/v1/images/generations', {'response_format': 'url'})
                 newest_url = json.loads(data)['data'][0]['url']
-            expect_missing(content[len('![Generated image]('):-1])
+            expect_missing(chat_url(content))
             with urlopen(newest_url, timeout=5) as response:
                 check_png(response.read())
             assert not list(outdir.iterdir())
@@ -462,17 +481,28 @@ time.sleep(0.08)
                                                  {'type': 'image_url', 'image_url': {'url': wide_url}}]}
             _, data = request('/v1/chat/completions', {'model': edit_id, 'tools': tools, 'messages': [first]})
             reply = json.loads(data)['choices'][0]['message']['content']
-            assert reply.startswith('![Edited image](') and len(reply) < 1024
-            with urlopen(reply[len('![Edited image]('):-1], timeout=5) as response:
+            image_md, summary = reply.split('\n\n')
+            assert image_md.startswith('![Edited image](') and len(reply) < 1024
+            assert summary.startswith(f'*Edited by {edit_id} '), summary
+            with urlopen(image_md[len('![Edited image]('):-1], timeout=5) as response:
                 check_png(response.read())
             args, image = edit_input()
             assert '--prompt=add a hat' in args and set(image.getdata()) == {(0, 255, 0)}
             follow_up = [first, {'role': 'assistant', 'content': reply}, {'role': 'user', 'content': 'now at night'}]
             headers, data = request('/v1/chat/completions', {'model': edit_id, 'tools': tools[1:], 'messages': follow_up, 'stream': True})
-            assert headers.get_content_type() == 'text/event-stream' and b'Edited image' in data
+            assert headers.get_content_type() == 'text/event-stream'
+            streamed = json.loads(data.decode().splitlines()[0][len('data: '):])['choices'][0]['delta']
+            assert streamed['content'].startswith('[vigenflow-image]: ') and f'*Edited by {edit_id} ' in streamed['content']
+            assert streamed['images'][0]['image_url']['url'].startswith('data:image/png;base64,')
             args, image = edit_input()
             assert '--prompt=now at night' in args
             assert image.getpixel((0, 0)) == (255, 0, 0) and image.getpixel((1023, 1023)) == (255, 255, 255), 'previous result'
+            # The next edit finds the streamed result through its hidden reference.
+            follow_up += [{'role': 'assistant', 'content': streamed['content']}, {'role': 'user', 'content': 'add snow'}]
+            request('/v1/chat/completions', {'model': edit_id, 'tools': tools[1:], 'messages': follow_up})
+            args, image = edit_input()
+            assert '--prompt=add snow' in args
+            assert image.getpixel((0, 0)) == (255, 0, 0) and image.getpixel((1023, 1023)) == (255, 255, 255), 'streamed result'
             _, data = request('/v1/chat/completions', {'model': edit_id, 'tools': tools, 'messages': [
                 {'role': 'user', 'content': [{'type': 'text', 'text': 'crop'}, {'type': 'image_url', 'image_url': jpeg_url}]}]})
             assert json.loads(data)['choices'][0]['message']['content'].startswith('![Edited image](')
@@ -492,7 +522,7 @@ time.sleep(0.08)
             assert json.loads(data)['model'] == edit_id
             args, _ = edit_input()
             assert args[args.index('--weights_path') + 1] == str(root / 'edit weights')
-            print('PASS: storage defaults/flags, bounded RAM URLs, failure cleanup, PNG retention with -k true, four-model routing, worker-written PNG passed through, chat SSE, PNG pixels/raw/base64/URL, timings and validation, edit model (multipart/JSON edits, crop+resize, chat follow-up edits, `edit` shortcut)')
+            print('PASS: storage defaults/flags, bounded RAM URLs, failure cleanup, PNG retention with -k true, four-model routing, worker-written PNG passed through, chat SSE with delta.images and timings, PNG pixels/raw/base64/URL, timings and validation, edit model (multipart/JSON edits, crop+resize, chat follow-up edits, `edit` shortcut)')
 
             if windows:
                 # Weights beside the package folder come first; a model only in the package's own folder
