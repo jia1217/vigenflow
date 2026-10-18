@@ -1,8 +1,10 @@
 # VigenFlow
 
-**FLUX and Z-Image on the NPU of an AMD Ryzen AI laptop, several times faster than the same laptop's integrated GPU.**
+**FLUX, Z-Image and Krea 2 on the NPU of an AMD Ryzen AI laptop, several times faster than the same laptop's integrated GPU.**
 
-Local image generation and editing with **CPU + AMD NPU inference**, connected to **OpenWebUI Desktop**.
+Local image generation and editing with **CPU + AMD NPU inference**, used through **OpenWebUI**.
+
+> **New: one-command install.** On Windows or Ubuntu, a single command installs VigenFlow and OpenWebUI and downloads the models you choose. See [Quick Install](#-quick-install).
 
 The latest release, **[v0.2.0 Beta 2](https://github.com/jia1217/vigenflow/releases/latest)**, adds **Krea 2 Turbo** as a fifth model and keeps the model weights in one folder that every VigenFlow version shares. All models use **BFP16 weights**, and **image editing** is served next to the text-to-image models.
 
