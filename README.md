@@ -132,22 +132,38 @@ Planned for a future release:
 
 ## 🚀 Getting Started
 
-Check that you have everything below before you download VigenFlow:
+You need:
 
 - [ ] **An AMD Ryzen AI 300-series processor** with an XDNA 2 NPU (`npu2`). VigenFlow is tested on the [AMD Ryzen AI 9 HX 370](https://www.amd.com/en/newsroom/press-releases/2024-10-10-amd-launches-new-ryzen-ai-pro-300-series-processo.html); other processors need matching NPU binaries and runtime support.
 - [ ] **Windows x64 or Ubuntu 24.04 x86_64.**
-- [ ] **The NPU driver is installed.**
-  - Windows: install the NPU driver from AMD's [Driver Download](https://www.amd.com/en/support/download/drivers.html) page. **NPU Compute Accelerator Device** should then appear in Device Manager.
-  - Ubuntu: install the AMD XDNA driver and XRT from the [Lemonade PPA](https://launchpad.net/~lemonade-team/+archive/ubuntu/stable), then reboot. Ubuntu has no official XRT packages, and the PPA's `amdxdna-dkms` driver replaces the one built into the kernel, which does not work with XRT 2.25 on some kernels (see [Troubleshooting](#-troubleshooting)). `xrt-smi examine` should then list the NPU.
+- [ ] **Free disk space for the models you want:** 8 GB for FLUX.2-klein-4B alone, up to 65 GB for all four, plus up to 10 GB while they download. [Step 3](#-step-3-download-the-model-weights-one-time) lists each model's size.
+- [ ] **The NPU driver**, installed once as shown below.
 
-    ```bash
-    sudo add-apt-repository ppa:lemonade-team/stable
-    sudo apt update
-    sudo apt install amdxdna-dkms libxrt-npu2 libxrt-utils
-    sudo reboot
-    ```
-- [ ] **About 75 GB of free disk space** for all four sets of model weights: 65 GB of weights, plus up to 10 GB while downloading. You can download fewer models (see [Step 3](#-step-3-download-the-model-weights-one-time)).
-- [ ] **OpenWebUI Desktop** is installed. The [Quick Install](#-quick-install) starts OpenWebUI for you instead.
+### 🔌 Install the NPU Driver (One Time)
+
+#### 🪟 Windows
+
+Install the NPU driver from AMD's [Driver Download](https://www.amd.com/en/support/download/drivers.html) page, then restart. **NPU Compute Accelerator Device** should then appear in Device Manager.
+
+#### 🐧 Ubuntu
+
+Install the AMD XDNA driver and XRT from the [Lemonade PPA](https://launchpad.net/~lemonade-team/+archive/ubuntu/stable), then reboot:
+
+```bash
+sudo add-apt-repository ppa:lemonade-team/stable
+sudo apt update
+sudo apt install amdxdna-dkms libxrt-npu2 libxrt-utils
+sudo reboot
+```
+
+After the reboot, `xrt-smi examine` should list the NPU.
+
+Ubuntu has no official XRT packages. The PPA's `amdxdna-dkms` driver replaces the one built into the kernel, which does not work with XRT 2.25 on some kernels (see [Troubleshooting](#-troubleshooting)). The Ubuntu Quick Install needs only `amdxdna-dkms`, and offers to install it for you.
+
+### 🧭 Choose How to Install
+
+- **[Quick Install](#-quick-install), recommended:** one command installs VigenFlow and OpenWebUI and downloads the models you choose.
+- **[Release packages](#-installation):** download and start each part yourself. For these you also need [OpenWebUI Desktop](https://github.com/open-webui/desktop).
 
 ---
 
@@ -157,7 +173,7 @@ The quickest way to try VigenFlow: one command installs it, downloads the models
 
 ### 🪟 Windows
 
-Install the NPU driver first (see [Getting Started](#-getting-started)). Then, in PowerShell:
+Install the [NPU driver](#-install-the-npu-driver-one-time) first. Then, in PowerShell:
 
 ```powershell
 irm https://raw.githubusercontent.com/jia1217/vigenflow/main/install.ps1 | iex
@@ -196,7 +212,7 @@ Extract the downloaded `.zip` package on a drive with room for the model weights
 
 #### 🐧 Ubuntu
 
-The Ubuntu package needs a few runtime libraries. XRT comes with the AMD XDNA driver installation from [Getting Started](#-getting-started).
+The Ubuntu package needs a few runtime libraries. XRT comes with the [AMD XDNA driver installation](#-install-the-npu-driver-one-time).
 
 ```bash
 sudo apt install libboost-program-options1.83.0 libgomp1 libpng16-16t64 curl unzip
