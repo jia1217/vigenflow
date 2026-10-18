@@ -147,21 +147,33 @@ Check that you have everything below before you download VigenFlow:
     sudo reboot
     ```
 - [ ] **About 75 GB of free disk space** for all four sets of model weights: 65 GB of weights, plus up to 10 GB while downloading. You can download fewer models (see [Step 3](#-step-3-download-the-model-weights-one-time)).
-- [ ] **OpenWebUI Desktop** is installed.
+- [ ] **OpenWebUI Desktop** is installed. The [Quick Install](#-quick-install) starts OpenWebUI for you instead.
 
 ---
 
-## 🐳 Quick Install with Docker (Ubuntu)
+## ⚡ Quick Install
 
-If you use Docker or Podman, or just want the quickest way to try VigenFlow on Ubuntu, one command sets everything up:
+The quickest way to try VigenFlow: one command installs it, downloads the models you choose, and starts it together with OpenWebUI. Press Enter at the model question for FLUX.2-klein-4B (8 GB), the fastest. Run the same command again to update VigenFlow or add models.
+
+### 🪟 Windows
+
+Install the NPU driver first (see [Getting Started](#-getting-started)). Then, in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/jia1217/vigenflow/main/install.ps1 | iex
+```
+
+The installer checks the NPU driver, downloads the latest release, asks for an install folder and which models to download, and starts VigenFlow and OpenWebUI in their own windows. OpenWebUI runs with [uv](https://github.com/astral-sh/uv), so you need neither Docker nor Python; its first start downloads about 2 GB and takes several minutes, then it opens in your browser. If Windows Firewall asks about `vgf-serve.exe`, either answer works for use on this PC. After a restart, start both again from the Start menu, under VigenFlow.
+
+### 🐧 Ubuntu (Docker or Podman)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jia1217/vigenflow/main/docker/install.sh | bash
 ```
 
-The installer checks for the NPU driver and offers to install it, installs Docker if you have neither Docker nor Podman, asks which models to download (press Enter for FLUX.2-klein-4B, 8 GB), and starts VigenFlow together with OpenWebUI. When it finishes, open the address it prints, usually http://localhost:8080. Run the same command again to update VigenFlow or add models.
+The installer checks for the NPU driver and offers to install it, installs Docker if you have neither Docker nor Podman, asks which models to download, and starts VigenFlow together with OpenWebUI. When it finishes, open the address it prints, usually http://localhost:8080. [docs/docker.md](docs/docker.md) shows the same steps by hand, with Podman and Docker Compose.
 
-[docs/docker.md](docs/docker.md) shows the same steps by hand, with Podman and Docker Compose. To use the release packages instead, follow the steps below.
+To use the release packages instead, follow the steps below.
 
 ---
 
