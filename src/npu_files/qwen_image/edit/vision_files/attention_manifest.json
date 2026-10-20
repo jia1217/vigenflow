@@ -1,0 +1,15 @@
+{
+  "tokens": 4096,
+  "heads_per_call": 16,
+  "head_dim": 72,
+  "query_rows": 4608,
+  "query_tile": 48,
+  "key_blocks": 64,
+  "q_group_bytes": 1728,
+  "kv_block_bytes": 5184,
+  "score_dtype": "bfloat16",
+  "q_prescaled": true,
+  "source": "Z0_all_atten_72",
+  "instruction_sha256": "29da4f41edac1835beafcaf9ad6dbd964347c780979fb613334699afd0ca7adf",
+  "xclbin_sha256": "5517f8d069558c23c75c3e57513dce0b835e149f8247e79a38a43e5e7833a5d2"
+}

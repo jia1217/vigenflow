@@ -1,0 +1,104 @@
+{
+  "created_utc": "2026-10-19T04:19:35.563532+00:00",
+  "tile_geometry": {
+    "m": 128,
+    "k": 64,
+    "n": 128,
+    "columns": 8,
+    "rows": 4
+  },
+  "first_k": 1,
+  "parallel_output": 1,
+  "n_unroll": 8,
+  "k_unroll": 8,
+  "instruction_format": "binary little-endian uint32",
+  "hardware_sha256": "9740d21a81adf61aa60078c4167408eae11571dbbe6ae4115416996ab462a6a8",
+  "sources": {
+    "kernel/mm_bfp.cc": "6256dd62a6568cc2d5ec7746eb629ef2fd5ecbd28189c5f9efffa32e1f52425c",
+    "kernel/aie_kernel_utils.h": "dc4f6b9ae9cf60a42f1711e4971ffe392127af2b5b43da1324aa7f191edfdeea",
+    "iron/mm_test.py": "8c9fc93efb19cdee2719fcf740a20b108f7fb8bd1d2a630cfef1e59962de9e07",
+    "scripts/qwen_image_edit_vision_shapes.json": "480470918a5f77c44a4f95775829740e2ed8e4def2c60032443c1ac24b930146"
+  },
+  "compiler_command": [
+    "/home/kelsey2/NPU_NEW/mlir-aie/ironenv/lib/python3.12/site-packages/llvm-aie/bin/clang++",
+    "-O2",
+    "-std=c++20",
+    "--target=aie2p-none-unknown-elf",
+    "-Wno-parentheses",
+    "-Wno-attributes",
+    "-Wno-macro-redefined",
+    "-DNDEBUG",
+    "-D__AIE_API_AIE_ADF_HPP__",
+    "-DAIE_API_EMULATE_BFLOAT16_MMUL_WITH_BFP16",
+    "-I/home/kelsey2/NPU_NEW/mlir-aie/ironenv/lib/python3.12/site-packages/mlir_aie/include",
+    "-DDIM_M=128",
+    "-DDIM_K=64",
+    "-DMM_N_UNROLL=8",
+    "-DMM_K_UNROLL=8",
+    "-DMM_ENABLE_INIT=1",
+    "-c",
+    "/home/kelsey2/NPU_NEW/NPU_qwen/MM_128_bfp16_NK_AB/kernel/mm_bfp.cc",
+    "-o",
+    "/home/kelsey2/NPU_NEW/NPU_qwen/NPU_qwen_image/build/vision_files/work/mm_bfp.o"
+  ],
+  "xclbin": {
+    "path": "xclbins/mm_bfp_new.xclbin",
+    "sha256": "9a67bb7023e4ecebf4ba7e6aa1cc120c17ed452cc940e508cd2e64b0e8303c39"
+  },
+  "instructions": [
+    {
+      "name": "vision_4096_1536_2048",
+      "M": 4096,
+      "K": 1536,
+      "N": 2048,
+      "path": "insts/vision_4096_1536_2048.bin",
+      "bytes": 25104,
+      "sha256": "2aa668910d9572f75dca725431fc715f1e0a4ad4f7c2a3478005e38ab129fe5f"
+    },
+    {
+      "name": "vision_4096_1536_4096",
+      "M": 4096,
+      "K": 1536,
+      "N": 4096,
+      "path": "insts/vision_4096_1536_4096.bin",
+      "bytes": 25104,
+      "sha256": "de825c2860c11228cfeb7ad6604907ef3741bbe3ea85bf25042ddfab29d212d7"
+    },
+    {
+      "name": "vision_4096_1536_5120",
+      "M": 4096,
+      "K": 1536,
+      "N": 5120,
+      "path": "insts/vision_4096_1536_5120.bin",
+      "bytes": 25104,
+      "sha256": "c36eb3123a7bd3cd481e08428bd7d06182aaaa5d7bd1d1b68a250339d26afac7"
+    },
+    {
+      "name": "vision_4096_4608_2048",
+      "M": 4096,
+      "K": 4608,
+      "N": 2048,
+      "path": "insts/vision_4096_4608_2048.bin",
+      "bytes": 25104,
+      "sha256": "eaee4c0475d2c68408f4abc8661a19f2424f96797927d524135c3c8870c4aaad"
+    },
+    {
+      "name": "vision_1024_4608_5120",
+      "M": 1024,
+      "K": 4608,
+      "N": 5120,
+      "path": "insts/vision_1024_4608_5120.bin",
+      "bytes": 8592,
+      "sha256": "811a66ac4a5c42fb13ecd762391131c4583b934ddc985c16383040daa8414981"
+    },
+    {
+      "name": "vision_1024_4608_4096",
+      "M": 1024,
+      "K": 4608,
+      "N": 4096,
+      "path": "insts/vision_1024_4608_4096.bin",
+      "bytes": 8592,
+      "sha256": "6e89838c38bdd2f0011526b8c96d14d0a8b51d75e53c7f9651ab9b5d71cfc4d0"
+    }
+  ]
+}

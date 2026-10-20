@@ -1,0 +1,95 @@
+{
+  "created_utc": "2026-10-13T21:16:39.431169+00:00",
+  "tile_geometry": {
+    "m": 128,
+    "k": 64,
+    "n": 128,
+    "columns": 8,
+    "rows": 4
+  },
+  "first_k": 1,
+  "parallel_output": 1,
+  "n_unroll": 8,
+  "k_unroll": 8,
+  "instruction_format": "binary little-endian uint32",
+  "hardware_sha256": "9740d21a81adf61aa60078c4167408eae11571dbbe6ae4115416996ab462a6a8",
+  "sources": {
+    "kernel/mm_bfp.cc": "6256dd62a6568cc2d5ec7746eb629ef2fd5ecbd28189c5f9efffa32e1f52425c",
+    "kernel/aie_kernel_utils.h": "dc4f6b9ae9cf60a42f1711e4971ffe392127af2b5b43da1324aa7f191edfdeea",
+    "iron/mm_test.py": "8c9fc93efb19cdee2719fcf740a20b108f7fb8bd1d2a630cfef1e59962de9e07",
+    "scripts/qwen_text_mm_shapes.json": "0e3f55487cbcb5c4e3ca0f188c18c4389bc1725a104b4c63189457608c6b4bb2"
+  },
+  "compiler_command": [
+    "/home/kelsey2/NPU_NEW/mlir-aie/ironenv/lib/python3.12/site-packages/llvm-aie/bin/clang++",
+    "-O2",
+    "-std=c++20",
+    "--target=aie2p-none-unknown-elf",
+    "-Wno-parentheses",
+    "-Wno-attributes",
+    "-Wno-macro-redefined",
+    "-DNDEBUG",
+    "-D__AIE_API_AIE_ADF_HPP__",
+    "-DAIE_API_EMULATE_BFLOAT16_MMUL_WITH_BFP16",
+    "-I/home/kelsey2/NPU_NEW/mlir-aie/ironenv/lib/python3.12/site-packages/mlir_aie/include",
+    "-DDIM_M=128",
+    "-DDIM_K=64",
+    "-DMM_N_UNROLL=8",
+    "-DMM_K_UNROLL=8",
+    "-DMM_ENABLE_INIT=1",
+    "-c",
+    "/home/kelsey2/NPU_NEW/NPU_qwen/MM_128_bfp16_NK_AB/kernel/mm_bfp.cc",
+    "-o",
+    "/home/kelsey2/NPU_NEW/NPU_qwen/NPU_qwen_turbo/build/text_files/work/mm_bfp.o"
+  ],
+  "xclbin": {
+    "path": "xclbins/mm_bfp_new.xclbin",
+    "sha256": "2586a759ad9060074772588c6047ec8f788d0b712b40f4cb3769d5cd3504d7be"
+  },
+  "instructions": [
+    {
+      "name": "mm_text_q",
+      "M": 512,
+      "K": 4096,
+      "N": 4096,
+      "path": "insts/mm_text_q.bin",
+      "bytes": 5840,
+      "sha256": "e0da1b07c67ae2a9684ceac17a3232215331d8ff4a67b42bc22fc09e3b777562"
+    },
+    {
+      "name": "mm_text_kv",
+      "M": 512,
+      "K": 4096,
+      "N": 1024,
+      "path": "insts/mm_text_kv.bin",
+      "bytes": 5840,
+      "sha256": "3387ac2d4028542600a7ff1cf34d38547a5ee9fd06870dd3306a0b47e8bedabc"
+    },
+    {
+      "name": "mm_text_o",
+      "M": 512,
+      "K": 4096,
+      "N": 4096,
+      "path": "insts/mm_text_o.bin",
+      "bytes": 5840,
+      "sha256": "e0da1b07c67ae2a9684ceac17a3232215331d8ff4a67b42bc22fc09e3b777562"
+    },
+    {
+      "name": "mm_text_gate_up",
+      "M": 512,
+      "K": 4096,
+      "N": 12288,
+      "path": "insts/mm_text_gate_up.bin",
+      "bytes": 5840,
+      "sha256": "d5f9ee27b36cd7412e2f249bd30bdd3b32df8afc9fb1ec0e67dec3ab01ad5895"
+    },
+    {
+      "name": "mm_text_down",
+      "M": 512,
+      "K": 12288,
+      "N": 4096,
+      "path": "insts/mm_text_down.bin",
+      "bytes": 5840,
+      "sha256": "1469b04902d394cee7246082e747f63d969ea3f6bb6e5bd50d03fcabb7970a73"
+    }
+  ]
+}

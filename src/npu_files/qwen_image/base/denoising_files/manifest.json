@@ -1,0 +1,140 @@
+{
+  "created_utc": "2026-10-13T22:35:48.441234+00:00",
+  "tile_geometry": {
+    "m": 128,
+    "k": 64,
+    "n": 128,
+    "columns": 8,
+    "rows": 4
+  },
+  "first_k": 1,
+  "parallel_output": 1,
+  "n_unroll": 8,
+  "k_unroll": 8,
+  "instruction_format": "binary little-endian uint32",
+  "hardware_sha256": "9740d21a81adf61aa60078c4167408eae11571dbbe6ae4115416996ab462a6a8",
+  "sources": {
+    "kernel/mm_bfp.cc": "6256dd62a6568cc2d5ec7746eb629ef2fd5ecbd28189c5f9efffa32e1f52425c",
+    "kernel/aie_kernel_utils.h": "dc4f6b9ae9cf60a42f1711e4971ffe392127af2b5b43da1324aa7f191edfdeea",
+    "iron/mm_test.py": "8c9fc93efb19cdee2719fcf740a20b108f7fb8bd1d2a630cfef1e59962de9e07",
+    "scripts/qwen_denoise_mm_shapes.json": "8e144379cbe2480627ae4fa7bfe30dae1cfd6c1cb70bfc92f2a04aad7abdde68"
+  },
+  "compiler_command": [
+    "/home/kelsey2/NPU_NEW/mlir-aie/ironenv/lib/python3.12/site-packages/llvm-aie/bin/clang++",
+    "-O2",
+    "-std=c++20",
+    "--target=aie2p-none-unknown-elf",
+    "-Wno-parentheses",
+    "-Wno-attributes",
+    "-Wno-macro-redefined",
+    "-DNDEBUG",
+    "-D__AIE_API_AIE_ADF_HPP__",
+    "-DAIE_API_EMULATE_BFLOAT16_MMUL_WITH_BFP16",
+    "-I/home/kelsey2/NPU_NEW/mlir-aie/ironenv/lib/python3.12/site-packages/mlir_aie/include",
+    "-DDIM_M=128",
+    "-DDIM_K=64",
+    "-DMM_N_UNROLL=8",
+    "-DMM_K_UNROLL=8",
+    "-DMM_ENABLE_INIT=1",
+    "-c",
+    "/home/kelsey2/NPU_NEW/NPU_qwen/MM_128_bfp16_NK_AB/kernel/mm_bfp.cc",
+    "-o",
+    "/home/kelsey2/NPU_NEW/NPU_qwen/NPU_qwen_turbo/build/denoising_files/work/mm_bfp.o"
+  ],
+  "xclbin": {
+    "path": "xclbins/mm_bfp_new.xclbin",
+    "sha256": "27e9b6000b90629f224c67e0c5a8b27a22ef777010dc1fefedf976b5facca106"
+  },
+  "instructions": [
+    {
+      "name": "mm_denoise_4096_4096_4096",
+      "M": 4096,
+      "K": 4096,
+      "N": 4096,
+      "path": "insts/mm_denoise_4096_4096_4096.bin",
+      "bytes": 25104,
+      "sha256": "b742e87e7eb1042720fca8317aeb9962f13b69e330cfc949b5bbea5ec37fca08"
+    },
+    {
+      "name": "mm_denoise_4096_4096_12288",
+      "M": 4096,
+      "K": 4096,
+      "N": 12288,
+      "path": "insts/mm_denoise_4096_4096_12288.bin",
+      "bytes": 25104,
+      "sha256": "bdc11186069becd0b19f7b084d4e8f322cdef09e8a3ea1181371193c1163748b"
+    },
+    {
+      "name": "mm_denoise_4096_12288_4096",
+      "M": 4096,
+      "K": 12288,
+      "N": 4096,
+      "path": "insts/mm_denoise_4096_12288_4096.bin",
+      "bytes": 25104,
+      "sha256": "e795f97d35c215832ea3b1e13f2433453fbac7b9cc02d7c7f92e41392ad73a0e"
+    },
+    {
+      "name": "mm_denoise_4608_4096_4096",
+      "M": 4608,
+      "K": 4096,
+      "N": 4096,
+      "path": "insts/mm_denoise_4608_4096_4096.bin",
+      "bytes": 27856,
+      "sha256": "caa2026e7dd865a4d9bdbad1c495a72f588ba0db4bbd9ccf3f79a9a6d6efcac7"
+    },
+    {
+      "name": "mm_denoise_4608_4096_12288",
+      "M": 4608,
+      "K": 4096,
+      "N": 12288,
+      "path": "insts/mm_denoise_4608_4096_12288.bin",
+      "bytes": 27856,
+      "sha256": "ffe40e75c65336e212835fd96a7ad5ad99b9f60e1475c46bbc61659dbf603a5f"
+    },
+    {
+      "name": "mm_denoise_4608_12288_4096",
+      "M": 4608,
+      "K": 12288,
+      "N": 4096,
+      "path": "insts/mm_denoise_4608_12288_4096.bin",
+      "bytes": 27856,
+      "sha256": "993dc52453e3156f8b1a12d1a067fc70e62703a3280696d1fbaac0512ce4e516"
+    },
+    {
+      "name": "mm_denoise_512_4096_4096",
+      "M": 512,
+      "K": 4096,
+      "N": 4096,
+      "path": "insts/mm_denoise_512_4096_4096.bin",
+      "bytes": 5840,
+      "sha256": "e0da1b07c67ae2a9684ceac17a3232215331d8ff4a67b42bc22fc09e3b777562"
+    },
+    {
+      "name": "mm_denoise_4096_512_4096",
+      "M": 4096,
+      "K": 512,
+      "N": 4096,
+      "path": "insts/mm_denoise_4096_512_4096.bin",
+      "bytes": 25104,
+      "sha256": "72f99bacc09cef689f3fae958e5086e79a4cf79850cd97d4e5e84362c511783f"
+    },
+    {
+      "name": "mm_denoise_4096_4096_1024",
+      "M": 4096,
+      "K": 4096,
+      "N": 1024,
+      "path": "insts/mm_denoise_4096_4096_1024.bin",
+      "bytes": 25104,
+      "sha256": "312c0a16d58ef81ef9888f1024d0a8d00182e4c04ecb4c5c1c030df9a104ba92"
+    },
+    {
+      "name": "mm_denoise_512_512_1024",
+      "M": 512,
+      "K": 512,
+      "N": 1024,
+      "path": "insts/mm_denoise_512_512_1024.bin",
+      "bytes": 5840,
+      "sha256": "5a208976ec70952715a03ef3f52a7b150d0e96cce224beabed7e14790ad09eff"
+    }
+  ]
+}
