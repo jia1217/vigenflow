@@ -5,7 +5,7 @@
 namespace server {
 
 // The edit worker's input: an uploaded PNG, JPEG, BMP or GIF, center-cropped to a
-// square and resized to 1024x1024. The BMP written for the worker is removed when
+// square and resized to 1024x1024 RGB. The lossless PNG written for the worker is removed when
 // this object is destroyed. Throws BadRequest for images that cannot be decoded.
 class WorkerInputImage {
 public:

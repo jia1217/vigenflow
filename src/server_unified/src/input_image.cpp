@@ -15,13 +15,14 @@
 #include <stb_image.h>  // vcpkg stb
 #endif
 
+#include <png.h>
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -96,37 +97,19 @@ std::vector<std::uint8_t> center_crop_resize(const std::uint8_t* rgb, int width,
     return out;
 }
 
-void write_bmp(const std::string& path, const std::vector<std::uint8_t>& rgb, int size) {
-    const std::uint32_t row_bytes = static_cast<std::uint32_t>(size) * 3;  // 1024 * 3 needs no padding
-    const std::uint32_t pixel_bytes = row_bytes * size;
-    std::vector<char> header(54, 0);
-    auto put = [&](int offset, std::uint32_t value, int bytes) {
-        for (int i = 0; i < bytes; ++i) header[offset + i] = static_cast<char>((value >> (8 * i)) & 0xFF);
-    };
-    header[0] = 'B';
-    header[1] = 'M';
-    put(2, 54 + pixel_bytes, 4);
-    put(10, 54, 4);
-    put(14, 40, 4);
-    put(18, size, 4);
-    put(22, size, 4);  // bottom-up rows
-    put(26, 1, 2);
-    put(28, 24, 2);
-    put(34, pixel_bytes, 4);
-
-    std::ofstream file(path, std::ios::binary);
-    file.write(header.data(), header.size());
-    std::vector<char> row(row_bytes);
-    for (int y = size - 1; y >= 0; --y) {
-        const std::uint8_t* src = rgb.data() + static_cast<std::size_t>(y) * row_bytes;
-        for (int x = 0; x < size; ++x) {
-            row[x * 3 + 0] = static_cast<char>(src[x * 3 + 2]);
-            row[x * 3 + 1] = static_cast<char>(src[x * 3 + 1]);
-            row[x * 3 + 2] = static_cast<char>(src[x * 3 + 0]);
-        }
-        file.write(row.data(), row.size());
+void write_png(const std::string& path, const std::vector<std::uint8_t>& rgb, int size) {
+    png_image image{};
+    image.version = PNG_IMAGE_VERSION;
+    image.width = size;
+    image.height = size;
+    image.format = PNG_FORMAT_RGB;
+    // Positive stride keeps the top-down RGB layout produced by resizing.
+    const bool written = png_image_write_to_file(&image, path.c_str(), 0, rgb.data(), size * 3, nullptr);
+    const std::string error = image.message;
+    png_image_free(&image);
+    if (!written) {
+        throw std::runtime_error("failed to write input PNG: " + path + ": " + error);
     }
-    if (!file) throw std::runtime_error("failed to write input image: " + path);
 }
 
 }  // namespace
@@ -154,10 +137,10 @@ WorkerInputImage::WorkerInputImage(const std::string& encoded) {
     const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::system_clock::now().time_since_epoch()).count();
     path_ = (fs::temp_directory_path() /
-             ("vgf-edit-input-" + std::to_string(ms) + "_" + std::to_string(++counter) + ".bmp"))
+             ("vgf-edit-input-" + std::to_string(ms) + "_" + std::to_string(++counter) + ".png"))
                 .string();
     try {
-        write_bmp(path_, resized, size);
+        write_png(path_, resized, size);
     } catch (...) {
         std::error_code ec;
         fs::remove(path_, ec);

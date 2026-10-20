@@ -52,7 +52,7 @@ else:
 args = sys.argv[1:]
 (state / 'last_args.json').write_text(json.dumps(args))
 if '--input_image' in args:
-    shutil.copyfile(args[args.index('--input_image') + 1], state / 'last_input.bmp')
+    shutil.copyfile(args[args.index('--input_image') + 1], state / 'last_input.png')
 seed = int(args[args.index('--seed') + 1])
 prompt = next((arg[len('--prompt='):] for arg in args if arg.startswith('--prompt=')), None)
 (state / 'last_prompt.json').write_text(json.dumps(prompt))
@@ -418,8 +418,11 @@ time.sleep(0.08)
 
             def edit_input():
                 args = json.loads((root / edit_folder / 'last_args.json').read_text())
-                assert not Path(args[args.index('--input_image') + 1]).exists(), 'temporary input must be removed'
-                image = Image.open(root / edit_folder / 'last_input.bmp').convert('RGB')
+                input_path = Path(args[args.index('--input_image') + 1])
+                assert input_path.suffix == '.png', 'workers receive PNG input'
+                assert not input_path.exists(), 'temporary input must be removed'
+                image = Image.open(root / edit_folder / 'last_input.png')
+                assert image.format == 'PNG' and image.mode == 'RGB', 'lossless 8-bit RGB worker input'
                 assert image.size == (1024, 1024)
                 return args, image
 
@@ -440,6 +443,17 @@ time.sleep(0.08)
             assert '--prompt=add a hat' in args and args[args.index('--seed') + 1] == '42'
             assert args[args.index('--weights_path') + 1] == str(root.parent / 'all_model_weights' / 'flux2_klein_4B')
             assert args[args.index('--npu_files_path') + 1] == str(root / 'all_npu_files' / 'flux2_klein_4B')
+
+            # Distinct corners catch row inversion and RGB/BGR swaps in the prepared PNG.
+            corners = Image.new('RGB', (1024, 1024), (255, 0, 0))
+            corners.paste((0, 255, 0), (512, 0, 1024, 512))
+            corners.paste((0, 0, 255), (0, 512, 512, 1024))
+            corners.paste((240, 180, 20), (512, 512, 1024, 1024))
+            # BMP uploads remain accepted; only the prepared worker format changes.
+            request('/v1/images/edits', {'prompt': 'preserve the colors',
+                                       'image': base64.b64encode(encoded(corners, 'BMP')).decode()})
+            _, image = edit_input()
+            assert image.tobytes() == corners.tobytes(), 'PNG preserves every RGB pixel and orientation'
 
             # JSON body with a data URL, JPEG input, default model and a raw PNG response.
             tall_jpeg = encoded(Image.new('RGB', (40, 90), (200, 30, 30)), 'JPEG')

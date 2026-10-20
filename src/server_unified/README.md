@@ -75,6 +75,12 @@ For example, a request explicitly selecting `z-image-turbo` still uses its own s
 
 An edit needs a prompt and one input image (PNG, JPEG, BMP or GIF, up to 40 megapixels). The NPU pipeline only accepts 1024x1024, so the server center-crops the image to a square and resizes it to 1024x1024 before starting the worker; the output is 1024x1024. When several images are sent, the first is edited.
 
+Workers receive `--input_image PATH` pointing to a temporary lossless, 8-bit RGB
+PNG, removed after the request. PNG is shared with the Qwen native editing host
+and is also accepted by the existing Flux2 editing workers. Uploads still use
+the existing RGB preprocessing, so alpha is not retained. This input convention
+does not register Qwen in the server or change each worker's output format.
+
 ```bash
 # OpenAI-style multipart upload
 curl -s http://127.0.0.1:1128/v1/images/edits -F model=flux2-klein-4B-edit \
