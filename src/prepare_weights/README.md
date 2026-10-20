@@ -2,7 +2,7 @@
 
 `prepare_base.exe` downloads the pre-packed NPU weights of every model from Hugging Face and unpacks them
 into the folders the model workers read (`all_model_weights/<id>`). It is the `prepare/` tool of the
-release package; no Hugging Face login and no BF16 → BFP16 conversion are needed.
+release package; public repositories need no Hugging Face login, and no BF16 → BFP16 conversion is needed.
 
 ## Build and run (Ubuntu)
 
@@ -38,7 +38,8 @@ python tests\test_prepare_base.py vigenflow_win\prepare_base.exe   # Windows
 
 The check runs the real tool against a local fake Hugging Face server (no network, models or login):
 packing, a resumed multi-shard download with parallel byte ranges, a byte-exact unpack, cleanup, the
-config found from the exe's folder, the Krea license prompt and the one-run-per-weights-root lock.
+config found from the exe's folder, Krea and Qwen license prompts, Qwen's five-stage package and notices,
+disabled-model selection, rejection of missing notices, and the one-run-per-weights-root lock.
 
 `curl` (8.3 or newer) does the downloads. Paths do not depend on the current directory:
 `prepare_models.jsonc` is read from next to `prepare_base.exe`, and its `"weights_root"` is relative to that
@@ -54,8 +55,9 @@ relative to the current directory as usual.
 | `flux2_klein_4B` | [Kelsey1217/FLUX.2-klein-4B-NPU-BFP16](https://huggingface.co/Kelsey1217/FLUX.2-klein-4B-NPU-BFP16) | 8 GB |
 | `krea2_turbo` | [Kelsey1217/Krea-2-Turbo-NPU-BFP16](https://huggingface.co/Kelsey1217/Krea-2-Turbo-NPU-BFP16) | 19 GB |
 | `z_image_turbo` | [Kelsey1217/Z-Image-Turbo-NPU-BFP16](https://huggingface.co/Kelsey1217/Z-Image-Turbo-NPU-BFP16) | 12 GB |
+| `qwen_image_2_1_turbo` (opt-in) | [Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16](https://huggingface.co/Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16) | 19.59 GB / 18.24 GiB |
 
-All four repositories are public. FLUX.2 text-to-image and image editing share the `flux2_klein_4B` weights.
+All five repositories are public; the original four remain enabled by default, and Qwen is opt-in. FLUX.2 text-to-image and image editing share the `flux2_klein_4B` weights.
 
 The Krea 2 Turbo weights are under the Krea 2 Community License (not Apache 2.0), so before downloading
 them `prepare_base.exe` prints the license and use-policy links and waits for you to type `I agree`:
@@ -70,6 +72,44 @@ Any other answer, or no input (not a terminal), skips the model: nothing is down
 to date is not asked again. `LICENSE.pdf` and `Notice` are unpacked into `all_model_weights/krea2_turbo/`;
 keep them with any copy.
 
+### Qwen Image 2.1 Turbo
+
+The Qwen package is published and pinned to revision
+`f5f2b6496af7340ea2032a9fc3243bb0d0c67934`. Its catalog entry remains **opt-in**
+(`enabled: false`); use `--only qwen_image_2_1_turbo` to install it. It prepares one
+`all_model_weights/qwen_image_2_1_turbo/` folder for both tasks:
+
+- Text-to-image: `text_encoder/`, `denoising/`, `vae_decoder/`.
+- Image editing: the same stages plus `vision/` and `vae_encoder/`.
+
+The package contains both NPU packed operands and CPU tensors. Downloads, resumed unpacking, cleanup and
+update detection use the existing Krea2 path. No Python, iGPU or checkpoint conversion is required by
+`prepare_base.exe`. Native host executables and NPU instruction/XCLBIN bundles are separate assets;
+adding this entry does not register a Qwen worker in the VigenFlow server.
+
+The weights retain the [Qwen RESEARCH LICENSE AGREEMENT](../../model_licenses/qwen_image_2_1_turbo/LICENSE):
+research/evaluation use only; commercial use requires a separate license from the upstream licensor at
+`model-business@notice.qwencloud.com`. The [upstream revision's license](https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo/blob/fc13ba1986fcb905854dc8de2f52eee395f49b5b/LICENSE)
+is preserved verbatim. Before downloading the shards, the tool shows the terms and asks for `I agree`,
+as it does for Krea2. `--accept_license` accepts the terms for that invocation without an interactive
+prompt. `LICENSE` and the attribution/conversion `Notice` must be inside the shards and are restored
+alongside the stages. Missing or empty notices cause installation/packing to fail.
+
+To download Qwen only:
+
+```bash
+./prepare_base.exe --only qwen_image_2_1_turbo --weights_root /path/to/all_model_weights
+# After reviewing the license, an unattended installation can add --accept_license.
+```
+
+Pass `/path/to/all_model_weights/qwen_image_2_1_turbo` as `-w` to the corresponding native Qwen host.
+The current NPU_qwen_image host supports image editing; text-to-image needs its matching host/bundles.
+
+The published release was downloaded and unpacked with `prepare_base.exe` without a Hugging Face login.
+All four shard hashes matched the local package; all 1,398 restored payload/metadata files passed SHA256
+checks, and the remaining preparation manifest retained its provenance with the download origin added.
+License/notice bytes, download-cache cleanup and a second-run `up to date` check passed on Linux.
+
 ## Choosing models: prepare_models.jsonc
 
 - **Leave a model out:** set `"enabled": false` in its entry; it is then skipped on every run.
@@ -79,7 +119,9 @@ keep them with any copy.
   downloaded. `id` is the output folder under the weights root (the `--weights_path` of that model's
   `run.exe`).
 - `recipe`, `source` and `revision` describe the checkpoint the packed weights were converted from. They
-  identify a model folder that is already up to date, and a `krea/` source turns on the license prompt.
+  identify a model folder that is already up to date. Krea recipes/sources and the Qwen Image 2.1 Turbo
+  id, recipe or exact upstream source turn on their respective license prompts. Other Qwen checkpoints
+  are not assumed to have this license.
 - Check where the folders go before the first run: if your weights are somewhere else, change
   `"weights_root"` or pass `--weights_root`; otherwise the models are downloaded again into the new place.
 
@@ -117,3 +159,24 @@ hf upload-large-folder Kelsey1217/FLUX.2-klein-4B-NPU-BFP16 ../../packed_weights
 ```
 
 Clients see the new blob ids and update on their next run.
+
+### Publishing future Qwen weight updates
+
+The initial Qwen package is already published and the catalog pins its verified commit. For updates,
+test preparation first, upload second, then update the catalog revision. The existing
+`NPU_qwen_image/packed_weights/qwen_image_2_1_turbo/` folder already has the correct format and needs
+no repacking. Upload its **contents to the repository root**, including all four shards, index,
+`LICENSE`, `Notice`, checksums, task profiles and restore helper. For example, from that package folder:
+
+```bash
+hf upload Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16 . . --repo-type=model
+```
+
+The [Hugging Face upload guide](https://huggingface.co/docs/huggingface_hub/guides/upload#upload-a-large-folder)
+documents uploading and resuming large folders. This command publishes the weights; it is a maintainer
+step, not part of downloading them. Preserve the upstream license and conversion notices and describe
+the NPU+CPU format in the model card. Once the
+upload is complete, set the Qwen entry's `packed_revision` to the **packed repository's commit hash**
+(distinct from the upstream checkpoint `revision`) only after testing that candidate revision into a
+new weights root. Keep the previous pinned revision until the new package has passed validation.
+Qwen remains opt-in so publishing an update does not add it to existing default installations.

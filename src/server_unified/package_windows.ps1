@@ -89,6 +89,7 @@ Copy-Item -LiteralPath $prepareBin, (Join-Path $prepareDir 'prepare_models.jsonc
 foreach ($doc in 'LICENSE', 'MODEL_LICENSES.md', 'THIRD_PARTY_NOTICES.md') {
     Copy-Item -LiteralPath (Join-Path $repoRoot $doc) -Destination $stage
 }
+Copy-Item -LiteralPath (Join-Path $repoRoot 'model_licenses') -Destination $stage -Recurse
 
 # Entry names use / as the zip format requires (Windows PowerShell's ZipFile.CreateFromDirectory writes \,
 # which other unzip tools take as part of the file name), and empty folders such as images\ are kept.

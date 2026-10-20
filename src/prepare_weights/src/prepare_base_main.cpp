@@ -47,7 +47,7 @@ void usage() {
                  "  --connections N      parallel connections per shard download (default: 8)\n"
                  "  --force              download even if the folder is up to date or was not made by these tools\n"
                  "  --keep_sources       keep the downloaded shards after unpacking (default: delete them)\n"
-                 "  --accept_license     accept the terms of the models with their own license (krea2_turbo) instead of\n"
+                 "  --accept_license     accept model-specific terms (Krea 2 / Qwen Image 2.1 Turbo) instead of\n"
                  "                       typing I agree at the prompt, for unattended runs\n"
                  "  --pack               pack <weights_root>/<id> into <pack_dir>/<packed_path> for uploading\n"
                  "  --pack_dir DIR       default: <weights_root>/../packed_weights\n"
@@ -78,10 +78,26 @@ double seconds_since(std::chrono::steady_clock::time_point t0) {
     return std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
 }
 
+bool is_qwen_image_turbo(const ModelEntry& m) {
+    return m.id == "qwen_image_2_1_turbo" || m.recipe == "qwen_image_2_1_turbo" ||
+           m.source == "Qwen/Qwen-Image-2.1-Turbo";
+}
+
+void require_model_notices(const ModelEntry& m, const fs::path& folder) {
+    if (!is_qwen_image_turbo(m)) return;
+    for (const char* name : {"LICENSE", "Notice"}) {
+        const fs::path file = folder / name;
+        if (!fs::is_regular_file(file) || fs::file_size(file) == 0)
+            throw std::runtime_error(folder.string() + ": missing or empty " + name +
+                                     "; Qwen weights must retain the upstream LICENSE and attribution Notice");
+    }
+}
+
 void pack_model(const ModelEntry& m, const Options& opt) {
     const auto t0 = std::chrono::steady_clock::now();
     const fs::path folder = opt.weights_root / m.id;
     if (!fs::is_directory(folder)) throw std::runtime_error(folder.string() + " does not exist");
+    require_model_notices(m, folder);
     if (!read_manifest(folder))
         say(m.id, "note: no ", kManifest, " (made by the older tools); `prepare.exe --only ", m.id,
             " --force` adds one, so prepare_base.exe can tell such a folder is up to date");
@@ -92,12 +108,18 @@ void pack_model(const ModelEntry& m, const Options& opt) {
         std::setprecision(1), seconds_since(t0), " s -> ", out.string());
 }
 
-// The terms of a model whose weights are not under the Apache 2.0 license of the other packages; "" otherwise.
+// Model-specific terms; do not infer a license for other Qwen checkpoints from this one.
 std::string own_license(const ModelEntry& m) {
-    if (m.recipe != "krea2_turbo" && !m.source.starts_with("krea/")) return "";
-    return "Krea 2 Community License Agreement (https://huggingface.co/" + m.packed_repo + "/blob/" + m.packed_revision + "/" +
-           (m.packed_path.empty() ? "" : m.packed_path + "/") +
-           "LICENSE.pdf) and Krea Acceptable Use Policy (https://www.krea.ai/krea-2-use-policy)";
+    const std::string packed_url = "https://huggingface.co/" + m.packed_repo + "/blob/" + m.packed_revision + "/" +
+                                   (m.packed_path.empty() ? "" : m.packed_path + "/");
+    if (is_qwen_image_turbo(m))
+        return "Qwen RESEARCH LICENSE AGREEMENT (" + packed_url + "LICENSE). "
+               "Research/evaluation only; commercial use requires a separate license from "
+               "model-business@notice.qwencloud.com. Retain LICENSE and Notice with redistributed weights.";
+    if (m.recipe == "krea2_turbo" || m.source.starts_with("krea/"))
+        return "Krea 2 Community License Agreement (" + packed_url +
+               "LICENSE.pdf) and Krea Acceptable Use Policy (https://www.krea.ai/krea-2-use-policy)";
+    return "";
 }
 
 struct NotAccepted : std::runtime_error {
@@ -164,13 +186,20 @@ void download_model(const ModelEntry& m, HfClient& hf, const Options& opt) {
     for (const HfFile& f : shards) blobs[f.path] = f.blob_id;
 
     const fs::path index_path = hf.fetch(snap, *index_file, nullptr);
-    json meta;
+    json index, meta;
     {
         std::ifstream f(index_path);
-        meta = json::parse(f).at("metadata");
+        index = json::parse(f);
+        meta = index.at("metadata");
     }
     if (meta.value("format", "") != kPackedFormat)
         throw std::runtime_error(where + kPackedIndex + " is not a " + kPackedFormat + " index");
+    if (is_qwen_image_turbo(m)) {
+        for (const char* name : {"LICENSE", "Notice"}) {
+            if (!index.at("weight_map").contains(name))
+                throw std::runtime_error("Qwen packed index must include " + std::string(name) + " inside the shards");
+        }
+    }
 
     if (fs::exists(out) && !opt.force) {
         if (!local) {
@@ -185,6 +214,7 @@ void download_model(const ModelEntry& m, HfClient& hf, const Options& opt) {
                                  local->value("source", "") == meta.value("source", "") &&
                                  local->value("commit", "") == meta.value("commit", "");
         if (same_pack || same_source) {
+            require_model_notices(m, out);
             say(m.id, "up to date");
             remove_downloads(m.id, {index_path}, opt.cache_dir, false, "", true);
             return;
@@ -303,6 +333,7 @@ void download_model(const ModelEntry& m, HfClient& hf, const Options& opt) {
     if (files != meta.value("file_count", size_t(0)) || bytes != meta.value("total_size", uint64_t(0)))
         throw std::runtime_error("unpacked " + std::to_string(files) + " files / " + std::to_string(bytes) + " bytes; the index lists " +
                                  std::to_string(meta.value("file_count", size_t(0))) + " / " + std::to_string(meta.value("total_size", uint64_t(0))));
+    require_model_notices(m, stage);
 
     // The packed prepare_manifest.json (provenance) plus where these files came from.
     json man = json::object();

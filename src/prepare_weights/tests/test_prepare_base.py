@@ -24,6 +24,7 @@ TOKEN = "hf_prepare_base_fixture_only"
 
 def main():
     binary = Path(sys.argv[1] if len(sys.argv) > 1 else "prepare_base.exe").resolve()
+    qwen_notices = Path(__file__).resolve().parents[3] / "model_licenses/qwen_image_2_1_turbo"
     repos = {}
     requests = []
     entered, release = threading.Event(), threading.Event()
@@ -183,6 +184,104 @@ def main():
             log = run("--weights_root", krea_root, "--accept_license")
             assert "accepted with --accept_license" in log and (krea_root / "krea2_turbo/large.bin").is_file(), log
             print("PASS: license prompt (no input, refusal, I agree, --accept_license)", flush=True)
+
+            # Qwen uses one repo-root package for both tasks, including all CPU and NPU stage files.
+            qwen = dict(id="qwen_image_2_1_turbo", recipe="qwen_image_2_1_turbo",
+                        source="Qwen/Qwen-Image-2.1-Turbo", packed_repo="fixture/qwen",
+                        packed_revision="main", packed_path="", enabled=False)
+            write_config([qwen])
+            qwen_source_root = root / "qwen source"
+            qwen_source = qwen_source_root / qwen["id"]
+            for stage_name in ("text_encoder", "denoising", "vision", "vae_encoder", "vae_decoder"):
+                stage_folder = qwen_source / stage_name
+                stage_folder.mkdir(parents=True)
+                (stage_folder / "weights.bin").write_bytes(bytes(range(256)) + stage_name.encode())
+                (stage_folder / "config.json").write_text('{"fixture":true}', encoding="utf-8")
+            for name in ("LICENSE", "Notice"):
+                shutil.copyfile(qwen_notices / name, qwen_source / name)
+            (qwen_source / "prepare_manifest.json").write_text(json.dumps({
+                "id": qwen["id"], "recipe": qwen["recipe"], "recipe_version": 1,
+                "source": qwen["source"], "commit": "b" * 40,
+            }), encoding="utf-8")
+            qwen_packed = root / "qwen packed"
+            qwen_root = root / "qwen installed"
+            qwen_args = ("--weights_root", qwen_root, "--only", qwen["id"])
+
+            def pack_qwen():
+                run("--pack", "--only", qwen["id"], "--weights_root", qwen_source_root,
+                    "--pack_dir", qwen_packed, "--shard_gb", "0.000005")
+                repos[qwen["packed_repo"]] = {
+                    p.name: p.read_bytes() for p in (qwen_packed / qwen["id"]).iterdir() if p.is_file()
+                }
+
+            pack_qwen()
+            before = len(requests)
+            run("--weights_root", qwen_root)
+            assert len(requests) == before, "disabled Qwen must not resolve or download"
+            for answer in (None, "no\n"):
+                before = len(requests)
+                log = run(*qwen_args, expected=1, stdin_text=answer)
+                assert "Qwen RESEARCH LICENSE AGREEMENT" in log and "Research/evaluation only" in log, log
+                assert "https://huggingface.co/fixture/qwen/blob/main/LICENSE" in log, log
+                assert "not accepted" in log and not (qwen_root / qwen["id"]).exists(), log
+                assert not any(path.endswith(".safetensors") for path, _ in requests[before:]), requests[before:]
+                assert not (qwen_root / ".hf_sources").exists(), log
+            run(*qwen_args, stdin_text="I agree\n")
+            installed = qwen_root / qwen["id"]
+            for original in qwen_source.rglob("*"):
+                if original.is_file() and original.name != "prepare_manifest.json":
+                    assert original.read_bytes() == (installed / original.relative_to(qwen_source)).read_bytes(), original
+            manifest = json.loads((installed / "prepare_manifest.json").read_text())
+            assert manifest["packed"]["repo"] == "fixture/qwen" and manifest["packed"]["path"] == ""
+            log = run(*qwen_args)
+            assert "up to date" in log and "type I agree" not in log, log
+            shutil.rmtree(installed)
+            assert "accepted with --accept_license" in run(*qwen_args, "--accept_license")
+            print("PASS: Qwen disabled default, explicit selection, license acceptance, all stages and notices", flush=True)
+
+            # A different output id still gets the Qwen prompt by source, without affecting other Qwen models.
+            renamed = dict(qwen, id="custom_edit", recipe="custom_edit", enabled=True)
+            write_config([renamed])
+            assert "not accepted" in run("--weights_root", qwen_root, expected=1)
+            assert not (qwen_root / renamed["id"]).exists()
+            write_config([qwen])
+
+            # Do not publish a package without notices, or replace an installed model with such a download.
+            for missing in ("LICENSE", "Notice"):
+                data = (qwen_source / missing).read_bytes()
+                (qwen_source / missing).unlink()
+                log = run("--pack", "--only", qwen["id"], "--weights_root", qwen_source_root,
+                          "--pack_dir", root / "invalid pack", expected=1)
+                assert "missing or empty " + missing in log, log
+                assert not (root / "invalid pack" / qwen["id"]).exists(), log
+                (qwen_source / missing).write_bytes(data)
+                original_index = repos["fixture/qwen"]["model.safetensors.index.json"]
+                invalid_index = json.loads(original_index)
+                del invalid_index["weight_map"][missing]
+                repos["fixture/qwen"]["model.safetensors.index.json"] = json.dumps(invalid_index).encode()
+                before = len(requests)
+                log = run(*qwen_args, "--force", "--accept_license", expected=1)
+                assert "must include " + missing in log, log
+                assert not any(path.endswith(".safetensors") for path, _ in requests[before:]), requests[before:]
+                assert (installed / missing).read_bytes() == data
+                repos["fixture/qwen"]["model.safetensors.index.json"] = original_index
+
+            # Even a structurally valid index cannot install an empty license file.
+            (qwen_source / "LICENSE").write_bytes(b"")
+            log = run("--pack", "--only", qwen["id"], "--weights_root", qwen_source_root,
+                      "--pack_dir", root / "invalid pack", expected=1)
+            assert "missing or empty LICENSE" in log, log
+            # Pack with a neutral fixture id to exercise validation after unpack, not only before pack.
+            write_config([dict(qwen, recipe="fixture", source="fixture", id="unchecked")])
+            shutil.copytree(qwen_source, qwen_source_root / "unchecked")
+            run("--pack", "--only", "unchecked", "--weights_root", qwen_source_root,
+                "--pack_dir", qwen_packed)
+            repos["fixture/qwen"] = {p.name: p.read_bytes() for p in (qwen_packed / "unchecked").iterdir()}
+            write_config([qwen])
+            log = run(*qwen_args, "--force", "--accept_license", expected=1)
+            assert "missing or empty LICENSE" in log, log
+            assert (installed / "LICENSE").read_bytes() == (qwen_notices / "LICENSE").read_bytes()
+            print("PASS: Qwen source detection, missing/empty notices rejected, existing installation preserved", flush=True)
 
             # One run per weights root; the lock goes away with the process that held it.
             write_config([dict(tiny, packed_repo="fixture/blocked")])

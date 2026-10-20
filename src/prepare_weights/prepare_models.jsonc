@@ -1,8 +1,8 @@
 // The models the prepare tools put under weights_root, one folder per model id:
 //   prepare.exe       downloads the upstream checkpoint ("source") and converts it to the NPU layout
 //   prepare_base.exe  downloads the pre-packed NPU folder ("packed_repo") as is: no conversion;
-//                     all four packed repos are public, so it needs no Hugging Face login;
-//                     before Krea it shows the Krea license and asks you to type I agree
+//                     the four enabled packed repos are public, so they need no Hugging Face login;
+//                     Krea and Qwen show their model license and ask you to type I agree
 //
 // weights_root: where the model folders go, relative to this file. ../../all_model_weights is
 // two levels above prepare/, matching vgf-serve; the server passes each model path to its worker.
@@ -72,6 +72,23 @@
       "source": "krea/Krea-2-Turbo",
       "revision": "main",
       "enabled": true,
+      "keep_sources": false
+    },
+    // Pre-packed only, shared by text-to-image and image editing (all five NPU+CPU stages).
+    // Published at the repo root; packed_revision pins the verified four-shard release.
+    // Opt-in: --only qwen_image_2_1_turbo downloads it while enabled remains false, preserving
+    // the existing default download size. This adds weight preparation, not a server model/worker.
+    // Qwen RESEARCH LICENSE AGREEMENT: research/evaluation only; commercial use needs a separate
+    // license. prepare_base.exe asks for I agree and preserves LICENSE and Notice in the model folder.
+    {
+      "id": "qwen_image_2_1_turbo",
+      "packed_repo": "Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16",
+      "packed_revision": "f5f2b6496af7340ea2032a9fc3243bb0d0c67934",
+      "packed_path": "",
+      "recipe": "qwen_image_2_1_turbo",
+      "source": "Qwen/Qwen-Image-2.1-Turbo",
+      "revision": "fc13ba1986fcb905854dc8de2f52eee395f49b5b",
+      "enabled": false,
       "keep_sources": false
     }
   ]

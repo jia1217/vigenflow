@@ -87,6 +87,7 @@ cp "$PREPARE_DIR/prepare_models.jsonc" "$STAGE_DIR/prepare/"
 for doc in LICENSE MODEL_LICENSES.md THIRD_PARTY_NOTICES.md; do
   cp "$REPO_ROOT/$doc" "$STAGE_DIR/$doc"
 done
+cp -a "$REPO_ROOT/model_licenses" "$STAGE_DIR/model_licenses"
 
 (
   cd "$OUT_ROOT"

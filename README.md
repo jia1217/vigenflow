@@ -104,7 +104,7 @@ All models use BFP16 weights, run on both Windows and Ubuntu, and make 1024 × 1
 
 The times are approximate, for one 1024 × 1024 image on an AMD Ryzen AI 9 HX 370, with prompts encoded at 512 text tokens.
 
-Krea 2 Turbo's weights are under the [Krea 2 Community License](https://www.krea.ai/krea-2-licensing), not Apache-2.0, and its commercial use is limited; see [MODEL_LICENSES.md](MODEL_LICENSES.md). The other models are Apache-2.0.
+Krea 2 Turbo's weights are under the [Krea 2 Community License](https://www.krea.ai/krea-2-licensing), not Apache-2.0, and its commercial use is limited; see [MODEL_LICENSES.md](MODEL_LICENSES.md). The other models in the table above are Apache-2.0. The opt-in Qwen Image 2.1 Turbo weight-preparation entry uses the Qwen RESEARCH LICENSE AGREEMENT (research/evaluation only; separate license required for commercial use).
 
 ### Compared with AMD Ryzen AI Software 1.8
 
@@ -247,6 +247,12 @@ When the download reaches Krea 2 Turbo, `prepare_base.exe` shows the Krea licens
 All four sets of weights together are about **65 GB** (FLUX.1-schnell 27 GB, Krea 2 Turbo 19 GB, Z-Image-Turbo 12 GB, FLUX.2-klein-4B 8 GB), plus up to 10 GB of free space while downloading. The edit model uses the FLUX.2-klein-4B weights.
 
 To download only some models, name their weight folders with `--only`, for example `prepare_base.exe --only flux2_klein_4B,z_image_turbo`. The names are `flux1_schnell`, `flux2_klein_4B`, `z_image_turbo` and `krea2_turbo`. To skip a model on every run, set `"enabled": false` for it in `prepare/prepare_models.jsonc` instead.
+
+`qwen_image_2_1_turbo` downloads the public [NPU+CPU weight package](https://huggingface.co/Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16)
+at a pinned, verified revision. It remains opt-in and adds 19.59 GB when selected with
+`--only qwen_image_2_1_turbo`; the tool asks for acceptance of the Qwen research license.
+This prepares weights only; Qwen server integration is separate. See the
+[preparation instructions](src/prepare_weights/README.md#qwen-image-21-turbo).
 
 If you used v0.2.0 Beta 1, move its `all_model_weights` folder so that it sits next to the new package folder before you run the command. The three models you already have are then not downloaded again.
 
