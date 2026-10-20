@@ -10,6 +10,7 @@
 # Unattended runs:
 #   VIGENFLOW_MODELS=flux2_klein_4B,z_image_turbo   models to download, or "all" (default: ask; 1 = FLUX.2)
 #   VIGENFLOW_ACCEPT_KREA_LICENSE=yes               accept Krea 2 Turbo's license (krea2_turbo)
+#   VIGENFLOW_ACCEPT_QWEN_LICENSE=yes               accept Qwen's license (qwen_image_2_1_turbo)
 #   VIGENFLOW_WEBUI=0                               do not start OpenWebUI
 #   VIGENFLOW_IMAGE, VIGENFLOW_WEBUI_IMAGE           other images
 set -euo pipefail
@@ -101,7 +102,7 @@ fi
 D="${DOCKER[*]}"  # for the commands printed at the end
 
 # --- Models -------------------------------------------------------------------------------------------
-ALL_MODELS=(flux2_klein_4B z_image_turbo krea2_turbo flux1_schnell)
+ALL_MODELS=(flux2_klein_4B z_image_turbo krea2_turbo flux1_schnell qwen_image_2_1_turbo)
 MODELS="${VIGENFLOW_MODELS:-}"
 if [ -z "$MODELS" ]; then
     if [ -n "$TTY" ]; then
@@ -112,13 +113,14 @@ Which models do you want to download?
   2) Z-Image-Turbo     12 GB
   3) Krea 2 Turbo      19 GB   has its own license, which you are asked to accept
   4) FLUX.1-schnell    27 GB
-  a) all four          65 GB
+  5) Qwen Image 2.1 Turbo  19.6 GB   text-to-image and editing; asks you to accept its license
+  a) all five          about 85 GB
 EOF
     fi
     MODELS=""
     for choice in $(ask 'Type the numbers separated by spaces [1]:' 1); do
         case "$choice" in
-            1|2|3|4) MODELS="$MODELS,${ALL_MODELS[choice - 1]}" ;;
+            1|2|3|4|5) MODELS="$MODELS,${ALL_MODELS[choice - 1]}" ;;
             a|A|all) MODELS=all ;;
             *) die "Unknown choice: $choice" ;;
         esac
@@ -126,11 +128,14 @@ EOF
     done
     MODELS="${MODELS#,}"
 fi
-if [ "$MODELS" != all ]; then
-    for m in ${MODELS//,/ }; do
-        [[ " ${ALL_MODELS[*]} " == *" $m "* ]] || die "Unknown model $m (choose from: ${ALL_MODELS[*]})"
-    done
+if [ "$MODELS" = all ]; then
+    SELECTED_MODELS=("${ALL_MODELS[@]}")
+else
+    IFS=',' read -r -a SELECTED_MODELS <<< "$MODELS"
 fi
+for m in "${SELECTED_MODELS[@]}"; do
+    [[ -n "$m" && " ${ALL_MODELS[*]} " == *" $m "* ]] || die "Unknown model $m (choose from: ${ALL_MODELS[*]})"
+done
 
 # --- VigenFlow image and weights ----------------------------------------------------------------------
 say "Downloading the VigenFlow image"
@@ -140,15 +145,25 @@ if ! "${DOCKER[@]}" pull "$IMAGE"; then
 fi
 
 say "Downloading the model weights (the first time takes a while; an interrupted download resumes)"
-PREPARE_ARGS=()
-[ "$MODELS" != all ] && PREPARE_ARGS+=(--only "$MODELS")
-[ "${VIGENFLOW_ACCEPT_KREA_LICENSE:-}" = yes ] && PREPARE_ARGS+=(--accept_license)
 prepare_ok=1
-if [ -n "$TTY" ]; then  # a terminal, so prepare can ask for Krea's license
-    "${DOCKER[@]}" run --rm -it -v "$WEIGHTS_VOLUME:$WEIGHTS_DIR" "$IMAGE" prepare "${PREPARE_ARGS[@]}" < "$TTY" || prepare_ok=0
-else
-    "${DOCKER[@]}" run --rm -v "$WEIGHTS_VOLUME:$WEIGHTS_DIR" "$IMAGE" prepare "${PREPARE_ARGS[@]}" || prepare_ok=0
-fi
+for m in "${SELECTED_MODELS[@]}"; do
+    # Select each weight set explicitly: Qwen is disabled in the default catalog.
+    # Keep each license acceptance scoped to its own model.
+    PREPARE_ARGS=(--only "$m")
+    case "$m" in
+        krea2_turbo)
+            [ "${VIGENFLOW_ACCEPT_KREA_LICENSE:-}" = yes ] && PREPARE_ARGS+=(--accept_license)
+            ;;
+        qwen_image_2_1_turbo)
+            [ "${VIGENFLOW_ACCEPT_QWEN_LICENSE:-}" = yes ] && PREPARE_ARGS+=(--accept_license)
+            ;;
+    esac
+    if [ -n "$TTY" ]; then  # a terminal, so prepare can ask for the model's license
+        "${DOCKER[@]}" run --rm -it -v "$WEIGHTS_VOLUME:$WEIGHTS_DIR" "$IMAGE" prepare "${PREPARE_ARGS[@]}" < "$TTY" || prepare_ok=0
+    else
+        "${DOCKER[@]}" run --rm -v "$WEIGHTS_VOLUME:$WEIGHTS_DIR" "$IMAGE" prepare "${PREPARE_ARGS[@]}" || prepare_ok=0
+    fi
+done
 
 # A model folder exists only once its download is complete (prepare unpacks into <id>.partial first).
 listing="$("${DOCKER[@]}" run --rm -v "$WEIGHTS_VOLUME:$WEIGHTS_DIR" "$IMAGE" ls "$WEIGHTS_DIR")"
@@ -159,6 +174,7 @@ done
 [ ${#INSTALLED[@]} -gt 0 ] || die "No model weights were downloaded; see the messages above."
 # The server's default model: z-image-turbo, vgf-serve's own default, when it is here.
 DEFAULT_MODEL="${INSTALLED[0]//_/-}"
+if [ "${INSTALLED[0]}" = qwen_image_2_1_turbo ]; then DEFAULT_MODEL=qwen-image-2.1-turbo; fi
 for m in "${INSTALLED[@]}"; do
     if [ "$m" = z_image_turbo ]; then DEFAULT_MODEL=z-image-turbo; fi
 done

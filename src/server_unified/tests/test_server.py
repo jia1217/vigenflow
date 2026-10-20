@@ -27,8 +27,9 @@ binary = (Path(sys.argv[1]) if len(sys.argv) > 1 else
 with tempfile.TemporaryDirectory(prefix='vgf-server-check-') as tmp:
     root = Path(tmp) / 'NPU_server'
     root.mkdir()
-    folders = ['z_image_turbo', 'flux1_schnell', 'flux2_klein_4B', 'krea2_turbo']
-    model_ids = ['z-image-turbo', 'flux1-schnell', 'flux2-klein-4B', 'krea2-turbo']
+    folders = ['z_image_turbo', 'flux1_schnell', 'flux2_klein_4B', 'krea2_turbo', 'qwen_image_2_1_turbo']
+    model_ids = ['z-image-turbo', 'flux1-schnell', 'flux2-klein-4B', 'krea2-turbo', 'qwen-image-2.1-turbo']
+    qwen_edit_folder, qwen_edit_id = 'qwen_image_2_1_turbo_edit', 'qwen-image-2.1-turbo-edit'
     # Ubuntu runs the fake worker script as run.exe; Windows runs it as run.py from a stub run.exe,
     # in the build-windows/Release folder where the server looks for Windows development workers.
     worker_dir = Path('build-windows/Release') if windows else Path('.')
@@ -93,7 +94,7 @@ time.sleep(0.08)
         shutil.copy2(server_unified / 'build-windows' / 'test_worker_stub.exe', worker)
         os.environ['VGF_TEST_PYTHON'] = sys.executable  # inherited by the server and its workers
     edit_folder, edit_id = 'flux2_klein_4B_edit', 'flux2-klein-4B-edit'
-    for folder in folders[1:] + [edit_folder]:
+    for folder in folders[1:] + [edit_folder, qwen_edit_folder]:
         shutil.copytree(worker.parent, root / folder / worker_dir)
     server_dir = root / 'server_test'
     server_dir.mkdir()
@@ -110,6 +111,8 @@ time.sleep(0.08)
                     ['edit', '--steps', '8'],
                     ['--steps', '8', '--model', 'flux1-schnell'],
                     ['--model', 'krea2-turbo', '--steps', '4'],
+                    ['--model', 'qwen-image-2.1-turbo', '--steps', '4'],
+                    ['--model', qwen_edit_id, '--steps', '4'],
                     *(['--model', 'flux1-schnell', '--steps', str(steps)] for steps in (1, 2, 3))):
         result = subprocess.run([str(test_binary), *options], capture_output=True, timeout=5)
         assert result.returncode != 0, options
@@ -212,9 +215,9 @@ time.sleep(0.08)
             assert not list(outdir.iterdir()), 'URL responses must obey keep_images=false'
 
             with urlopen(base + '/v1/models', timeout=5) as response:
-                assert [m['id'] for m in json.load(response)['data']] == model_ids + [edit_id]
+                assert [m['id'] for m in json.load(response)['data']] == model_ids + [edit_id, qwen_edit_id]
             for model_id, folder, seed, valid_steps, default_steps in zip(
-                    model_ids, folders, [42, 0, 42, 42], [[4, 8], [4], [4], [8]], [4, 4, 4, 8]):
+                    model_ids, folders, [42, 0, 42, 42, 42], [[4, 8], [4], [4], [8], [8]], [4, 4, 4, 8, 8]):
                 for name in (model_id, folder):
                     headers, data = request('/v1/images/generations', {'model': name, 'prompt': name, 'n': 1, 'size': '1024x1024'}, 'image/png')
                     assert headers['X-Image-Model'] == model_id
@@ -222,14 +225,16 @@ time.sleep(0.08)
                     args = json.loads((root / folder / 'last_args.json').read_text())
                     assert args[args.index('--seed') + 1] == str(seed)
                     assert args[args.index('--steps') + 1] == str(default_steps)
-                    # krea2-turbo's worker writes the PNG itself: served unchanged, no BMP conversion.
-                    writes_png = folder == 'krea2_turbo'
+                    # Krea2 and Qwen write PNG themselves: served unchanged, no BMP conversion.
+                    writes_png = folder in ('krea2_turbo', 'qwen_image_2_1_turbo')
                     assert Path(args[args.index('--output') + 1]).suffix == ('.png' if writes_png else '.bmp')
                     assert (b'written by the worker' in data) == writes_png
                     assert args[args.index('--weights_path') + 1] == str(root.parent / 'all_model_weights' / folder)
                     npu_path = root / 'all_npu_files' / folder
                     if folder == 'flux2_klein_4B':
                         npu_path /= 'base'
+                    elif folder == 'qwen_image_2_1_turbo':
+                        npu_path = root / 'all_npu_files/qwen_image/base'
                     assert args[args.index('--npu_files_path') + 1] == str(npu_path)
                     assert json.loads((root / folder / 'last_prompt.json').read_text()) == name
                 for steps in valid_steps:
@@ -416,12 +421,12 @@ time.sleep(0.08)
                              'Content-Type: image/png\r\n\r\n').encode() + data + b'\r\n'
                 return body + f'--{boundary}--\r\n'.encode(), f'multipart/form-data; boundary={boundary}'
 
-            def edit_input():
-                args = json.loads((root / edit_folder / 'last_args.json').read_text())
+            def edit_input(folder=edit_folder):
+                args = json.loads((root / folder / 'last_args.json').read_text())
                 input_path = Path(args[args.index('--input_image') + 1])
                 assert input_path.suffix == '.png', 'workers receive PNG input'
                 assert not input_path.exists(), 'temporary input must be removed'
-                image = Image.open(root / edit_folder / 'last_input.png')
+                image = Image.open(root / folder / 'last_input.png')
                 assert image.format == 'PNG' and image.mode == 'RGB', 'lossless 8-bit RGB worker input'
                 assert image.size == (1024, 1024)
                 return args, image
@@ -536,7 +541,68 @@ time.sleep(0.08)
             assert json.loads(data)['model'] == edit_id
             args, _ = edit_input()
             assert args[args.index('--weights_path') + 1] == str(root / 'edit weights')
-            print('PASS: storage defaults/flags, bounded RAM URLs, failure cleanup, PNG retention with -k true, four-model routing, worker-written PNG passed through, chat SSE with delta.images and timings, PNG pixels/raw/base64/URL, timings and validation, edit model (multipart/JSON edits, crop+resize, chat follow-up edits, `edit` shortcut)')
+            # Qwen editing shares weights with T2I, selects edit/ bundles and returns PNG unchanged.
+            proc = restart_server([])
+            for name in (qwen_edit_id, qwen_edit_folder):
+                headers, data = request('/v1/images/edits', {'model': name, 'prompt': literal_prompt,
+                                                           'image': png_b64}, 'image/png')
+                assert headers['X-Image-Model'] == qwen_edit_id
+                check_png(data)
+                assert b'written by the worker' in data
+                args, image = edit_input(qwen_edit_folder)
+                assert set(image.getdata()) == {(0, 255, 0)}
+                assert '--prompt=' + literal_prompt in args
+                assert args[args.index('--steps') + 1] == '8' and args[args.index('--seed') + 1] == '42'
+                assert Path(args[args.index('--output') + 1]).suffix == '.png'
+                assert args[args.index('--weights_path') + 1] == str(root.parent / 'all_model_weights/qwen_image_2_1_turbo')
+                assert args[args.index('--npu_files_path') + 1] == str(root / 'all_npu_files/qwen_image/edit')
+            body, form_type = multipart({'model': qwen_edit_id, 'prompt': 'add a hat', 'steps': '8'}, [('image', wide_png)])
+            _, data = request('/v1/images/edits', body, content_type=form_type)
+            result = json.loads(data)
+            assert result['model'] == qwen_edit_id and result['metadata']['3_Denoising_steps'] == 8
+            check_png(base64.b64decode(result['data'][0]['b64_json']))
+            before = (root / qwen_edit_folder / 'calls').read_text()
+            for invalid in ({'model': qwen_edit_id, 'prompt': 'x'},
+                            *({'model': qwen_edit_id, 'prompt': 'x', 'image': png_b64, 'steps': n} for n in (1, 4, 7, 9)),
+                            {'model': model_ids[-1], 'prompt': 'x', 'image': png_b64}):
+                request('/v1/images/edits', invalid, status=400)
+            request('/v1/images/generations', {'model': qwen_edit_id, 'prompt': 'x'}, status=400)
+            assert (root / qwen_edit_folder / 'calls').read_text() == before
+            for model, endpoint in ((model_ids[-1], '/v1/images/generations'), (qwen_edit_id, '/v1/images/edits')):
+                for seed in (-1, -2):
+                    request(endpoint, {'model': model, 'prompt': 'x', 'image': png_b64, 'seed': seed}, status=500)
+                assert set(outdir.iterdir()) == saved_files
+
+            # Both models are also selectable in chat; Qwen editing supports follow-up edits.
+            _, data = request('/v1/chat/completions', {**chat, 'model': model_ids[-1]})
+            assert model_ids[-1] in json.loads(data)['choices'][0]['message']['content']
+            _, data = request('/v1/chat/completions', {'model': qwen_edit_id, 'tools': tools, 'messages': [first]})
+            reply = json.loads(data)['choices'][0]['message']['content']
+            assert f'*Edited by {qwen_edit_id} ' in reply
+            follow_up = [first, {'role': 'assistant', 'content': reply}, {'role': 'user', 'content': 'now at night'}]
+            _, data = request('/v1/chat/completions', {'model': qwen_edit_id, 'tools': tools, 'messages': follow_up, 'stream': True})
+            streamed = json.loads(data.decode().splitlines()[0][len('data: '):])['choices'][0]['delta']
+            assert f'*Edited by {qwen_edit_id} ' in streamed['content'] and streamed['images']
+            args, _ = edit_input(qwen_edit_folder)
+            assert '--prompt=now at night' in args
+
+            # An edit model selected with --model is the default for /edits, including path overrides.
+            proc = restart_server(['--model', qwen_edit_id, '-w', str(root / 'qwen weights'),
+                                   '-n', str(root / 'qwen bundles'), '--seed', '17'])
+            request('/v1/images/generations', {}, status=400)
+            _, data = request('/v1/images/edits', {'prompt': 'x', 'image': png_b64})
+            assert json.loads(data)['model'] == qwen_edit_id
+            args, _ = edit_input(qwen_edit_folder)
+            assert args[args.index('--weights_path') + 1] == str(root / 'qwen weights')
+            assert args[args.index('--npu_files_path') + 1] == str(root / 'qwen bundles')
+            assert args[args.index('--seed') + 1] == '17'
+            # Selecting Qwen edit does not change the Qwen T2I settings.
+            request('/v1/images/generations', {'model': model_ids[-1], 'prompt': 'x'})
+            args = json.loads((root / folders[-1] / 'last_args.json').read_text())
+            assert args[args.index('--seed') + 1] == '42'
+            assert args[args.index('--weights_path') + 1] == str(root.parent / 'all_model_weights/qwen_image_2_1_turbo')
+            assert set(outdir.iterdir()) == saved_files
+            print('PASS: seven-model routing, Qwen T2I/I2I paths and eight-step defaults, PNG passthrough, edit defaults, validation, chat follow-ups, storage and failure cleanup; existing Flux2 behavior preserved')
 
             if windows:
                 # Weights beside the package folder come first; a model only in the package's own folder

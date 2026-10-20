@@ -134,7 +134,29 @@ src/exe_models/z_image_turbo/run.exe
 src/exe_models/krea2_turbo/run.exe
 ```
 
+## Install the Qwen Ubuntu Workers
+
+Qwen uses two native executables rather than the five shared-library launchers
+above. Their stripped copies are in `src/exe_models/qwen_image_2_1_turbo/run.exe`
+and `src/exe_models/qwen_image_2_1_turbo_edit/run.exe`. To rebuild and refresh them
+from the native host projects:
+
+```bash
+QWEN_SOURCE_ROOT=/path/to/NPU_qwen bash src/models/install_qwen_workers.sh
+```
+
+The source root contains `NPU_qwen_turbo/` and `NPU_qwen_image/`; it defaults to
+the sibling `NPU_qwen/` tree. `SKIP_BUILD=1` installs existing host binaries.
+The hosts need their native build dependencies; the edit executable also
+loads libjpeg-turbo and OpenSSL at runtime. Both workers share the prepared
+`qwen_image_2_1_turbo` weights and use `qwen_image/base` or `qwen_image/edit`
+under the NPU bundle root. See [server setup](../src/server_unified/README.md#qwen-image-21-turbo).
+
 ## Compile Model Worker Launchers on Windows
+
+The following builds cover the original five models. Native Windows Qwen
+workers are not supplied yet; the server skips their entries until compatible
+Windows executables are installed.
 
 Windows uses the same launcher sources. Their prebuilt host libraries are in
 `src/lib` next to the Ubuntu ones: `host_<model>.dll` with its import library
@@ -198,7 +220,7 @@ After the model launchers build, create a release ZIP. The script builds
 
 ```bash
 cd /workspace/vigenflow/src/server_unified
-VERSION=0.2.0-beta.2 bash package_ubuntu.sh
+VERSION=0.2.0-beta.3 bash package_ubuntu.sh
 ```
 
 It packages these runtime assets:
@@ -215,15 +237,16 @@ If your assets are stored somewhere else, pass explicit paths:
 EXE_MODELS_DIR=/path/to/exe_models \
 LIB_DIR=/path/to/lib \
 NPU_FILES_DIR=/path/to/npu_files \
-VERSION=0.2.0-beta.2 \
+VERSION=0.2.0-beta.3 \
 bash package_ubuntu.sh
 ```
 
 The folder and its ZIP are created under:
 
 ```text
-src/server_unified/release/vigenflow_0.2.0-beta.2_ubuntu_amd64/
-src/server_unified/release/vigenflow_0.2.0-beta.2_ubuntu_amd64.zip
+src/server_unified/release/vigenflow_0.2.0-beta.3_ubuntu_amd64/
+src/server_unified/release/vigenflow_0.2.0-beta.3_ubuntu_amd64.zip
+src/server_unified/release/vigenflow_0.2.0-beta.3_ubuntu_amd64.zip.sha256
 ```
 
 The model weights are not packaged. `prepare/prepare_base.exe` downloads them
@@ -268,7 +291,7 @@ installed. `vgf-serve` finds the workers, NPU files and weights relative to its
 own folder, so run it from the package, not from `src/server_unified`:
 
 ```bash
-cd src/server_unified/release/vigenflow_0.2.0-beta.2_ubuntu_amd64
+cd src/server_unified/release/vigenflow_0.2.0-beta.3_ubuntu_amd64
 ./prepare/prepare_base.exe
 cd server_running
 ./vgf-serve
@@ -349,9 +372,10 @@ The model launcher Makefiles link against prebuilt host shared libraries in
 
 ### `package_ubuntu.sh` reports a missing worker
 
-The package needs all five `src/exe_models/<model>/run.exe` launchers, because
-`vgf-serve` does not start without them. Build the missing one with
-`make -C src/models/<model>`.
+The Ubuntu package needs seven `src/exe_models/<model>/run.exe` workers,
+because `vgf-serve` does not start without them. Build the five original
+launchers with `make -C src/models/<model>`; refresh the two Qwen workers with
+`bash src/models/install_qwen_workers.sh`.
 
 ### Permission errors after building in Docker
 

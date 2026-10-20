@@ -85,7 +85,9 @@ The Qwen package is published and pinned to revision
 The package contains both NPU packed operands and CPU tensors. Downloads, resumed unpacking, cleanup and
 update detection use the existing Krea2 path. No Python, iGPU or checkpoint conversion is required by
 `prepare_base.exe`. Native host executables and NPU instruction/XCLBIN bundles are separate assets;
-adding this entry does not register a Qwen worker in the VigenFlow server.
+the server registers `qwen-image-2.1-turbo` and `qwen-image-2.1-turbo-edit`,
+both using this shared folder. See the [server setup](../server_unified/README.md#qwen-image-21-turbo)
+for worker installation and API examples.
 
 The weights retain the [Qwen RESEARCH LICENSE AGREEMENT](../../model_licenses/qwen_image_2_1_turbo/LICENSE):
 research/evaluation use only; commercial use requires a separate license from the upstream licensor at

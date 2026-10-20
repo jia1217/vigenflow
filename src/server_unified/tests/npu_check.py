@@ -4,8 +4,8 @@
 python tests/npu_check.py <package folder> [--port 11290] [--out npu_check] [--models flux2-klein-4B,...]
 
 The package must sit next to an all_model_weights folder with the models' weights, as after
-prepare/prepare_base.exe. Each text-to-image model gets one request; flux2-klein-4B-edit edits the
-flux2-klein-4B image (or a gray image when flux2-klein-4B is not checked). A model passes when vgf-serve
+prepare/prepare_base.exe. Each text-to-image model gets one request; each edit model edits its
+matching text-to-image result (or a gray image when that model is not checked). A model passes when vgf-serve
 returns a 1024x1024 PNG and the worker's end-to-end time. The images, the server log and summary.json
 go to --out. Exit code 0 only when every model passes. Standard library only.
 """
@@ -21,8 +21,8 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 import zlib
 
-TEXT_MODELS = ['z-image-turbo', 'flux1-schnell', 'flux2-klein-4B', 'krea2-turbo']
-EDIT_MODEL = 'flux2-klein-4B-edit'
+TEXT_MODELS = ['z-image-turbo', 'flux1-schnell', 'flux2-klein-4B', 'krea2-turbo', 'qwen-image-2.1-turbo']
+EDIT_MODELS = {'flux2-klein-4B-edit': 'flux2-klein-4B', 'qwen-image-2.1-turbo-edit': 'qwen-image-2.1-turbo'}
 PROMPT = 'a red fox sitting in fresh snow, photo'
 PNG_SIGNATURE = bytes([0x89]) + b'PNG' + bytes([13, 10, 26, 10])
 
@@ -30,11 +30,11 @@ parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.R
 parser.add_argument('package', type=Path)
 parser.add_argument('--port', type=int, default=11290)
 parser.add_argument('--out', type=Path, default=Path('npu_check'))
-parser.add_argument('--models', default=','.join(TEXT_MODELS + [EDIT_MODEL]))
+parser.add_argument('--models', help='comma-separated model IDs (default: all available workers)')
 parser.add_argument('--timeout', type=int, default=900, help='seconds per request')
 args = parser.parse_args()
-models = [m for m in args.models.split(',') if m]
-unknown = sorted(set(models) - set(TEXT_MODELS + [EDIT_MODEL]))
+models = [m for m in (args.models or '').split(',') if m]
+unknown = sorted(set(models) - set(TEXT_MODELS + list(EDIT_MODELS)))
 if unknown:
     sys.exit(f'unknown models: {", ".join(unknown)}')
 
@@ -91,11 +91,15 @@ try:
     with urlopen(base + '/v1/models', timeout=5) as response:
         served = [m['id'] for m in json.loads(response.read())['data']]
     print('served:', ', '.join(served), flush=True)
+    if args.models is None:
+        models = [m for m in TEXT_MODELS + list(EDIT_MODELS) if m in served]
+    if not models:
+        sys.exit('no models selected or available')
 
     images = {}
     for model in models:
-        if model == EDIT_MODEL:
-            source = images.get('flux2-klein-4B') or gray_png()
+        if model in EDIT_MODELS:
+            source = images.get(EDIT_MODELS[model]) or gray_png()
             status, body, seconds = post('/v1/images/edits', {
                 'model': model, 'prompt': 'make it night time',
                 'image': 'data:image/png;base64,' + base64.b64encode(source).decode()})
@@ -108,7 +112,10 @@ try:
             (args.out / f'{model}.png').write_bytes(data)
             meta = body.get('metadata', {})
             result.update(size=png_size(data), e2e=meta.get('8_E2E_runtime'), worker_wall=meta.get('9_Worker_wall_time'))
-            result['passed'] = result['size'] == (1024, 1024) and bool(result['e2e'])
+            result['passed'] = (result['size'] == (1024, 1024) and bool(result['e2e'])
+                                and body.get('model') == model
+                                and meta.get('3_Denoising_steps') == (8 if model.startswith('qwen-') or model == 'krea2-turbo' else 4)
+                                and not list((args.out / 'tmp').iterdir()))
         else:
             result.update(passed=False, error=str(body)[:500])
         summary['models'][model] = result

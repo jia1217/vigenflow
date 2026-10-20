@@ -15,14 +15,17 @@ constexpr const char* kDevWorker = "run.exe";
 #endif
 constexpr const char* kPackagedWorker = "run.exe";
 
-std::array<ModelConfig, 5> models = {{
+std::array<ModelConfig, 7> models = {{
     {"z-image-turbo", "z_image_turbo", "z_image_turbo", "z_image_turbo", {4, 8}, 42},
     {"flux1-schnell", "flux1_schnell", "flux1_schnell", "flux1_schnell", {4}, 0},
     {"flux2-klein-4B", "flux2_klein_4B", "flux2_klein_4B", "flux2_klein_4B/base", {4}, 42},
     // Distilled for 8 steps, so 8 is also its default. Its worker writes PNG whatever the file name.
     {"krea2-turbo", "krea2_turbo", "krea2_turbo", "krea2_turbo", {8}, 42, false, 8, true},
+    {"qwen-image-2.1-turbo", "qwen_image_2_1_turbo", "qwen_image_2_1_turbo", "qwen_image/base", {8}, 42, false, 8, true},
     // Shares the Flux2 weights; the worker reads base/ and edit/ under its NPU folder.
     {kEditModelId, "flux2_klein_4B_edit", "flux2_klein_4B", "flux2_klein_4B", {4}, 42, true},
+    // Both Qwen tasks share all five weight stages; each host receives its own bundle root.
+    {"qwen-image-2.1-turbo-edit", "qwen_image_2_1_turbo_edit", "qwen_image_2_1_turbo", "qwen_image/edit", {8}, 42, true, 8, true},
 }};
 std::string default_model_id = "z-image-turbo";
 std::string output_dir = "./images";

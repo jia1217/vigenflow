@@ -12,7 +12,7 @@ inline constexpr int kImageHeight = 1024;
 inline constexpr int kImageWidth = 1024;
 inline constexpr std::size_t kMemoryImageLimit = 32;
 
-// Image-edit model; POST /v1/images/edits uses it when no model is given.
+// Fallback for POST /v1/images/edits when the server default is not an edit model.
 inline constexpr const char* kEditModelId = "flux2-klein-4B-edit";
 
 struct ModelConfig {
@@ -35,7 +35,7 @@ struct ModelConfig {
 };
 
 // Configured at startup, then read-only while serving requests.
-extern std::array<ModelConfig, 5> models;
+extern std::array<ModelConfig, 7> models;
 extern std::string default_model_id;
 extern std::string output_dir;
 extern unsigned short port;

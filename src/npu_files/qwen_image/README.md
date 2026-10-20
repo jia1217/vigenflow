@@ -51,7 +51,10 @@ and JSON manifests. The `.txt` instruction dumps are retained alongside runtime
 source/compiler paths in manifest provenance describe the original build;
 runtime artifact paths are relative to each bundle.
 
-Adding these artifacts does not register Qwen in VigenFlow's server or launcher.
+The server registers `qwen-image-2.1-turbo` with `qwen_image/base` and
+`qwen-image-2.1-turbo-edit` with `qwen_image/edit`. Both use the shared
+`qwen_image_2_1_turbo` weights folder. The bundles still require their matching
+native workers; see [server setup](../../server_unified/README.md#qwen-image-21-turbo).
 
 Verify the package from this directory:
 

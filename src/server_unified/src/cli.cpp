@@ -10,13 +10,14 @@ namespace server {
 
 void print_usage(const char* prog_name) {
     std::cout << "Usage: " << prog_name << " [edit] [options]\n\n"
-              << "Serves four text-to-image workers through POST /v1/images/generations and\n"
-              << config::kEditModelId << " through POST /v1/images/edits.\n"
+              << "Serves five text-to-image workers through POST /v1/images/generations and\n"
+              << "Flux2 and Qwen image-edit workers through POST /v1/images/edits.\n"
               << "`edit` is short for --model " << config::kEditModelId << ".\n\n"
               << "Options:\n"
               << "  -m, --model <id>               Default model (default: z-image-turbo)\n"
               << "                                 IDs: z-image-turbo, flux1-schnell, flux2-klein-4B,\n"
-              << "                                 krea2-turbo, " << config::kEditModelId << "\n"
+              << "                                 krea2-turbo, qwen-image-2.1-turbo,\n"
+              << "                                 " << config::kEditModelId << ", qwen-image-2.1-turbo-edit\n"
               << "  -e, --exe-path <path>          Override the default model worker\n"
               << "  -w, --weights-path <path>      Override the default model weights directory\n"
               << "  -n, --npu-files-path <path>    Override the default model NPU files directory\n"
@@ -24,7 +25,7 @@ void print_usage(const char* prog_name) {
               << "  -p, --port <port>              Server port (default: 11283)\n"
               << "  -k <true|false>                Save generated images (default: false)\n"
               << "      --seed <int>               Default model seed (Flux1: 0, others: 42)\n"
-              << "      --steps <int>              Default model steps (default: 4; krea2-turbo: 8)\n"
+              << "      --steps <int>              Default model steps (default: 4; Krea2 and Qwen: 8)\n"
               << "  -h, --help                     Show this help message\n";
 }
 

@@ -22,8 +22,8 @@ services:
     ports:
       # vgf-serve has no authentication: only this machine can reach it.
       - "127.0.0.1:11283:11283"
-    # Server options go after serve, for example: command: ["serve", "--model", "flux2-klein-4B"]
-    command: ["serve"]
+    # Qwen-only setup: VIGENFLOW_MODEL=qwen-image-2.1-turbo docker compose -f docker/compose.yaml up -d
+    command: ["serve", "--model", "${VIGENFLOW_MODEL:-z-image-turbo}"]
     restart: unless-stopped
 
   # OpenWebUI uses the host network so that it reaches vgf-serve at 127.0.0.1:11283, which vgf-serve

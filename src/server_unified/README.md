@@ -1,6 +1,6 @@
 # VigenFlow Server
 
-Serves four text-to-image NPU workers and the Flux2 image-edit worker from one API (see [Image editing](#image-editing)). The chat dropdown or image request's `model` selects the worker for that request.
+Serves five text-to-image NPU workers and two image-edit workers (Flux2 and Qwen) from one API (see [Image editing](#image-editing)). The chat dropdown or image request's `model` selects the worker for that request. Qwen native workers are currently supplied for Ubuntu; see [Windows](#windows) for worker availability.
 
 | Model ID | Worker folder / accepted alias | Supported steps | Default seed |
 |---|---|---|---|
@@ -8,9 +8,11 @@ Serves four text-to-image NPU workers and the Flux2 image-edit worker from one A
 | `flux1-schnell` | `flux1_schnell` | 4 | 0 |
 | `flux2-klein-4B` | `flux2_klein_4B` | 4 | 42 |
 | `krea2-turbo` | `krea2_turbo` | 8 | 42 |
+| `qwen-image-2.1-turbo` | `qwen_image_2_1_turbo` | 8 | 42 |
 | `flux2-klein-4B-edit` (image editing) | `flux2_klein_4B_edit` | 4 | 42 |
+| `qwen-image-2.1-turbo-edit` (image editing) | `qwen_image_2_1_turbo_edit` | 8 | 42 |
 
-All models produce one 1024x1024 image and default to 4 steps, except `krea2-turbo`, which is distilled for 8 steps and defaults to 8. Flux1 Schnell and Flux2 Klein are restricted to 4 steps and Krea 2 Turbo to 8; other step counts are rejected. An omitted `model` uses `z-image-turbo`, or the server's `--model` selection. Unknown model IDs return 400; they never silently select another worker.
+All models produce one 1024x1024 image and default to 4 steps, except Krea 2 Turbo and both Qwen models, which require and default to 8. Flux1 Schnell and Flux2 Klein are restricted to 4 steps; unsupported step counts are rejected. An omitted generation/chat `model` uses `z-image-turbo`, or the server's `--model` selection. Unknown model IDs return 400; they never silently select another worker.
 
 The model table and paths are in `src/server_config.cpp`. By default each worker is `../<worker folder>/run.exe` (a development tree), else `exe_models/<worker folder>/run.exe` next to `vgf-serve` (a package); weights are `../../all_model_weights/<weights folder>` and NPU files `../all_npu_files/<worker folder>`, relative to the `vgf-serve` folder. FLUX.2 Edit shares the `flux2_klein_4B` weights folder; **`/base` is appended to the NPU path for FLUX.2 text-to-image**. Startup prints the actual absolute paths for every served model. Every request gets its own model settings; choosing a model does not change another user's selection.
 
@@ -18,7 +20,7 @@ The model table and paths are in `src/server_config.cpp`. By default each worker
 |---|---|
 | `--weights_path` | selected model's resolved weights path |
 | `--npu_files_path` | selected model's resolved NPU files path |
-| `--output` | a new file in the server's `-o` directory: `.bmp`, or `.png` for `krea2-turbo` |
+| `--output` | a new file in the server's `-o` directory: `.png` for Krea2 and Qwen, `.bmp` for the other workers |
 | `--prompt` | request `prompt` (omitted = worker's built-in demo prompt) |
 | `--seed` | request `seed`, else selected model's default |
 | `--steps` | request `steps`, else selected model's default |
@@ -49,17 +51,17 @@ bash build_ubuntu.sh            # -> vigenflow_ubuntu/vgf-serve
 
 ```bash
 # The launchers in ../exe_models are prebuilt; after changing one, rebuild it with make -C ../models/<model>.
-VERSION=0.2.0-beta.2 bash package_ubuntu.sh
-cd release/vigenflow_0.2.0-beta.2_ubuntu_amd64
+VERSION=0.2.0-beta.3 bash package_ubuntu.sh
+cd release/vigenflow_0.2.0-beta.3_ubuntu_amd64
 ./prepare/prepare_base.exe      # downloads the weights to ../all_model_weights (once)
 cd server_running && ./vgf-serve -p 11283
 ```
 
-`package_ubuntu.sh` builds `vgf-serve` and `prepare_base.exe` and writes `release/vigenflow_<VERSION>_ubuntu_amd64/` and its `.zip`. `EXE_MODELS_DIR`, `LIB_DIR` and `NPU_FILES_DIR` override where the workers, host libraries and NPU files come from; `SKIP_BUILD=1` packages the binaries that are already built.
+`package_ubuntu.sh` builds `vgf-serve` and `prepare_base.exe` and writes `release/vigenflow_<VERSION>_ubuntu_amd64/`, its `.zip`, and a `.zip.sha256` checksum. The folder includes a quickstart README, `VERSION`, and a file checksum manifest. `EXE_MODELS_DIR`, `LIB_DIR` and `NPU_FILES_DIR` override where the workers, host libraries and NPU files come from; `SKIP_BUILD=1` packages the binaries that are already built.
 
 Workers support base-model inference only; LoRA adapters and LoRA command-line options are not supported.
 
-On Ubuntu all five worker executables must exist before starting the server (on Windows, see [Windows](#windows)). Each runs in its own folder. Use `--model flux1-schnell` to change the default model; all five remain available. `-e`, `-w`, `-n`, `--seed` and `--steps` override only that default model, regardless of argument order:
+On Ubuntu all seven worker executables must exist before starting the server (on Windows, see [Windows](#windows)). Each runs in its own folder. Use `--model flux1-schnell` to change the default model; all seven remain available. `-e`, `-w`, `-n`, `--seed` and `--steps` override only that default model, regardless of argument order:
 
 ```bash
 ./vgf-serve -p 1128 --model flux1-schnell --seed 7 --steps 4
@@ -69,17 +71,15 @@ For example, a request explicitly selecting `z-image-turbo` still uses its own s
 
 ## Image editing
 
-`flux2-klein-4B-edit` is always served next to the text-to-image models; no extra option is needed. `POST /v1/images/edits` uses it when the request names no model, and `/v1/images/generations` rejects it because it needs an input image. The edit worker is `exe_models/flux2_klein_4B_edit/run.exe`; it shares the Flux2 weights (`../../all_model_weights/flux2_klein_4B`) and gets the Flux2 NPU root `../all_npu_files/flux2_klein_4B`, whose `base/` and `edit/` folders it reads itself.
+`flux2-klein-4B-edit` and `qwen-image-2.1-turbo-edit` are served next to the text-to-image models; no extra option is needed when their workers are installed. `POST /v1/images/edits` uses the server's `--model` when that is an edit model, otherwise defaults to `flux2-klein-4B-edit`. `/v1/images/generations` rejects either edit model because it needs an input image. The Flux2 edit worker is `exe_models/flux2_klein_4B_edit/run.exe`; it shares the Flux2 weights (`../../all_model_weights/flux2_klein_4B`) and gets the Flux2 NPU root `../all_npu_files/flux2_klein_4B`, whose `base/` and `edit/` folders it reads itself.
 
 `./vgf-serve edit` is short for `./vgf-serve --model flux2-klein-4B-edit`: it makes the edit model the default, so `-e`, `-w`, `-n`, `--seed` and `--steps` apply to it, and generation requests without a `model` return 400.
 
 An edit needs a prompt and one input image (PNG, JPEG, BMP or GIF, up to 40 megapixels). The NPU pipeline only accepts 1024x1024, so the server center-crops the image to a square and resizes it to 1024x1024 before starting the worker; the output is 1024x1024. When several images are sent, the first is edited.
 
 Workers receive `--input_image PATH` pointing to a temporary lossless, 8-bit RGB
-PNG, removed after the request. PNG is shared with the Qwen native editing host
-and is also accepted by the existing Flux2 editing workers. Uploads still use
-the existing RGB preprocessing, so alpha is not retained. This input convention
-does not register Qwen in the server or change each worker's output format.
+PNG, removed after the request. Both Qwen and Flux2 editing workers accept it.
+Uploads use RGB preprocessing, so alpha is not retained.
 
 ```bash
 # OpenAI-style multipart upload
@@ -91,6 +91,52 @@ curl -s http://127.0.0.1:1128/v1/images/edits -F model=flux2-klein-4B-edit \
 ```
 
 Responses, `response_format`, `seed`, `steps`, `n`, timings and storage work as for `/v1/images/generations`; `size` may also be `auto`.
+
+### Qwen Image 2.1 Turbo
+
+The two Qwen models share `all_model_weights/qwen_image_2_1_turbo/`. Install it
+with `prepare_base.exe --only qwen_image_2_1_turbo` (see the
+[weight preparation instructions](../prepare_weights/README.md#qwen-image-21-turbo)).
+Qwen remains an opt-in weight download.
+
+| Model ID | Packaged worker | NPU path under `all_npu_files/` |
+|---|---|---|
+| `qwen-image-2.1-turbo` | `exe_models/qwen_image_2_1_turbo/run.exe` | `qwen_image/base` |
+| `qwen-image-2.1-turbo-edit` | `exe_models/qwen_image_2_1_turbo_edit/run.exe` | `qwen_image/edit` |
+
+Both native Ubuntu workers are installed in `src/exe_models/`. To refresh them
+after changing `NPU_qwen_turbo` or `NPU_qwen_image`, run
+`bash src/models/install_qwen_workers.sh` from the repository root. Override
+`QWEN_SOURCE_ROOT` if the source projects are not in the sibling `NPU_qwen/`
+directory. The installer builds and strips copies of the two executables;
+it does not copy weights, input caches or diagnostic outputs. These executables
+contain their hosts directly, rather than using `libhost_*.so` launchers.
+The edit host also needs Ubuntu's libjpeg-turbo and OpenSSL runtime libraries.
+
+```bash
+curl -s http://127.0.0.1:11283/v1/images/generations \
+  -H 'Content-Type: application/json' -H 'Accept: image/png' \
+  -d '{"model":"qwen-image-2.1-turbo","prompt":"a red fox in snow"}' -o generated.png
+curl -s http://127.0.0.1:11283/v1/images/edits \
+  -H 'Accept: image/png' -F model=qwen-image-2.1-turbo-edit \
+  -F 'prompt=make it night time' -F image=@generated.png -o edited.png
+```
+
+Both use eight steps and return the worker's PNG unchanged. The server does not
+enable Qwen intermediate dumps. With the default `-k false`, prepared inputs
+and temporary output PNGs are deleted after each request; `-k true` retains
+only final PNGs. Both models also work through the chat model dropdown.
+
+From the repository's `src/server_unified/` directory, test actual NPU inference
+against an Ubuntu package with Qwen weights installed:
+
+```bash
+python3 tests/npu_check.py /path/to/package \
+  --models qwen-image-2.1-turbo,qwen-image-2.1-turbo-edit --out /tmp/qwen-server-check
+```
+
+This generates a Qwen image, edits that image, and checks the returned PNGs,
+model IDs, eight-step metadata, timings and temporary-file cleanup.
 
 ## Image storage settings
 
@@ -109,7 +155,7 @@ Workers use temporary image files during generation; with `-k false` these are r
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/health` | `{"status":"ok"}` |
-| GET | `/v1/models` | Lists all five model IDs |
+| GET | `/v1/models` | Lists available model IDs (seven with all workers installed) |
 | POST | `/v1/chat/completions` | Generates an inline PNG for Native-mode image chat; JSON or SSE |
 | POST | `/v1/images/generations` | Body `{"model":"flux1-schnell","prompt":"a cat","seed":42,"steps":4,"response_format":"b64_json"}`; all fields optional |
 | POST | `/v1/images/edits` | Multipart `image`/`image[]` file or JSON base64 `image`, plus `prompt`; see [Image editing](#image-editing) |
@@ -138,7 +184,7 @@ Requests run one at a time because each `run.exe` uses the whole NPU. Invalid mo
 1. Start the server with `./vgf-serve -p 1128`.
 2. Add/refresh the chat connection `http://<server-address>:1128/v1`, with API Type **Chat Completions**. The model list now contains `z-image-turbo`, `flux1-schnell`, `flux2-klein-4B`, `krea2-turbo` and `flux2-klein-4B-edit`.
 3. Set **Function Calling = Native** for the selected model and enable **Image** in the message input. Keep each model's **Image Generation** and **Builtin Tools** capabilities enabled.
-4. Select any of the four text-to-image models in the chat dropdown and send a prompt such as `a cat`. For `flux2-klein-4B-edit`, see [Editing images in Open WebUI](#editing-images-in-open-webui).
+4. Select any of the five text-to-image models in the chat dropdown and send a prompt such as `a cat`. For Flux2 or Qwen editing, see [Editing images in Open WebUI](#editing-images-in-open-webui).
 
 The prompt is the text of your last message. Markup that Open WebUI adds to it, such as the `<attached_files>` list sent with uploads, is removed: every complete `<tag>...</tag>` or `<tag/>` element is dropped (if nothing else is left, the text inside the tags is kept), while other `<` text such as `I <3 cats` stays.
 
@@ -167,6 +213,12 @@ python3 tests/test_server.py ./vigenflow_ubuntu/vgf-serve
 On Windows run `python tests\test_server.py vigenflow_win\vgf-serve.exe` after `build_windows.bat`; it adds the Windows worker lookup, missing workers and command-line quoting. The check uses the installed Pillow package and temporary fake workers; it verifies image pixels and orientation, raw/base64/URL responses, timings, model routing, model-specific paths/defaults, chat dropdown selection, short SSE image URLs, memory-cache eviction/restart, cleanup in no-save mode, persistent PNGs with `-k true`, serialized NPU access, failure handling, and the edit model (multipart/JSON edits, crop/resize of the input, chat follow-up edits, the `edit` shortcut) without using the NPU. Re-run the orientation check after upgrading Boost.GIL, since the current reader needs a top-down BMP workaround.
 
 ## Windows
+
+The server recognizes both Qwen IDs, but native Windows Qwen worker executables
+are not supplied yet. They are omitted from `/v1/models` until Windows workers
+are installed in the corresponding `exe_models` folders. The Ubuntu ELF
+executables cannot run on Windows. The existing five-model Windows package
+and its worker builds remain supported; Qwen Windows inference is unverified.
 
 ```bat
 vcpkg install boost-asio boost-beast boost-filesystem boost-gil boost-process boost-system libpng nlohmann-json stb --triplet x64-windows

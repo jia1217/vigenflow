@@ -8,6 +8,7 @@
 #     server_running/images/
 #     all_npu_files/<model>/                       from src/npu_files
 #     prepare/prepare_base.exe, prepare_models.jsonc
+#     README.md, VERSION, SHA256SUMS
 #     LICENSE, MODEL_LICENSES.md, THIRD_PARTY_NOTICES.md
 #
 # The model weights are not packaged: prepare/prepare_base.exe downloads them into
@@ -19,7 +20,7 @@ SRC_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$SRC_ROOT/.." && pwd)"
 PREPARE_DIR="$SRC_ROOT/prepare_weights"
 
-VERSION="${VERSION:-0.2.0-beta.2}"
+VERSION="${VERSION:-0.2.0-beta.3}"
 ARCH="${ARCH:-amd64}"
 PACKAGE_NAME="${PACKAGE_NAME:-vigenflow_${VERSION}_ubuntu_${ARCH}}"
 OUT_ROOT="${OUT_ROOT:-$SCRIPT_DIR/release}"
@@ -28,7 +29,7 @@ EXE_MODELS_DIR="${EXE_MODELS_DIR:-$SRC_ROOT/exe_models}"
 LIB_DIR="${LIB_DIR:-$SRC_ROOT/lib}"
 NPU_FILES_DIR="${NPU_FILES_DIR:-$SRC_ROOT/npu_files}"
 
-MODELS=(flux1_schnell flux2_klein_4B flux2_klein_4B_edit krea2_turbo z_image_turbo)
+MODELS=(flux1_schnell flux2_klein_4B flux2_klein_4B_edit krea2_turbo z_image_turbo qwen_image_2_1_turbo qwen_image_2_1_turbo_edit)
 
 if ! command -v zip >/dev/null 2>&1; then
   echo "zip is required to create the release package." >&2
@@ -45,7 +46,8 @@ done
 # vgf-serve refuses to start unless every worker exists.
 for model in "${MODELS[@]}"; do
   if [[ ! -f "$EXE_MODELS_DIR/$model/run.exe" ]]; then
-    echo "Missing worker: $EXE_MODELS_DIR/$model/run.exe (build it with make -C src/models/$model)" >&2
+    echo "Missing worker: $EXE_MODELS_DIR/$model/run.exe" >&2
+    echo "Build existing launchers with make -C src/models/<model>; install Qwen with bash src/models/install_qwen_workers.sh." >&2
     exit 1
   fi
 done
@@ -88,11 +90,20 @@ for doc in LICENSE MODEL_LICENSES.md THIRD_PARTY_NOTICES.md; do
   cp "$REPO_ROOT/$doc" "$STAGE_DIR/$doc"
 done
 cp -a "$REPO_ROOT/model_licenses" "$STAGE_DIR/model_licenses"
+cp "$SCRIPT_DIR/README_ubuntu_package.md" "$STAGE_DIR/README.md"
+printf '%s\n' "$VERSION" > "$STAGE_DIR/VERSION"
+
+(
+  cd "$STAGE_DIR"
+  find . -type f ! -path './SHA256SUMS' -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS
+)
 
 (
   cd "$OUT_ROOT"
   zip -qr "$ZIP_PATH" "$PACKAGE_NAME"
+  sha256sum "$PACKAGE_NAME.zip" > "$PACKAGE_NAME.zip.sha256"
 )
 
 echo "Created $ZIP_PATH"
 echo "Release folder: $STAGE_DIR"
+echo "Archive checksum: $ZIP_PATH.sha256"

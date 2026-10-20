@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       models:
-        description: "Comma-separated model IDs (empty: all five)"
+        description: "Comma-separated model IDs (empty: all available workers)"
         required: false
         default: ""
 

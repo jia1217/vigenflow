@@ -1,4 +1,4 @@
-# VigenFlow server image: vgf-serve, the five NPU model workers, their NPU files and the weight
+# VigenFlow server image: vgf-serve, the seven NPU model workers, their NPU files and the weight
 # downloader, laid out as in the Ubuntu release package. The model weights are not in the image;
 # `prepare` downloads them into a volume mounted at /opt/vigenflow/all_model_weights.
 # The host needs only the amdxdna driver: XRT is in the image.
@@ -36,18 +36,20 @@ RUN apt-get update \
 WORKDIR /src
 COPY . .
 
-# The launchers as in ubuntu-build.yml, then vgf-serve, prepare_base.exe and the package folder as in
-# the release zip.
-RUN for model in flux1_schnell flux2_klein_4B flux2_klein_4B_edit krea2_turbo z_image_turbo; do \
+# Rebuild the five launchers. The two native Qwen hosts are supplied in src/exe_models;
+# refresh them with src/models/install_qwen_workers.sh before building this image.
+# package_ubuntu.sh requires all seven workers and installs both Qwen NPU bundles.
+RUN set -eu; \
+    for model in flux1_schnell flux2_klein_4B flux2_klein_4B_edit krea2_turbo z_image_turbo; do \
         make -C "src/models/$model" clean all; \
-    done \
-    && PACKAGE_NAME=vigenflow OUT_ROOT=/out bash src/server_unified/package_ubuntu.sh
+    done; \
+    PACKAGE_NAME=vigenflow OUT_ROOT=/out bash src/server_unified/package_ubuntu.sh
 
 
 FROM ${BASE_IMAGE}
 
 LABEL org.opencontainers.image.title="VigenFlow"
-LABEL org.opencontainers.image.description="FLUX, Z-Image and Krea 2 image generation on the AMD Ryzen AI NPU, served to OpenWebUI"
+LABEL org.opencontainers.image.description="FLUX, Z-Image, Krea 2 and Qwen Image generation and editing on the AMD Ryzen AI NPU, served to OpenWebUI"
 LABEL org.opencontainers.image.source="https://github.com/jia1217/vigenflow"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 
@@ -65,6 +67,8 @@ RUN apt-get update \
         libxrt-npu2 \
         libboost-program-options1.83.0 \
         libgomp1 \
+        libjpeg-turbo8 \
+        libssl3t64 \
         libpng16-16t64 \
         curl \
         tini \
@@ -74,14 +78,21 @@ COPY --from=build /out/vigenflow /opt/vigenflow/app
 COPY docker/entrypoint.sh /usr/local/bin/vigenflow
 
 # images/ is where the workers write their PNGs, so any --user can run the server.
-RUN chmod 0755 /usr/local/bin/vigenflow \
-    && chmod 1777 /opt/vigenflow/app/server_running/images \
-    && mkdir -p /opt/vigenflow/all_model_weights \
-    && cd /opt/vigenflow/app \
-    && if ldd server_running/vgf-serve server_running/exe_models/*/run.exe server_running/lib/*.so \
-            prepare/prepare_base.exe | grep "not found"; then \
-        echo "A runtime library is missing from the image" >&2; exit 1; \
-    fi
+RUN set -eu; \
+    chmod 0755 /usr/local/bin/vigenflow; \
+    chmod 1777 /opt/vigenflow/app/server_running/images; \
+    mkdir -p /opt/vigenflow/all_model_weights; \
+    cd /opt/vigenflow/app; \
+    sha256sum --check --quiet SHA256SUMS; \
+    for binary in server_running/vgf-serve server_running/exe_models/*/run.exe server_running/lib/*.so prepare/prepare_base.exe; do \
+        dependencies="$(ldd "$binary")"; \
+        if printf '%s\n' "$dependencies" | grep -q 'not found'; then \
+            printf 'Missing runtime libraries for %s:\n%s\n' "$binary" "$dependencies" >&2; exit 1; \
+        fi; \
+    done; \
+    for task in base edit; do \
+        test -d "all_npu_files/qwen_image/$task"; \
+    done
 
 WORKDIR /opt/vigenflow/app/server_running
 EXPOSE 11283

@@ -57,14 +57,14 @@ const config::ModelConfig& require_available(const config::ModelConfig& model) {
     return model;
 }
 
-// Shared by generation and edit requests; edit requests use the edit model by default.
+// An explicitly selected edit default applies to /edits too; otherwise keep the Flux2 fallback.
 GenerationRequest parse_fields(const json& j, bool edit) {
     GenerationRequest request;
-    const auto& model = edit && !j.contains("model") ? require_available(*config::find_model(config::kEditModelId))
-                                                     : parse_model(j);
+    const auto& edit_default = config::default_model().edits_image ? config::default_model()
+                                                                 : *config::find_model(config::kEditModelId);
+    const auto& model = edit && !j.contains("model") ? require_available(edit_default) : parse_model(j);
     if (model.edits_image != edit) {
-        throw BadRequest(edit ? std::string(model.id) + " does not edit images; use " +
-                                    config::kEditModelId
+        throw BadRequest(edit ? std::string(model.id) + " does not edit images; select an image-edit model"
                               : std::string(model.id) +
                                     " edits an input image; send it to POST /v1/images/edits");
     }

@@ -86,8 +86,8 @@ jobs:
               make -C src/models/z_image_turbo clean all
               make -C src/models/krea2_turbo clean all
               count="$(find src/exe_models -type f -name run.exe | wc -l)"
-              if [ "$count" -ne 5 ]; then
-                echo "Expected 5 run.exe files, found $count"
+              if [ "$count" -ne 7 ]; then
+                echo "Expected 7 run.exe files (five launchers and two native Qwen workers), found $count"
                 find src/exe_models -type f -name run.exe -print
                 exit 1
               fi

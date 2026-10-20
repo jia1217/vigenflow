@@ -1,9 +1,14 @@
 # Run VigenFlow with Docker or Podman
 
-The VigenFlow image holds everything the Ubuntu release package holds: `vgf-serve`, the five model
+An image built from the current source holds everything the Ubuntu package holds: `vgf-serve`, the seven model
 workers, their NPU files, the weight downloader, and the XRT runtime they need. On the host you need
 only the NPU driver and a container engine. The model weights stay outside the image, in a volume
 that you fill once.
+
+Qwen text-to-image and editing share the optional `qwen_image_2_1_turbo`
+weights. Install them with `prepare --only qwen_image_2_1_turbo`; select
+`qwen-image-2.1-turbo` or `qwen-image-2.1-turbo-edit` in API requests.
+Published images may predate these source changes.
 
 ## Quick start
 
@@ -18,7 +23,8 @@ The installer:
 1. Checks for the NPU driver. If it is missing, the installer offers to install it; reboot then, and
    run the same command again.
 2. Installs Docker if neither Docker nor Podman is installed.
-3. Asks which models to download. Press Enter for FLUX.2-klein-4B (8 GB), the fastest.
+3. Asks which models to download. Press Enter for FLUX.2-klein-4B (8 GB), the fastest,
+   or choose **5** for Qwen Image 2.1 Turbo text-to-image and editing (one shared 19.6 GB download).
 4. Starts VigenFlow and OpenWebUI, and prints the address to open, http://localhost:8080.
 
 In OpenWebUI, create an account, pick a VigenFlow model you downloaded, turn on **Image** under
@@ -28,6 +34,13 @@ Run the same command again to update VigenFlow, update the weights or add models
 questions, set the models on `bash`, for example
 `curl -fsSL .../install.sh | VIGENFLOW_MODELS=flux2_klein_4B,z_image_turbo bash`; the other settings
 are listed at the top of [`docker/install.sh`](../docker/install.sh).
+
+In this checkout, `VIGENFLOW_MODELS=qwen_image_2_1_turbo` selects both Qwen tasks;
+`VIGENFLOW_MODELS=all` selects all five weight sets, including Qwen. For unattended
+downloads, `VIGENFLOW_ACCEPT_QWEN_LICENSE=yes` accepts Qwen's terms and
+`VIGENFLOW_ACCEPT_KREA_LICENSE=yes` accepts Krea's terms. Each setting applies
+only to its own model. Without these settings, the downloader asks on a terminal
+and skips a model requiring acceptance when there is no terminal.
 
 The rest of this page does the same steps by hand.
 
@@ -48,8 +61,8 @@ The rest of this page does the same steps by hand.
   `ls -l /dev/accel/accel0`.
 - Docker Engine, or Podman. Docker Desktop does not work: it runs containers in a virtual machine
   that cannot see the NPU.
-- About 65 GB of disk space for the weights of all four model families, plus up to 10 GB while they
-  download. You can download fewer models.
+- About 85 GB of disk space for all five weight sets including Qwen, plus up to
+  10 GB while they download. Qwen alone needs about 19.6 GB and serves both tasks.
 
 ## Get the image
 
@@ -65,8 +78,15 @@ Or build it yourself from a checkout of this repository:
 docker build -f docker/Dockerfile -t ghcr.io/jia1217/vigenflow:latest .
 ```
 
-The build compiles `vgf-serve`, `prepare_base.exe` and the launchers, and lays them out as
-`package_ubuntu.sh` does. It takes a few minutes and needs no NPU.
+The build compiles `vgf-serve`, `prepare_base.exe` and the five launchers, and
+includes the two native Qwen hosts from `src/exe_models/`. It lays out all seven
+workers as `package_ubuntu.sh` does, including both Qwen NPU bundles and the
+JPEG/OpenSSL runtime libraries used by editing. It checks packaged file hashes
+and runtime dependencies. It takes a few minutes and needs no NPU.
+
+After changing a native Qwen host, run `bash src/models/install_qwen_workers.sh`
+on the Ubuntu development machine before building the image; the native source
+projects are in the sibling `NPU_qwen/` directory, outside the Docker context.
 
 ## Download the model weights (one time)
 
@@ -80,10 +100,13 @@ docker run --rm -it \
 
 `prepare` runs `prepare_base.exe` and takes the same options, for example
 `prepare --only flux2_klein_4B,z_image_turbo` to download only some models. The model names are
-`flux1_schnell`, `flux2_klein_4B`, `z_image_turbo` and `krea2_turbo`.
+`flux1_schnell`, `flux2_klein_4B`, `z_image_turbo`, `krea2_turbo` and
+`qwen_image_2_1_turbo`. Bare `prepare` downloads the original four enabled weight
+sets; Qwen is opt-in and requires `--only qwen_image_2_1_turbo`.
 
-Keep `-it`: before it downloads Krea 2 Turbo, `prepare` shows the Krea license links and waits for
-you to type `I agree`. To accept the license without the prompt, add `--accept_license`.
+Keep `-it`: before it downloads Krea 2 Turbo or Qwen, `prepare` shows that model's
+license terms and waits for you to type `I agree`. To accept the terms for all
+models selected in that invocation without a prompt, add `--accept_license`.
 
 Run the same command again at any time to update the weights; it downloads only the models that
 changed.
@@ -136,6 +159,45 @@ curl http://127.0.0.1:11283/v1/images/generations \
 The second command writes `fox.png` after about as long as the README's model table lists for the
 model.
 
+### Qwen text-to-image and editing
+
+For these source changes, build a local image and download Qwen's shared weights:
+
+```bash
+docker build -f docker/Dockerfile -t vigenflow:qwen-beta3 .
+docker run --rm -it \
+  -v vigenflow-weights:/opt/vigenflow/all_model_weights \
+  vigenflow:qwen-beta3 prepare --only qwen_image_2_1_turbo
+docker run -d --name vigenflow-qwen \
+  --device /dev/accel --ulimit memlock=-1:-1 \
+  -p 127.0.0.1:11283:11283 \
+  -v vigenflow-weights:/opt/vigenflow/all_model_weights \
+  vigenflow:qwen-beta3 serve --model qwen-image-2.1-turbo
+```
+
+Use a free host port if another VigenFlow server is running. Generate and then
+edit a PNG through the same server:
+
+```bash
+curl -fS http://127.0.0.1:11283/v1/images/generations \
+  -H 'Content-Type: application/json' -H 'Accept: image/png' \
+  -d '{"model":"qwen-image-2.1-turbo","prompt":"a red fox in snow"}' -o generated.png
+curl -fS http://127.0.0.1:11283/v1/images/edits \
+  -H 'Accept: image/png' -F model=qwen-image-2.1-turbo-edit \
+  -F 'prompt=make it night time' -F image=@generated.png -o edited.png
+```
+
+Both tasks use eight steps and return 1024x1024 PNGs. Intermediate Qwen dumps
+are disabled. With the default server settings, temporary images are removed
+after each response; the two `curl` commands save the final PNGs on the host.
+
+The local quick installer can also use this image:
+
+```bash
+VIGENFLOW_IMAGE=vigenflow:qwen-beta3 VIGENFLOW_MODELS=qwen_image_2_1_turbo \
+  bash docker/install.sh
+```
+
 ### Podman
 
 The same commands work with `podman` in place of `docker`. When Podman runs without root, it cannot
@@ -168,6 +230,13 @@ docker compose -f docker/compose.yaml up -d
 ```
 
 To build the image instead of pulling it, run `docker compose -f docker/compose.yaml build` first.
+
+For Qwen only, select its weights and server default explicitly:
+
+```bash
+docker compose -f docker/compose.yaml run --rm vigenflow prepare --only qwen_image_2_1_turbo
+VIGENFLOW_MODEL=qwen-image-2.1-turbo docker compose -f docker/compose.yaml up -d
+```
 
 With `--profile webui`, Compose also starts OpenWebUI v0.11.4, already connected to VigenFlow, at
 http://localhost:8080:
@@ -226,9 +295,23 @@ container is removed. Add the `-v` option shown above.
 ## For maintainers: publishing the image
 
 [`.github/workflows/docker-server.yml`](../.github/workflows/docker-server.yml) builds
-`docker/Dockerfile` on every pull request that changes it, and pushes the image to
+`docker/Dockerfile` on pull requests that change Docker or packaged runtime files, and pushes the image to
 `ghcr.io/<owner>/vigenflow` when a `v*` tag is pushed or the workflow is run by hand. A tag such as
-`v0.2.0-beta.2` is published as `0.2.0-beta.2` and `latest`.
+`v0.2.0-beta.3` is published as `0.2.0-beta.3` and `latest`.
+
+Before publishing, CI checks installer selection and license handling, builds the
+image, then starts its server without NPU inference to verify health, all seven
+model IDs, entrypoint options and package checksums. The same checks can be run
+locally:
+
+```bash
+python3 docker/tests/test_install.py
+python3 docker/tests/check_image.py vigenflow:qwen-beta3
+```
+
+The image check needs Docker access but no model weights or NPU. Pass
+`--engine 'sudo docker'` or `--engine podman` when needed. Actual image generation
+and editing still require testing on the supported NPU.
 
 A new GHCR package is private. After the first push, open the package's settings on GitHub and set
 its visibility to public, so that `docker pull` works without logging in.
