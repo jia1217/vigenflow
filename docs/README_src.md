@@ -95,11 +95,16 @@ bash build_ubuntu.sh
 It is the `prepare/` folder of the release package; see
 `src/prepare_weights/README.md` for its options.
 
-## Compile Model Worker Launchers
+## Compile Ubuntu Model Workers
 
-Model launcher sources live under `src/models`. The Makefiles compile small
-`run.exe` launcher binaries and link them against the prebuilt shared libraries
-in `src/lib`.
+Model worker sources live under `src/models`. The Makefiles embed the prebuilt
+host runtimes from `src/lib` into each `run.exe`. The `.so` files are build inputs;
+they are not needed alongside the resulting Ubuntu executables.
+
+At startup, an embedded runtime is loaded through an anonymous Linux memory file
+(`memfd_create` and `/proc/self/fd`). It is not extracted to disk. This bundles the
+existing runtime without changing its model pipeline; it is not a fully static
+build. Ubuntu runtime libraries and XRT must still be installed.
 
 The source tree must contain the matching shared libraries before these builds
 will succeed, for example:
@@ -110,9 +115,11 @@ src/lib/libhost_flux2_klein_4B.so
 src/lib/libhost_flux2_klein_4B_edit.so
 src/lib/libhost_z_image_turbo.so
 src/lib/libhost_krea2_turbo.so
+src/lib/libhost_qwen_image_2_1_turbo.so
+src/lib/libhost_qwen_image_2_1_turbo_edit.so
 ```
 
-Build the launchers you need:
+Build the workers you need:
 
 ```bash
 cd /workspace/vigenflow
@@ -122,6 +129,8 @@ make -C src/models/flux2_klein_4B check
 make -C src/models/flux2_klein_4B_edit check
 make -C src/models/z_image_turbo check
 make -C src/models/krea2_turbo check
+make -C src/models/qwen_image_2_1_turbo check
+make -C src/models/qwen_image_2_1_turbo_edit check
 ```
 
 The generated binaries are written under `src/exe_models`, for example:
@@ -132,23 +141,31 @@ src/exe_models/flux2_klein_4B/run.exe
 src/exe_models/flux2_klein_4B_edit/run.exe
 src/exe_models/z_image_turbo/run.exe
 src/exe_models/krea2_turbo/run.exe
+src/exe_models/qwen_image_2_1_turbo/run.exe
+src/exe_models/qwen_image_2_1_turbo_edit/run.exe
 ```
 
-## Install the Qwen Ubuntu Workers
+Check all seven executables in isolated folders containing no host libraries:
 
-Qwen uses two native executables rather than the five shared-library launchers
-above. Their stripped copies are in `src/exe_models/qwen_image_2_1_turbo/run.exe`
-and `src/exe_models/qwen_image_2_1_turbo_edit/run.exe`. To rebuild and refresh them
-from the native host projects:
+```bash
+python3 src/models/check_ubuntu.py
+```
+
+## Refresh the Qwen Host Libraries
+
+The two Qwen libraries in `src/lib` are built from the native host projects with
+`make libhost`, like `libhost_krea2_turbo.so`. To rebuild them, install stripped
+copies in `src/lib` and rebuild both workers:
 
 ```bash
 QWEN_SOURCE_ROOT=/path/to/NPU_qwen bash src/models/install_qwen_workers.sh
 ```
 
 The source root contains `NPU_qwen_turbo/` and `NPU_qwen_image/`; it defaults to
-the sibling `NPU_qwen/` tree. `SKIP_BUILD=1` installs existing host binaries.
-The hosts need their native build dependencies; the edit executable also
-loads libjpeg-turbo and OpenSSL at runtime. Both workers share the prepared
+the sibling `NPU_qwen/` tree. `SKIP_BUILD=1` installs existing
+`build/lib/libhost_<model>.so` files. The hosts need their native build
+dependencies, including a PIC build of tokenizers-cpp (`make libhost` builds it
+in `build_pic/`); the edit worker also loads libjpeg-turbo and OpenSSL at runtime. Both workers share the prepared
 `qwen_image_2_1_turbo` weights and use `qwen_image/base` or `qwen_image/edit`
 under the NPU bundle root. See [server setup](../src/server_unified/README.md#qwen-image-21-turbo).
 
@@ -175,9 +192,8 @@ build_windows.bat flux2_klein_4B     &rem or only some
 
 The launchers are written to `src/exe_models_win/<model>/run.exe` (the folder
 name keeps them apart from the Ubuntu ones). A launcher loads its
-`host_<model>.dll` from `..\..\lib\` relative to its own folder, as the Ubuntu
-launcher finds `libhost_<model>.so` through its `$ORIGIN/../../lib` RUNPATH, so
-it runs in place in the repository and, with the same layout, in a package:
+`host_<model>.dll` from `..\..\lib\` relative to its own folder, so
+it runs in place in the repository and, with the same layout, in a Windows package:
 
 ```text
 src/exe_models_win/<model>/run.exe  -> server_running/exe_models/<model>/run.exe
@@ -215,7 +231,7 @@ cmake --build build --target check
 
 ## Create an Ubuntu Release Package
 
-After the model launchers build, create a release ZIP. The script builds
+After the model workers build, create a release ZIP. The script builds
 `vgf-serve` and `prepare_base.exe` itself:
 
 ```bash
@@ -227,7 +243,6 @@ It packages these runtime assets:
 
 ```text
 src/exe_models    -> server_running/exe_models
-src/lib           -> server_running/lib
 src/npu_files     -> all_npu_files
 ```
 
@@ -235,7 +250,6 @@ If your assets are stored somewhere else, pass explicit paths:
 
 ```bash
 EXE_MODELS_DIR=/path/to/exe_models \
-LIB_DIR=/path/to/lib \
 NPU_FILES_DIR=/path/to/npu_files \
 VERSION=0.2.0-beta.3 \
 bash package_ubuntu.sh
@@ -367,15 +381,17 @@ docker build \
 
 ### `Missing src/lib/libhost_*.so`
 
-The model launcher Makefiles link against prebuilt host shared libraries in
-`src/lib`. Copy or build the required `.so` file before running `make`.
+The Ubuntu Makefiles embed prebuilt host shared libraries from `src/lib` into
+the executables. Copy or build the required `.so` file before running `make`.
+The packaged workers do not need these files at runtime. The package script
+rejects older workers that still depend on an external `libhost_*.so`; rebuild
+those workers before packaging.
 
 ### `package_ubuntu.sh` reports a missing worker
 
 The Ubuntu package needs seven `src/exe_models/<model>/run.exe` workers,
-because `vgf-serve` does not start without them. Build the five original
-launchers with `make -C src/models/<model>`; refresh the two Qwen workers with
-`bash src/models/install_qwen_workers.sh`.
+because `vgf-serve` does not start without them. Build them with
+`make -C src/models/<model>`.
 
 ### Permission errors after building in Docker
 

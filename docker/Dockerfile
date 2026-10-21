@@ -36,11 +36,12 @@ RUN apt-get update \
 WORKDIR /src
 COPY . .
 
-# Rebuild the five launchers. The two native Qwen hosts are supplied in src/exe_models;
-# refresh them with src/models/install_qwen_workers.sh before building this image.
+# Build all seven workers with their host runtimes from src/lib embedded. The Qwen host libraries come from the
+# native NPU_qwen projects; refresh them with src/models/install_qwen_workers.sh before building this image.
 # package_ubuntu.sh requires all seven workers and installs both Qwen NPU bundles.
 RUN set -eu; \
-    for model in flux1_schnell flux2_klein_4B flux2_klein_4B_edit krea2_turbo z_image_turbo; do \
+    for model in flux1_schnell flux2_klein_4B flux2_klein_4B_edit krea2_turbo z_image_turbo \
+                 qwen_image_2_1_turbo qwen_image_2_1_turbo_edit; do \
         make -C "src/models/$model" clean all; \
     done; \
     PACKAGE_NAME=vigenflow OUT_ROOT=/out bash src/server_unified/package_ubuntu.sh
@@ -84,12 +85,16 @@ RUN set -eu; \
     mkdir -p /opt/vigenflow/all_model_weights; \
     cd /opt/vigenflow/app; \
     sha256sum --check --quiet SHA256SUMS; \
-    for binary in server_running/vgf-serve server_running/exe_models/*/run.exe server_running/lib/*.so prepare/prepare_base.exe; do \
+    for binary in server_running/vgf-serve server_running/exe_models/*/run.exe prepare/prepare_base.exe; do \
         dependencies="$(ldd "$binary")"; \
         if printf '%s\n' "$dependencies" | grep -q 'not found'; then \
             printf 'Missing runtime libraries for %s:\n%s\n' "$binary" "$dependencies" >&2; exit 1; \
         fi; \
     done; \
+    for worker in server_running/exe_models/*/run.exe; do \
+        "$worker" --help >/dev/null; \
+    done; \
+    test ! -e server_running/lib; \
     for task in base edit; do \
         test -d "all_npu_files/qwen_image/$task"; \
     done

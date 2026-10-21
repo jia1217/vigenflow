@@ -53,7 +53,11 @@ def main():
         help_text = run('exec', container, '/usr/local/bin/vigenflow', '--help')
         assert all(model in help_text for model in MODELS)
         run('exec', container, '/usr/local/bin/vigenflow', 'prepare', '--help')
-        print('PASS: image checksums, entrypoint help, health, and all seven model IDs')
+        run('exec', container, 'sh', '-ec',
+            'test ! -e ' + APP + '/server_running/lib; '
+            'for worker in ' + APP + '/server_running/exe_models/*/run.exe; do '
+            '"$worker" --help >/dev/null; done')
+        print('PASS: image checksums, entrypoint help, health, all seven model IDs, and workers without lib/')
     except Exception:
         print(run('logs', container))
         raise

@@ -22,6 +22,9 @@ sudo apt install libboost-program-options1.83.0 libpng16-16t64 \
 ```
 
 The `run.exe` and `prepare_base.exe` files in this package are Linux executables.
+Each worker includes its model host runtime, so the Ubuntu release has no
+`server_running/lib/` folder and needs no separate `libhost_*.so` files.
+The system runtime libraries above, model weights, and NPU files are still required.
 
 ## Prepare the Qwen weights
 
@@ -61,7 +64,31 @@ ln -s /absolute/path/to/qwen-npu ../all_model_weights/qwen_image_2_1_turbo
 Keep the weights and their notices together when moving them. Symlinks need to
 point to an existing directory on the machine where you run the package.
 
-## Run Qwen text-to-image and image editing
+## Run a worker directly
+
+From the extracted package folder, generate a PNG without starting the server:
+
+```bash
+./server_running/exe_models/qwen_image_2_1_turbo/run.exe \
+  --weights_path ../all_model_weights/qwen_image_2_1_turbo \
+  --npu_files_path ./all_npu_files/qwen_image/base \
+  --prompt "a red fox sitting in fresh snow" --output generated.png
+```
+
+Edit a 1024x1024 input image:
+
+```bash
+./server_running/exe_models/qwen_image_2_1_turbo_edit/run.exe \
+  --weights_path ../all_model_weights/qwen_image_2_1_turbo \
+  --npu_files_path ./all_npu_files/qwen_image/edit \
+  --input_image generated.png --prompt "make it night time" --output edited.png
+```
+
+The other workers also run directly. Use their `--help` option for arguments,
+and pass the matching model weight and NPU directories explicitly. The server
+is optional for command-line inference.
+
+## Run Qwen through the server
 
 Start the server from the package folder:
 

@@ -85,9 +85,11 @@ jobs:
               make -C src/models/flux2_klein_4B_edit clean all
               make -C src/models/z_image_turbo clean all
               make -C src/models/krea2_turbo clean all
+              make -C src/models/qwen_image_2_1_turbo clean all
+              make -C src/models/qwen_image_2_1_turbo_edit clean all
               count="$(find src/exe_models -type f -name run.exe | wc -l)"
               if [ "$count" -ne 7 ]; then
-                echo "Expected 7 run.exe files (five launchers and two native Qwen workers), found $count"
+                echo "Expected 7 run.exe files (seven embedded hosts), found $count"
                 find src/exe_models -type f -name run.exe -print
                 exit 1
               fi
@@ -99,7 +101,7 @@ jobs:
           set -euo pipefail
           out="dist/ubuntu-exe"
           rm -rf "$out"
-          mkdir -p "$out/exe_models" "$out/lib"
+          mkdir -p "$out/exe_models"
 
           find "${SRC_DIR}/exe_models" -type f -name run.exe -print0 | while IFS= read -r -d '' exe; do
             rel="${exe#${SRC_DIR}/exe_models/}"
@@ -107,7 +109,6 @@ jobs:
             cp "$exe" "$out/exe_models/$rel"
           done
 
-          cp "${SRC_DIR}/lib"/*.so "$out/lib/"
           find "$out" -type f -print
 
       - name: Upload artifact

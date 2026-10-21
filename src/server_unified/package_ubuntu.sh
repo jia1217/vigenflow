@@ -3,8 +3,7 @@
 #
 #   vigenflow_<VERSION>_ubuntu_amd64/
 #     server_running/vgf-serve
-#     server_running/exe_models/<model>/run.exe   launchers from src/exe_models
-#     server_running/lib/libhost_<model>.so        from src/lib (the launchers' RUNPATH is $ORIGIN/../../lib)
+#     server_running/exe_models/<model>/run.exe   workers with their model runtimes included
 #     server_running/images/
 #     all_npu_files/<model>/                       from src/npu_files
 #     prepare/prepare_base.exe, prepare_models.jsonc
@@ -26,7 +25,6 @@ PACKAGE_NAME="${PACKAGE_NAME:-vigenflow_${VERSION}_ubuntu_${ARCH}}"
 OUT_ROOT="${OUT_ROOT:-$SCRIPT_DIR/release}"
 SERVER_OUT_DIR="${SERVER_OUT_DIR:-$SCRIPT_DIR/vigenflow_ubuntu}"
 EXE_MODELS_DIR="${EXE_MODELS_DIR:-$SRC_ROOT/exe_models}"
-LIB_DIR="${LIB_DIR:-$SRC_ROOT/lib}"
 NPU_FILES_DIR="${NPU_FILES_DIR:-$SRC_ROOT/npu_files}"
 
 MODELS=(flux1_schnell flux2_klein_4B flux2_klein_4B_edit krea2_turbo z_image_turbo qwen_image_2_1_turbo qwen_image_2_1_turbo_edit)
@@ -37,7 +35,12 @@ if ! command -v zip >/dev/null 2>&1; then
   exit 1
 fi
 
-for dir in "$EXE_MODELS_DIR" "$LIB_DIR" "$NPU_FILES_DIR"; do
+if ! command -v readelf >/dev/null 2>&1; then
+  echo "readelf is required to check worker dependencies (sudo apt install binutils)." >&2
+  exit 1
+fi
+
+for dir in "$EXE_MODELS_DIR" "$NPU_FILES_DIR"; do
   if [[ ! -d "$dir" ]]; then
     echo "Missing directory: $dir" >&2
     exit 1
@@ -47,7 +50,13 @@ done
 for model in "${MODELS[@]}"; do
   if [[ ! -f "$EXE_MODELS_DIR/$model/run.exe" ]]; then
     echo "Missing worker: $EXE_MODELS_DIR/$model/run.exe" >&2
-    echo "Build existing launchers with make -C src/models/<model>; install Qwen with bash src/models/install_qwen_workers.sh." >&2
+    echo "Build workers with make -C src/models/<model>." >&2
+    exit 1
+  fi
+  dependencies="$(readelf -d "$EXE_MODELS_DIR/$model/run.exe")"
+  if [[ "$dependencies" == *libhost_*.so* ]]; then
+    echo "Worker still requires an external host library: $model" >&2
+    echo "Rebuild it with make -C src/models/$model before packaging." >&2
     exit 1
   fi
 done
@@ -74,13 +83,12 @@ ZIP_PATH="$OUT_ROOT/$PACKAGE_NAME.zip"
 
 rm -rf "$STAGE_DIR" "$ZIP_PATH"
 mkdir -p "$STAGE_DIR/server_running/images" "$STAGE_DIR/server_running/exe_models" \
-  "$STAGE_DIR/server_running/lib" "$STAGE_DIR/prepare"
+  "$STAGE_DIR/prepare"
 
 install -m 0755 "$SERVER_BIN" "$STAGE_DIR/server_running/vgf-serve"
 for model in "${MODELS[@]}"; do
   install -D -m 0755 "$EXE_MODELS_DIR/$model/run.exe" "$STAGE_DIR/server_running/exe_models/$model/run.exe"
 done
-cp -a "$LIB_DIR"/libhost_*.so "$STAGE_DIR/server_running/lib/"
 cp -a "$NPU_FILES_DIR" "$STAGE_DIR/all_npu_files"
 
 install -m 0755 "$PREPARE_BIN" "$STAGE_DIR/prepare/prepare_base.exe"

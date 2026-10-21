@@ -78,15 +78,17 @@ Or build it yourself from a checkout of this repository:
 docker build -f docker/Dockerfile -t ghcr.io/jia1217/vigenflow:latest .
 ```
 
-The build compiles `vgf-serve`, `prepare_base.exe` and the five launchers, and
-includes the two native Qwen hosts from `src/exe_models/`. It lays out all seven
+The build compiles `vgf-serve`, `prepare_base.exe` and all seven workers with their
+host runtimes from `src/lib/` embedded in the executables. It lays out all seven
 workers as `package_ubuntu.sh` does, including both Qwen NPU bundles and the
 JPEG/OpenSSL runtime libraries used by editing. It checks packaged file hashes
-and runtime dependencies. It takes a few minutes and needs no NPU.
+and starts every worker with `--help` to check runtime dependencies. No separate
+`server_running/lib/` folder is needed. It takes a few minutes and needs no NPU.
 
 After changing a native Qwen host, run `bash src/models/install_qwen_workers.sh`
-on the Ubuntu development machine before building the image; the native source
-projects are in the sibling `NPU_qwen/` directory, outside the Docker context.
+on the Ubuntu development machine before building the image. It refreshes the two
+Qwen libraries in `src/lib/`; the native source projects are in the sibling
+`NPU_qwen/` directory, outside the Docker context.
 
 ## Download the model weights (one time)
 

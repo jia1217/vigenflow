@@ -1,7 +1,6 @@
 // Windows part of every model launcher run.exe (src/models/<model>/host.cpp calls <model>_host_main in
 // the prebuilt host_<model>.dll). build_windows.bat delay-loads that DLL, and this hook loads it from
-// ..\..\lib\ beside the launcher's folder, as the Ubuntu run.exe finds libhost_<model>.so through its
-// RUNPATH $ORIGIN/../../lib: src/exe_models_win/<model>/run.exe -> src/lib in the repo,
+// ..\..\lib\ beside the launcher's folder: src/exe_models_win/<model>/run.exe -> src/lib in the repo,
 // server_running/exe_models/<model>/run.exe -> server_running/lib in a package. The DLLs the host DLL
 // imports (Boost, XRT, LLVM OpenMP, the VC++ runtime) are found in the same folder.
 #include <windows.h>

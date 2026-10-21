@@ -32,8 +32,7 @@ In the release package the server is `server_running/vgf-serve`, so it reads the
 ```text
 vigenflow_<version>_ubuntu_amd64/
   server_running/vgf-serve
-  server_running/exe_models/<model>/run.exe   model launchers (src/exe_models)
-  server_running/lib/libhost_<model>.so        prebuilt host libraries (src/lib)
+  server_running/exe_models/<model>/run.exe   workers with their host runtimes included
   all_npu_files/<model>/                       NPU kernels (src/npu_files)
   prepare/prepare_base.exe                     downloads the weights (src/prepare_weights)
 all_model_weights/<model>/                     filled by prepare/prepare_base.exe
@@ -50,14 +49,19 @@ bash build_ubuntu.sh            # -> vigenflow_ubuntu/vgf-serve
 `vgf-serve` only finds the workers, NPU files and weights in the package layout above, so build the package and run it from there:
 
 ```bash
-# The launchers in ../exe_models are prebuilt; after changing one, rebuild it with make -C ../models/<model>.
+# Workers in ../exe_models are prebuilt; rebuild them with make -C ../models/<model>.
 VERSION=0.2.0-beta.3 bash package_ubuntu.sh
 cd release/vigenflow_0.2.0-beta.3_ubuntu_amd64
 ./prepare/prepare_base.exe      # downloads the weights to ../all_model_weights (once)
 cd server_running && ./vgf-serve -p 11283
 ```
 
-`package_ubuntu.sh` builds `vgf-serve` and `prepare_base.exe` and writes `release/vigenflow_<VERSION>_ubuntu_amd64/`, its `.zip`, and a `.zip.sha256` checksum. The folder includes a quickstart README, `VERSION`, and a file checksum manifest. `EXE_MODELS_DIR`, `LIB_DIR` and `NPU_FILES_DIR` override where the workers, host libraries and NPU files come from; `SKIP_BUILD=1` packages the binaries that are already built.
+`package_ubuntu.sh` builds `vgf-serve` and `prepare_base.exe` and writes `release/vigenflow_<VERSION>_ubuntu_amd64/`, its `.zip`, and a `.zip.sha256` checksum. The folder includes a quickstart README, `VERSION`, and a file checksum manifest. `EXE_MODELS_DIR` and `NPU_FILES_DIR` override where the workers and NPU files come from; `SKIP_BUILD=1` packages the binaries that are already built.
+
+Every Ubuntu worker runs directly without separate `libhost_*.so` files. The five
+original workers embed their prebuilt host runtimes; Qwen compiles its pipelines
+directly. Ubuntu libraries and XRT remain system prerequisites. See the package
+[direct worker examples](README_ubuntu_package.md#run-a-worker-directly).
 
 Workers support base-model inference only; LoRA adapters and LoRA command-line options are not supported.
 
@@ -104,13 +108,15 @@ Qwen remains an opt-in weight download.
 | `qwen-image-2.1-turbo` | `exe_models/qwen_image_2_1_turbo/run.exe` | `qwen_image/base` |
 | `qwen-image-2.1-turbo-edit` | `exe_models/qwen_image_2_1_turbo_edit/run.exe` | `qwen_image/edit` |
 
-Both native Ubuntu workers are installed in `src/exe_models/`. To refresh them
-after changing `NPU_qwen_turbo` or `NPU_qwen_image`, run
+Both Ubuntu workers are built like the others: `make -C src/models/<model>`
+embeds the prebuilt `src/lib/libhost_qwen_image_2_1_turbo.so` or
+`src/lib/libhost_qwen_image_2_1_turbo_edit.so` in its `run.exe`. To refresh the
+two libraries after changing `NPU_qwen_turbo` or `NPU_qwen_image`, run
 `bash src/models/install_qwen_workers.sh` from the repository root. Override
 `QWEN_SOURCE_ROOT` if the source projects are not in the sibling `NPU_qwen/`
-directory. The installer builds and strips copies of the two executables;
-it does not copy weights, input caches or diagnostic outputs. These executables
-contain their hosts directly, rather than using `libhost_*.so` launchers.
+directory. The script runs `make libhost` in each project, installs stripped
+copies of the libraries and rebuilds both workers; it does not copy weights,
+input caches or diagnostic outputs.
 The edit host also needs Ubuntu's libjpeg-turbo and OpenSSL runtime libraries.
 
 ```bash
@@ -229,7 +235,7 @@ powershell -ExecutionPolicy Bypass -File package_windows.ps1 -Version 0.2.0-beta
 
 `build_windows.bat` builds `vigenflow_win\vgf-serve.exe` with MSVC (Boost, libpng and stb from vcpkg; see `VCPKG_ROOT` / `BOOST_FILESYSTEM_LIB` in the script), copies the vcpkg DLLs it loads next to it (found with vcpkg's `applocal.ps1`: `libpng16.dll` and `zlib1.dll`, plus Boost DLLs with newer vcpkg Boost versions) and embeds `src/utf8.manifest`, so prompts and paths reach the workers as UTF-8. It also builds `build-windows\test_worker_stub.exe` (from `tests\test_worker_stub.cpp`), which the check uses to run its Python fake worker as `run.exe`. In the package, `vgf-serve.exe` also needs the VC++ runtime DLLs (`msvcp140.dll`, `vcruntime140.dll`, `vcruntime140_1.dll`) beside it unless the VC++ redistributable is installed.
 
-The Windows package has the same layout as the Ubuntu one: `server_running\vgf-serve.exe`, `server_running\exe_models\<model>\run.exe`, `server_running\lib\` with the host DLLs, `all_npu_files\`, `prepare\prepare_base.exe`, and the weights in `all_model_weights\` next to the package folder. The Windows launchers are built from the same `src/models` sources as the Ubuntu ones into `src/exe_models_win`, and load the prebuilt `src/lib/host_<model>.dll` (see `docs/README_src.md`); packages up to 0.2.0-beta.2 instead have a self-contained `run.exe` with its DLLs in each `exe_models\<model>\` folder, which vgf-serve runs the same way. Differences from Ubuntu:
+The Windows package contains: `server_running\vgf-serve.exe`, `server_running\exe_models\<model>\run.exe`, `server_running\lib\` with the host DLLs, `all_npu_files\`, `prepare\prepare_base.exe`, and the weights in `all_model_weights\` next to the package folder. The Windows launchers are built from the same `src/models` sources as the Ubuntu ones into `src/exe_models_win`, and load the prebuilt `src/lib/host_<model>.dll` (see `docs/README_src.md`); packages up to 0.2.0-beta.2 instead have a self-contained `run.exe` with its DLLs in each `exe_models\<model>\` folder, which vgf-serve runs the same way. Differences from Ubuntu:
 
 - The worker is `exe_models\<model>\run.exe` (a package), or `..\<model>\build-windows\Release\run.exe` (a development tree of the hosts' CMake builds). Only Windows executables count, so a Linux `run.exe` copied into the folder is ignored; an older package's `host.exe` is used when there is no Windows `run.exe`.
 - A model without a worker is not served: startup prints a warning, `/v1/models` leaves it out and requests for it return 400. The server refuses to start only when the default model has no worker.
