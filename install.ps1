@@ -15,6 +15,7 @@
 #   VIGENFLOW_DIR                  install folder (default: the one used last, else %USERPROFILE%\VigenFlow)
 #   VIGENFLOW_MODELS               models to download, comma-separated, or all (default: ask)
 #   VIGENFLOW_ACCEPT_KREA_LICENSE  yes accepts Krea 2 Turbo's license (krea2_turbo)
+#   VIGENFLOW_ACCEPT_QWEN_LICENSE  yes accepts Qwen's license (qwen_image_2_1_turbo)
 #   VIGENFLOW_WEBUI                1 or 0: start OpenWebUI or not (default: ask)
 #
 # Written for Windows PowerShell 5.1, which irm | iex runs in by default.
@@ -26,7 +27,7 @@ function Install-VigenFlow {
     $repo = 'jia1217/vigenflow'
     $apiPort = 11283
     $webuiVersion = '0.11.4'  # the OpenWebUI version VigenFlow is tested with
-    $allModels = @('flux2_klein_4B', 'z_image_turbo', 'krea2_turbo', 'flux1_schnell')
+    $allModels = @('flux2_klein_4B', 'z_image_turbo', 'krea2_turbo', 'flux1_schnell', 'qwen_image_2_1_turbo')
     $interactive = [Environment]::UserInteractive -and -not [Console]::IsInputRedirected
 
     function Say([string]$text) { Write-Host "`n==> $text" -ForegroundColor Cyan }
@@ -113,7 +114,7 @@ function Install-VigenFlow {
     if (Test-Path -LiteralPath $stateFile) { $defaultRoot = (Get-Content -LiteralPath $stateFile -Raw).Trim() }
     $root = $env:VIGENFLOW_DIR
     if (-not $root) {
-        Write-Host "`nThe install folder needs room for the model weights: 8 to 65 GB, depending on the models."
+        Write-Host "`nThe install folder needs room for the model weights: 8 to 85 GB, depending on the models."
         $root = Ask "Install folder [$defaultRoot]" $defaultRoot
     }
     New-Item -ItemType Directory -Force -Path $root | Out-Null
@@ -165,17 +166,18 @@ function Install-VigenFlow {
         Write-Host @'
 
 Which models do you want to download?
-  1) FLUX.2-klein-4B    8 GB   fastest (about 9 s per image), also edits images
-  2) Z-Image-Turbo     12 GB
-  3) Krea 2 Turbo      19 GB   has its own license, which you are asked to accept
-  4) FLUX.1-schnell    27 GB
-  a) all four          65 GB
+  1) FLUX.2-klein-4B          8 GB   fastest (about 9 s per image), also edits images
+  2) Z-Image-Turbo           12 GB
+  3) Krea 2 Turbo            19 GB   has its own license, which you are asked to accept
+  4) FLUX.1-schnell          27 GB
+  5) Qwen Image 2.1 Turbo  19.6 GB   also edits images; has its own license, which you are asked to accept
+  a) all five                85 GB
 Models you already have are only updated.
 '@
         $chosen = @()
         foreach ($choice in ((Ask 'Type the numbers separated by spaces [1]' '1') -split '[\s,]+')) {
             if ($choice -in @('a', 'all')) { $chosen = @('all'); break }
-            if ($choice -match '^[1-4]$') { $chosen += $allModels[[int]$choice - 1] }
+            if ($choice -match '^[1-5]$') { $chosen += $allModels[[int]$choice - 1] }
             elseif ($choice) { throw "Unknown choice: $choice" }
         }
         $models = @($chosen | Select-Object -Unique) -join ','
@@ -193,11 +195,20 @@ Models you already have are only updated.
     }
 
     Say 'Downloading the model weights (the first time takes a while; an interrupted download resumes)'
-    $prepareArgs = @()
-    if ($models -ne 'all') { $prepareArgs += @('--only', $models) }
-    if ($env:VIGENFLOW_ACCEPT_KREA_LICENSE -eq 'yes') { $prepareArgs += '--accept_license' }
-    & (Join-Path (Join-Path $package 'prepare') 'prepare_base.exe') @prepareArgs
-    $prepareOk = $LASTEXITCODE -eq 0
+    # One run per model: prepare_base.exe leaves Qwen out unless it is named, and --accept_license accepts
+    # every license in its run, so each acceptance stays with its own model.
+    $selected = $allModels
+    if ($models -ne 'all') { $selected = @($models -split ',') }
+    $prepareOk = $true
+    foreach ($m in $selected) {
+        $prepareArgs = @('--only', $m)
+        if (($m -eq 'krea2_turbo' -and $env:VIGENFLOW_ACCEPT_KREA_LICENSE -eq 'yes') -or
+            ($m -eq 'qwen_image_2_1_turbo' -and $env:VIGENFLOW_ACCEPT_QWEN_LICENSE -eq 'yes')) {
+            $prepareArgs += '--accept_license'
+        }
+        & (Join-Path (Join-Path $package 'prepare') 'prepare_base.exe') @prepareArgs
+        if ($LASTEXITCODE -ne 0) { $prepareOk = $false }
+    }
 
     # A model folder exists only once its download is complete (prepare unpacks into <id>.partial first).
     $installed = @()
@@ -209,13 +220,14 @@ Models you already have are only updated.
     if (-not $prepareOk) { Say 'Some models were not downloaded (see above). Starting with the ones that are here.' }
     # z-image-turbo is vgf-serve's own default; otherwise the first model that is here.
     $defaultModel = $installed[0] -replace '_', '-'
+    if ($defaultModel -eq 'qwen-image-2-1-turbo') { $defaultModel = 'qwen-image-2.1-turbo' }  # the one ID with a dot
     if ('z_image_turbo' -in $installed) { $defaultModel = 'z-image-turbo' }
 
     # --- Start VigenFlow --------------------------------------------------------------------------------
     Write-Launcher $startServer @(
         'title VigenFlow server'
         "cd /d `"$serverDir`""
-        "vgf-serve.exe --model $defaultModel"
+        ".\vgf-serve.exe --model $defaultModel"  # .\ also works where NoDefaultCurrentDirectoryInExePath is set
         'if errorlevel 1 pause'
     )
     Add-StartMenuShortcut 'VigenFlow server' $startServer
