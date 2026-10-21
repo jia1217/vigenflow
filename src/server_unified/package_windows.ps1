@@ -4,7 +4,7 @@
 #   vigenflow_<Version>_windows_amd64\
 #     server_running\vgf-serve.exe                 with libpng16.dll, zlib1.dll and the VC++ runtime DLLs
 #     server_running\exe_models\<model>\run.exe   launchers from src\exe_models_win
-#     server_running\lib\                          host_<model>.dll and the DLLs they load, from src\lib
+#     server_running\lib\                        host_<model>.dll and the DLLs they load, from src\lib
 #     server_running\images\
 #     all_npu_files\<model>\                       from src\npu_files
 #     prepare\prepare_base.exe, prepare_models.jsonc
@@ -14,11 +14,15 @@
 # to the extracted package folder, where vgf-serve reads them.
 #   .\package_windows.ps1 -Version 0.2.0-beta.3
 #   .\package_windows.ps1 -SkipBuild        package the binaries that are already built
+#   .\package_windows.ps1 -Version 0.2.0-beta.3 -SkipBuild -StandaloneWorkersRoot C:\workers
+# StandaloneWorkersRoot contains all seven <model> folders with native run.exe files and their DLLs.
+# This preserves the beta.2 layout without server_running\lib; the default uses repo launchers.
 [CmdletBinding()]
 param(
     [string]$Version = '0.2.0-beta.2',
     [string]$OutRoot = (Join-Path $PSScriptRoot 'release'),
     [string]$PackageName,
+    [string]$StandaloneWorkersRoot,
     [switch]$SkipBuild
 )
 
@@ -30,7 +34,11 @@ $libDir = Join-Path $srcRoot 'lib'
 $launcherDir = Join-Path $srcRoot 'exe_models_win'
 $npuFilesDir = Join-Path $srcRoot 'npu_files'
 if (-not $PackageName) { $PackageName = "vigenflow_${Version}_windows_amd64" }
-$models = 'flux1_schnell', 'flux2_klein_4B', 'flux2_klein_4B_edit', 'krea2_turbo', 'z_image_turbo'
+$models = 'flux1_schnell', 'flux2_klein_4B', 'flux2_klein_4B_edit', 'krea2_turbo', 'z_image_turbo',
+          'qwen_image_2_1_turbo', 'qwen_image_2_1_turbo_edit'
+if ($StandaloneWorkersRoot) {
+    $launcherDir = (Resolve-Path -LiteralPath $StandaloneWorkersRoot).Path
+}
 
 function Invoke-Build([string]$script, [string[]]$arguments = @()) {
     # Build tools write notes to stderr (vcvars64 too); with 'Stop', Windows PowerShell would treat a
@@ -43,7 +51,9 @@ function Invoke-Build([string]$script, [string[]]$arguments = @()) {
 if (-not $SkipBuild) {
     Invoke-Build (Join-Path $PSScriptRoot 'build_windows.bat')
     Invoke-Build (Join-Path $prepareDir 'build_windows.bat')
-    Invoke-Build (Join-Path $srcRoot 'models\build_windows.bat')
+    if (-not $StandaloneWorkersRoot) {
+        Invoke-Build (Join-Path $srcRoot 'models\build_windows.bat')
+    }
 }
 
 $serverBin = Join-Path $PSScriptRoot 'vigenflow_win\vgf-serve.exe'
@@ -51,7 +61,11 @@ $prepareBin = Join-Path $prepareDir 'vigenflow_win\prepare_base.exe'
 $required = @($serverBin, $prepareBin, (Join-Path $prepareDir 'prepare_models.jsonc'))
 foreach ($model in $models) {
     $required += Join-Path $launcherDir "$model\run.exe"
-    $required += Join-Path $libDir "host_$model.dll"
+}
+if (-not $StandaloneWorkersRoot) {
+    foreach ($model in $models) {
+        $required += Join-Path $libDir "host_$model.dll"
+    }
 }
 # vgf-serve.exe and the host DLLs need the VC++ runtime unless the redistributable is installed.
 $vcRuntime = 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll'
@@ -61,17 +75,42 @@ foreach ($file in $required) {
         throw "Missing $file (build it, or run without -SkipBuild; see docs\README_src.md)"
     }
 }
+if ($StandaloneWorkersRoot) {
+    foreach ($model in $models) {
+        $exe = Join-Path $launcherDir "$model\run.exe"
+        $bytes = [IO.File]::ReadAllBytes($exe)
+        if ($bytes.Length -lt 64 -or $bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) {
+            throw "Expected a native Windows executable: $exe"
+        }
+        if ([Text.Encoding]::ASCII.GetString($bytes).IndexOf("host_$model.dll", [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+            throw "StandaloneWorkersRoot contains a DLL launcher: $exe. Supply the native worker instead."
+        }
+    }
+}
 
 New-Item -ItemType Directory -Force $OutRoot | Out-Null
 $OutRoot = (Resolve-Path -LiteralPath $OutRoot).Path
 $stage = Join-Path $OutRoot $PackageName
 $zip = "$stage.zip"
+# Restrict replacement to the named package inside OutRoot.
+if ($PackageName -in '.', '..' -or $PackageName.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
+    throw 'PackageName must be a single folder name'
+}
+if ($StandaloneWorkersRoot -and ($launcherDir -eq $stage -or $launcherDir.StartsWith($stage + '\', [StringComparison]::OrdinalIgnoreCase))) {
+    throw 'StandaloneWorkersRoot must be outside the package folder that will be replaced'
+}
 foreach ($old in $stage, $zip) {
+    if ((Split-Path -Parent ([IO.Path]::GetFullPath($old))) -ne $OutRoot) {
+        throw "Package path is outside OutRoot: $old"
+    }
+    if ((Test-Path -LiteralPath $old) -and ((Get-Item -LiteralPath $old).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw "Refusing to replace a linked package path: $old"
+    }
     if (Test-Path -LiteralPath $old) { Remove-Item -LiteralPath $old -Recurse -Force }
 }
 $server = Join-Path $stage 'server_running'
 New-Item -ItemType Directory -Force (Join-Path $server 'images'), (Join-Path $server 'exe_models'), `
-    (Join-Path $server 'lib'), (Join-Path $stage 'prepare') | Out-Null
+    (Join-Path $stage 'prepare') | Out-Null
 
 Copy-Item -LiteralPath $serverBin -Destination $server
 Get-ChildItem -LiteralPath (Split-Path -Parent $serverBin) -Filter *.dll | Copy-Item -Destination $server
@@ -80,10 +119,15 @@ foreach ($model in $models) {
     $target = Join-Path $server "exe_models\$model"
     New-Item -ItemType Directory -Force $target | Out-Null
     Copy-Item -LiteralPath (Join-Path $launcherDir "$model\run.exe") -Destination $target
+    # Native workers keep their runtime DLLs next to run.exe, as in beta.2.
+    Get-ChildItem -LiteralPath (Join-Path $launcherDir $model) -File -Filter '*.dll' | Copy-Item -Destination $target
 }
 # Every DLL in src\lib (the host DLLs and their runtime DLLs); the Ubuntu .so files and the import
 # libraries are only for building.
-Get-ChildItem -LiteralPath $libDir -Filter *.dll | Copy-Item -Destination (Join-Path $server 'lib')
+if (-not $StandaloneWorkersRoot) {
+    New-Item -ItemType Directory -Force (Join-Path $server 'lib') | Out-Null
+    Get-ChildItem -LiteralPath $libDir -Filter *.dll | Copy-Item -Destination (Join-Path $server 'lib')
+}
 Copy-Item -LiteralPath $npuFilesDir -Destination (Join-Path $stage 'all_npu_files') -Recurse
 Copy-Item -LiteralPath $prepareBin, (Join-Path $prepareDir 'prepare_models.jsonc') -Destination (Join-Path $stage 'prepare')
 foreach ($doc in 'LICENSE', 'MODEL_LICENSES.md', 'THIRD_PARTY_NOTICES.md') {

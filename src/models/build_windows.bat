@@ -4,13 +4,13 @@ rem launcher source as the Ubuntu run.exe. Each one calls <model>_host_main in t
 rem ..\lib\host_<model>.dll (linked through ..\lib\host_<model>.lib), which windows_launcher.cpp loads
 rem from ..\..\lib\ beside the launcher's folder. The static C runtime lets run.exe start without DLLs
 rem beside it, and windows_launcher.manifest gives it the UTF-8 code page.
-rem   build_windows.bat                     all five models
+rem   build_windows.bat                     all seven models
 rem   build_windows.bat flux2_klein_4B ...  only these
 setlocal
 
 cd /d "%~dp0"
 
-set "MODELS=flux1_schnell flux2_klein_4B flux2_klein_4B_edit krea2_turbo z_image_turbo"
+set "MODELS=flux1_schnell flux2_klein_4B flux2_klein_4B_edit krea2_turbo z_image_turbo qwen_image_2_1_turbo qwen_image_2_1_turbo_edit"
 if not "%~1"=="" set "MODELS=%*"
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 

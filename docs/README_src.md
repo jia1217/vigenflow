@@ -171,21 +171,19 @@ under the NPU bundle root. See [server setup](../src/server_unified/README.md#qw
 
 ## Compile Model Worker Launchers on Windows
 
-The following builds cover the original five models. Native Windows Qwen
-workers are not supplied yet; the server skips their entries until compatible
-Windows executables are installed.
-
-Windows uses the same launcher sources. Their prebuilt host libraries are in
-`src/lib` next to the Ubuntu ones: `host_<model>.dll` with its import library
-`host_<model>.lib`, and the runtime DLLs they load (Boost.Program_options,
-XRT `xrt_coreutil.dll`, LLVM OpenMP and the VC++ runtime).
+Windows uses the same launcher sources for all seven models; on Windows they
+call the host DLL instead of embedding the host runtime. Their prebuilt host
+libraries are in `src/lib` next to the Ubuntu ones:
+`host_<model>.dll` with its import library `host_<model>.lib`, and the runtime
+DLLs they load (Boost, XRT `xrt_coreutil.dll`, LLVM OpenMP, zlib, libjpeg-turbo
+for Qwen editing, and the VC++ runtime).
 
 From a Developer Command Prompt, or any prompt with Visual Studio 2022
 installed:
 
 ```bat
 cd vigenflow\src\models
-build_windows.bat                    &rem all five launchers
+build_windows.bat                    &rem all seven launchers
 build_windows.bat flux2_klein_4B     &rem or only some
 ..\exe_models_win\flux2_klein_4B\run.exe --help
 ```
@@ -214,6 +212,11 @@ DLLs are built for, it also runs each launcher with `--help`. The
 ```bat
 powershell -ExecutionPolicy Bypass -File check_windows.ps1
 ```
+
+The host DLLs are built outside the repository from each model's Windows host
+build (for Qwen, the `NPU_qwen_turbo` and `NPU_qwen_image` builds that their
+`README_WINDOWS.md` describes), with the same compiler options as its `run.exe`,
+and export `<model>_host_main`.
 
 ## Optional CMake Build for a Model Launcher
 
@@ -271,7 +274,7 @@ into `all_model_weights/`, next to the package folder.
 On Windows, `package_windows.ps1` does the same with Visual Studio 2022 and
 vcpkg (see `src/server_unified/README.md` and `src/prepare_weights/README.md`
 for their dependencies). It builds `vgf-serve.exe`, `prepare_base.exe` and the
-five launchers, then writes the folder and its ZIP:
+seven launchers, then writes the folder and its ZIP:
 
 ```bat
 cd vigenflow\src\server_unified
@@ -280,6 +283,27 @@ powershell -ExecutionPolicy Bypass -File package_windows.ps1 -Version 0.2.0-beta
 ```
 
 `-SkipBuild` packages the binaries that are already built.
+
+For the beta.2-style Windows layout used by the beta.3 package, supply seven
+standalone worker folders instead of the repository's DLL launchers:
+
+```powershell
+.\package_windows.ps1 -Version 0.2.0-beta.3 -SkipBuild -StandaloneWorkersRoot C:\workers
+```
+
+`C:\workers\<model>\` must contain the native Windows `run.exe` and its runtime
+DLLs for each of the seven models. The original five worker folders can be
+reused from the beta.2 release. For Qwen, build `NPU_qwen_turbo` and
+`NPU_qwen_image` as their `README_WINDOWS.md` describes, then stage them there
+from `src/models` with
+`.\install_qwen_workers_windows.ps1 -QwenSourceRoot C:\path\to\NPU_qwen -OutDir C:\workers -SkipBuild`.
+Its default `-OutDir` is `src/exe_models_win`, where it would replace the Qwen
+launchers.
+This mode keeps every worker's DLLs beside its executable and omits
+`server_running\lib`. It still packages the current server, downloader and NPU
+bundles. The supplied native workers are not rebuilt by the packaging script.
+
+Without `-StandaloneWorkersRoot`, the default mapping remains:
 
 ```text
 src/server_unified/vigenflow_win  -> server_running (vgf-serve.exe and its DLLs)

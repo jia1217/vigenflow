@@ -5,7 +5,9 @@ VigenFlow's binaries include or link to the open-source components below. Each c
 | Component | License | Use in VigenFlow |
 | --- | --- | --- |
 | [nlohmann/json](https://github.com/nlohmann/json) | MIT | JSON parsing in `vgf-serve` and the model libraries |
-| [Boost](https://www.boost.org/) (program_options, filesystem, system, beast, process) | Boost Software License 1.0 | `vgf-serve` and the model libraries; the Windows package ships the filesystem and system DLLs |
+| [Boost](https://www.boost.org/) (program_options, filesystem, system, beast, process) | Boost Software License 1.0 | `vgf-serve` and the model libraries; the Windows package ships the program_options, filesystem, system, atomic and container DLLs |
+| [libjpeg-turbo](https://libjpeg-turbo.org/) | IJG License and BSD-3-Clause | JPEG input for Qwen image editing; the Windows package ships `jpeg62.dll` |
+| [zlib](https://zlib.net/) | zlib | Compression; the Windows package ships `zlib1.dll` |
 | [tokenizers-cpp](https://github.com/mlc-ai/tokenizers-cpp) | Apache-2.0 | Text tokenization (git submodule `external_lib/tokenizers-cpp`) |
 | [Hugging Face tokenizers](https://github.com/huggingface/tokenizers) | Apache-2.0 | Used through tokenizers-cpp |
 | [SentencePiece](https://github.com/google/sentencepiece) | Apache-2.0 | Used through tokenizers-cpp |

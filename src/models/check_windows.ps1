@@ -5,7 +5,8 @@
 # (the host DLLs are built with /arch:AVX512) it also runs each launcher with --help.
 #   powershell -ExecutionPolicy Bypass -File check_windows.ps1
 [CmdletBinding()]
-param([string[]]$Models = @('flux1_schnell', 'flux2_klein_4B', 'flux2_klein_4B_edit', 'krea2_turbo', 'z_image_turbo'))
+param([string[]]$Models = @('flux1_schnell', 'flux2_klein_4B', 'flux2_klein_4B_edit', 'krea2_turbo', 'z_image_turbo',
+                            'qwen_image_2_1_turbo', 'qwen_image_2_1_turbo_edit'))
 
 $ErrorActionPreference = 'Stop'
 $srcRoot = Split-Path -Parent $PSScriptRoot

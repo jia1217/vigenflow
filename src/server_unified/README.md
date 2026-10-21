@@ -1,6 +1,6 @@
 # VigenFlow Server
 
-Serves five text-to-image NPU workers and two image-edit workers (Flux2 and Qwen) from one API (see [Image editing](#image-editing)). The chat dropdown or image request's `model` selects the worker for that request. Qwen native workers are currently supplied for Ubuntu; see [Windows](#windows) for worker availability.
+Serves five text-to-image NPU workers and two image-edit workers (Flux2 and Qwen) from one API (see [Image editing](#image-editing)). The chat dropdown or image request's `model` selects the worker for that request. Native Qwen hosts are supported on Ubuntu and Windows; see [Windows](#windows) for staging the Windows workers.
 
 | Model ID | Worker folder / accepted alias | Supported steps | Default seed |
 |---|---|---|---|
@@ -12,7 +12,7 @@ Serves five text-to-image NPU workers and two image-edit workers (Flux2 and Qwen
 | `flux2-klein-4B-edit` (image editing) | `flux2_klein_4B_edit` | 4 | 42 |
 | `qwen-image-2.1-turbo-edit` (image editing) | `qwen_image_2_1_turbo_edit` | 8 | 42 |
 
-All models produce one 1024x1024 image and default to 4 steps, except Krea 2 Turbo and both Qwen models, which require and default to 8. Flux1 Schnell and Flux2 Klein are restricted to 4 steps; unsupported step counts are rejected. An omitted generation/chat `model` uses `z-image-turbo`, or the server's `--model` selection. Unknown model IDs return 400; they never silently select another worker.
+All models produce one 1024x1024 image. Both Qwen models always use 8 steps and ignore any supplied `steps` value. Krea 2 Turbo defaults to and requires 8; the other models default to 4. Flux1 Schnell and Flux2 Klein are restricted to 4 steps; non-Qwen models reject unsupported step counts. An omitted generation/chat `model` uses `z-image-turbo`, or the server's `--model` selection. Unknown model IDs return 400; they never silently select another worker.
 
 The model table and paths are in `src/server_config.cpp`. By default each worker is `../<worker folder>/run.exe` (a development tree), else `exe_models/<worker folder>/run.exe` next to `vgf-serve` (a package); weights are `../../all_model_weights/<weights folder>` and NPU files `../all_npu_files/<worker folder>`, relative to the `vgf-serve` folder. FLUX.2 Edit shares the `flux2_klein_4B` weights folder; **`/base` is appended to the NPU path for FLUX.2 text-to-image**. Startup prints the actual absolute paths for every served model. Every request gets its own model settings; choosing a model does not change another user's selection.
 
@@ -23,7 +23,7 @@ The model table and paths are in `src/server_config.cpp`. By default each worker
 | `--output` | a new file in the server's `-o` directory: `.png` for Krea2 and Qwen, `.bmp` for the other workers |
 | `--prompt` | request `prompt` (omitted = worker's built-in demo prompt) |
 | `--seed` | request `seed`, else selected model's default |
-| `--steps` | request `steps`, else selected model's default |
+| `--steps` | always 8 for Qwen; otherwise request `steps`, else selected model's default |
 
 The request `prompt` is passed to the selected worker's text encoder. It must be non-blank text of at most 16384 UTF-8 bytes, with no NUL characters. The workers' tokenizers can truncate longer prompts. `n` must be 1 and `size` must be `1024x1024` if provided. Other unsupported fields are ignored and logged.
 
@@ -128,7 +128,11 @@ curl -s http://127.0.0.1:11283/v1/images/edits \
   -F 'prompt=make it night time' -F image=@generated.png -o edited.png
 ```
 
-Both use eight steps and return the worker's PNG unchanged. The server does not
+Both always use eight steps, ignoring `steps` in JSON, multipart and chat
+requests, and `--steps` on the server command line. For example, a Qwen request
+with `"steps":4` runs eight steps and reports eight in its response metadata.
+The native Windows hosts also ignore their `--steps` compatibility option.
+Both return the worker's PNG unchanged. The server does not
 enable Qwen intermediate dumps. With the default `-k false`, prepared inputs
 and temporary output PNGs are deleted after each request; `-k true` retains
 only final PNGs. Both models also work through the chat model dropdown.
@@ -220,11 +224,16 @@ On Windows run `python tests\test_server.py vigenflow_win\vgf-serve.exe` after `
 
 ## Windows
 
-The server recognizes both Qwen IDs, but native Windows Qwen worker executables
-are not supplied yet. They are omitted from `/v1/models` until Windows workers
-are installed in the corresponding `exe_models` folders. The Ubuntu ELF
-executables cannot run on Windows. The existing five-model Windows package
-and its worker builds remain supported; Qwen Windows inference is unverified.
+The Windows package includes all seven models, including `qwen-image-2.1-turbo`
+and `qwen-image-2.1-turbo-edit`. Both Qwen hosts use the shared
+`all_model_weights/qwen_image_2_1_turbo` folder beside the package. They receive
+`all_npu_files/qwen_image/base` and `all_npu_files/qwen_image/edit`, respectively.
+They use eight steps and write PNGs without intermediate dumps.
+
+On Windows, Qwen works like the other five models: `src/models/build_windows.bat`
+builds its launchers, which load the prebuilt `src/lib/host_qwen_image_2_1_turbo.dll`
+and `host_qwen_image_2_1_turbo_edit.dll` (see `docs/README_src.md`). The
+`src/exe_models/` Qwen hosts are Ubuntu ELF binaries and cannot run on Windows.
 
 ```bat
 vcpkg install boost-asio boost-beast boost-filesystem boost-gil boost-process boost-system libpng nlohmann-json stb --triplet x64-windows
@@ -233,9 +242,15 @@ python tests\test_server.py vigenflow_win\vgf-serve.exe
 powershell -ExecutionPolicy Bypass -File package_windows.ps1 -Version 0.2.0-beta.2   &rem -> release\vigenflow_0.2.0-beta.2_windows_amd64.zip
 ```
 
+Start the packaged `server_running\vgf-serve.exe` normally to list all seven
+models at `/v1/models`. In OpenWebUI, use Native function calling to select Qwen
+from the chat dropdown; enable Vision for the edit model. A global client setting
+such as `steps: 4` is ignored for Qwen. `--model qwen-image-2.1-turbo-edit` also makes
+Qwen the default for edit requests that omit `model`.
+
 `build_windows.bat` builds `vigenflow_win\vgf-serve.exe` with MSVC (Boost, libpng and stb from vcpkg; see `VCPKG_ROOT` / `BOOST_FILESYSTEM_LIB` in the script), copies the vcpkg DLLs it loads next to it (found with vcpkg's `applocal.ps1`: `libpng16.dll` and `zlib1.dll`, plus Boost DLLs with newer vcpkg Boost versions) and embeds `src/utf8.manifest`, so prompts and paths reach the workers as UTF-8. It also builds `build-windows\test_worker_stub.exe` (from `tests\test_worker_stub.cpp`), which the check uses to run its Python fake worker as `run.exe`. In the package, `vgf-serve.exe` also needs the VC++ runtime DLLs (`msvcp140.dll`, `vcruntime140.dll`, `vcruntime140_1.dll`) beside it unless the VC++ redistributable is installed.
 
-The Windows package contains: `server_running\vgf-serve.exe`, `server_running\exe_models\<model>\run.exe`, `server_running\lib\` with the host DLLs, `all_npu_files\`, `prepare\prepare_base.exe`, and the weights in `all_model_weights\` next to the package folder. The Windows launchers are built from the same `src/models` sources as the Ubuntu ones into `src/exe_models_win`, and load the prebuilt `src/lib/host_<model>.dll` (see `docs/README_src.md`); packages up to 0.2.0-beta.2 instead have a self-contained `run.exe` with its DLLs in each `exe_models\<model>\` folder, which vgf-serve runs the same way. Differences from Ubuntu:
+The Windows package contains: `server_running\vgf-serve.exe`, `server_running\exe_models\<model>\run.exe`, `server_running\lib\` with the host DLLs, `all_npu_files\`, `prepare\prepare_base.exe`, and the weights in `all_model_weights\` next to the package folder. The Windows launchers, Qwen's included, are built from the same `src/models` sources as the Ubuntu ones into `src/exe_models_win`, and load the prebuilt `src/lib/host_<model>.dll` (see `docs/README_src.md`); packages up to 0.2.0-beta.3 instead have a self-contained `run.exe` with its DLLs in each `exe_models\<model>\` folder, which vgf-serve runs the same way. `package_windows.ps1 -StandaloneWorkersRoot C:\workers` still builds that layout from seven native worker folders. Differences from Ubuntu:
 
 - The worker is `exe_models\<model>\run.exe` (a package), or `..\<model>\build-windows\Release\run.exe` (a development tree of the hosts' CMake builds). Only Windows executables count, so a Linux `run.exe` copied into the folder is ignored; an older package's `host.exe` is used when there is no Windows `run.exe`.
 - A model without a worker is not served: startup prints a warning, `/v1/models` leaves it out and requests for it return 400. The server refuses to start only when the default model has no worker.
