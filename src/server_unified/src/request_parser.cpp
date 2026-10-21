@@ -58,11 +58,15 @@ const config::ModelConfig& require_available(const config::ModelConfig& model) {
 }
 
 // An explicitly selected edit default applies to /edits too; otherwise keep the Flux2 fallback.
-GenerationRequest parse_fields(const json& j, bool edit) {
-    GenerationRequest request;
+const config::ModelConfig& request_model(const json& j, bool edit) {
     const auto& edit_default = config::default_model().edits_image ? config::default_model()
                                                                  : *config::find_model(config::kEditModelId);
-    const auto& model = edit && !j.contains("model") ? require_available(edit_default) : parse_model(j);
+    return edit && !j.contains("model") ? require_available(edit_default) : parse_model(j);
+}
+
+GenerationRequest parse_fields(const json& j, bool edit) {
+    GenerationRequest request;
+    const auto& model = request_model(j, edit);
     if (model.edits_image != edit) {
         throw BadRequest(edit ? std::string(model.id) + " does not edit images; select an image-edit model"
                               : std::string(model.id) +
@@ -88,7 +92,8 @@ GenerationRequest parse_fields(const json& j, bool edit) {
     }
 
     request.params.seed = get_int_field(j, "seed", request.params.seed);
-    request.params.steps = get_int_field(j, "steps", request.params.steps);
+    // Qwen has a fixed eight-step schedule; even a malformed client steps value is ignored.
+    request.params.steps = model.fixed_steps ? model.fixed_steps : get_int_field(j, "steps", request.params.steps);
     if (j.contains("response_format")) {
         if (!j["response_format"].is_string()) throw BadRequest("response_format must be a string");
         request.response_format = j["response_format"].get<std::string>();
@@ -243,8 +248,12 @@ GenerationRequest parse_edit_request(const std::string& content_type, const std:
                 // Open WebUI lists the newest image first; the NPU pipeline takes one.
                 if (image_count++ == 0) image = std::move(part.data);
             } else if (!part.name.empty()) {
-                fields[part.name] = form_value(part.name, part.data);
+                // Resolve the model after reading the whole form, including fields after steps.
+                fields[part.name] = part.name == "steps" ? json(part.data) : form_value(part.name, part.data);
             }
+        }
+        if (fields.contains("steps") && !request_model(fields, true).fixed_steps) {
+            fields["steps"] = form_value("steps", fields["steps"].get<std::string>());
         }
     } else {
         fields = parse_json_object(body);

@@ -32,6 +32,7 @@ parser.add_argument('--port', type=int, default=11290)
 parser.add_argument('--out', type=Path, default=Path('npu_check'))
 parser.add_argument('--models', help='comma-separated model IDs (default: all available workers)')
 parser.add_argument('--timeout', type=int, default=900, help='seconds per request')
+parser.add_argument('--steps', type=int, help='send a client steps value (Qwen must still run eight steps)')
 args = parser.parse_args()
 models = [m for m in (args.models or '').split(',') if m]
 unknown = sorted(set(models) - set(TEXT_MODELS + list(EDIT_MODELS)))
@@ -63,6 +64,8 @@ def gray_png(size=1024):
 
 
 def post(path, body):
+    if args.steps is not None:
+        body['steps'] = args.steps
     request = Request(base + path, data=json.dumps(body).encode(),
                       headers={'Content-Type': 'application/json', 'Accept': 'application/json'})
     start = time.time()

@@ -26,13 +26,14 @@ void print_usage(const char* prog_name) {
               << "  -k <true|false>                Save generated images (default: false)\n"
               << "      --seed <int>               Default model seed (Flux1: 0, others: 42)\n"
               << "      --steps <int>              Default model steps (default: 4; Krea2 and Qwen: 8)\n"
+              << "                                 Qwen always uses 8; supplied steps are ignored.\n"
               << "  -h, --help                     Show this help message\n";
 }
 
 // Returns: 0 = show help and exit, 1 = ok, -1 = error.
 int parse_cli(int argc, char* argv[]) {
-    std::optional<std::string> model_id, worker_exe, weights_path, npu_files_path;
-    std::optional<int> seed, steps;
+    std::optional<std::string> model_id, worker_exe, weights_path, npu_files_path, steps;
+    std::optional<int> seed;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         const bool has_value = i + 1 < argc;
@@ -73,7 +74,7 @@ int parse_cli(int argc, char* argv[]) {
         } else if (arg == "--seed") {
             seed = std::stoi(argv[++i]);
         } else if (arg == "--steps") {
-            steps = std::stoi(argv[++i]);
+            steps = argv[++i];  // interpret only after the selected model's step policy is known
         } else {
             std::cerr << "Unknown argument: " << arg << "\n\n";
             print_usage(argv[0]);
@@ -93,7 +94,8 @@ int parse_cli(int argc, char* argv[]) {
     if (weights_path) model->weights_path = *weights_path;
     if (npu_files_path) model->npu_files_path = *npu_files_path;
     if (seed) model->default_seed = *seed;
-    if (steps) model->default_steps = *steps;
+    if (model->fixed_steps) model->default_steps = model->fixed_steps;
+    else if (steps) model->default_steps = std::stoi(*steps);
     if (!config::is_supported_steps(*model, model->default_steps)) {
         std::cerr << "--steps for " << model->id << " must be one of: "
                   << config::supported_steps_text(*model) << "\n";

@@ -111,8 +111,6 @@ time.sleep(0.08)
                     ['edit', '--steps', '8'],
                     ['--steps', '8', '--model', 'flux1-schnell'],
                     ['--model', 'krea2-turbo', '--steps', '4'],
-                    ['--model', 'qwen-image-2.1-turbo', '--steps', '4'],
-                    ['--model', qwen_edit_id, '--steps', '4'],
                     *(['--model', 'flux1-schnell', '--steps', str(steps)] for steps in (1, 2, 3))):
         result = subprocess.run([str(test_binary), *options], capture_output=True, timeout=5)
         assert result.returncode != 0, options
@@ -241,7 +239,7 @@ time.sleep(0.08)
                     _, data = request('/v1/images/generations', {'model': model_id, 'steps': steps})
                     assert json.loads(data)['metadata']['3_Denoising_steps'] == steps
                 for steps in range(1, 9):
-                    if steps not in valid_steps:
+                    if steps not in valid_steps and folder != 'qwen_image_2_1_turbo':
                         request('/v1/images/generations', {'model': model_id, 'steps': steps}, status=400)
             for seed in (-1, -2):  # failed worker, then a file that is not a PNG
                 request('/v1/images/generations', {'model': 'krea2-turbo', 'seed': seed}, status=500)
@@ -556,14 +554,31 @@ time.sleep(0.08)
                 assert Path(args[args.index('--output') + 1]).suffix == '.png'
                 assert args[args.index('--weights_path') + 1] == str(root.parent / 'all_model_weights/qwen_image_2_1_turbo')
                 assert args[args.index('--npu_files_path') + 1] == str(root / 'all_npu_files/qwen_image/edit')
-            body, form_type = multipart({'model': qwen_edit_id, 'prompt': 'add a hat', 'steps': '8'}, [('image', wide_png)])
-            _, data = request('/v1/images/edits', body, content_type=form_type)
-            result = json.loads(data)
-            assert result['model'] == qwen_edit_id and result['metadata']['3_Denoising_steps'] == 8
-            check_png(base64.b64decode(result['data'][0]['b64_json']))
+            # Qwen ignores every supplied steps value, including malformed values and folder aliases.
+            ignored_steps = (0, 1, 4, 7, 9, 50, -1, 2**64, 2.5, None, False, '4', 'auto', [], {})
+            for model, folder, endpoint in ((folders[-1], folders[-1], '/v1/images/generations'),
+                                             (qwen_edit_folder, qwen_edit_folder, '/v1/images/edits')):
+                for steps in ignored_steps:
+                    _, data = request(endpoint, {'model': model, 'prompt': 'x', 'image': png_b64, 'steps': steps})
+                    result = json.loads(data)
+                    assert result['metadata']['3_Denoising_steps'] == 8, (model, steps, result)
+                    check_png(base64.b64decode(result['data'][0]['b64_json']))
+                    args = json.loads((root / folder / 'last_args.json').read_text())
+                    assert args[args.index('--steps') + 1] == '8', (model, steps, args)
+            for steps in ('4', '50', 'auto', '', str(2**64)):
+                # Put steps before model to verify that multipart field order does not matter.
+                body, form_type = multipart({'steps': steps, 'model': qwen_edit_id, 'prompt': 'add a hat'}, [('image', wide_png)])
+                _, data = request('/v1/images/edits', body, content_type=form_type)
+                result = json.loads(data)
+                assert result['model'] == qwen_edit_id and result['metadata']['3_Denoising_steps'] == 8
+                args, _ = edit_input(qwen_edit_folder)
+                assert args[args.index('--steps') + 1] == '8'
+            # Other models still validate steps, including multipart numeric conversion.
+            for steps in ('auto', ''):
+                body, form_type = multipart({'steps': steps, 'model': edit_id, 'prompt': 'x'}, [('image', wide_png)])
+                request('/v1/images/edits', body, content_type=form_type, status=400)
             before = (root / qwen_edit_folder / 'calls').read_text()
             for invalid in ({'model': qwen_edit_id, 'prompt': 'x'},
-                            *({'model': qwen_edit_id, 'prompt': 'x', 'image': png_b64, 'steps': n} for n in (1, 4, 7, 9)),
                             {'model': model_ids[-1], 'prompt': 'x', 'image': png_b64}):
                 request('/v1/images/edits', invalid, status=400)
             request('/v1/images/generations', {'model': qwen_edit_id, 'prompt': 'x'}, status=400)
@@ -574,21 +589,31 @@ time.sleep(0.08)
                 assert set(outdir.iterdir()) == saved_files
 
             # Both models are also selectable in chat; Qwen editing supports follow-up edits.
-            _, data = request('/v1/chat/completions', {**chat, 'model': model_ids[-1]})
-            assert model_ids[-1] in json.loads(data)['choices'][0]['message']['content']
-            _, data = request('/v1/chat/completions', {'model': qwen_edit_id, 'tools': tools, 'messages': [first]})
+            _, data = request('/v1/chat/completions', {**chat, 'model': model_ids[-1], 'steps': 4})
+            content = json.loads(data)['choices'][0]['message']['content']
+            assert model_ids[-1] in content and '8 steps' in content
+            args = json.loads((root / folders[-1] / 'last_args.json').read_text())
+            assert args[args.index('--steps') + 1] == '8'
+            _, data = request('/v1/chat/completions', {'model': qwen_edit_id, 'tools': tools, 'messages': [first], 'steps': 50})
             reply = json.loads(data)['choices'][0]['message']['content']
-            assert f'*Edited by {qwen_edit_id} ' in reply
+            assert f'*Edited by {qwen_edit_id} ' in reply and '8 steps' in reply
             follow_up = [first, {'role': 'assistant', 'content': reply}, {'role': 'user', 'content': 'now at night'}]
-            _, data = request('/v1/chat/completions', {'model': qwen_edit_id, 'tools': tools, 'messages': follow_up, 'stream': True})
+            _, data = request('/v1/chat/completions', {'model': qwen_edit_id, 'tools': tools, 'messages': follow_up, 'stream': True, 'steps': 'auto'})
             streamed = json.loads(data.decode().splitlines()[0][len('data: '):])['choices'][0]['delta']
             assert f'*Edited by {qwen_edit_id} ' in streamed['content'] and streamed['images']
             args, _ = edit_input(qwen_edit_folder)
-            assert '--prompt=now at night' in args
+            assert '--prompt=now at night' in args and args[args.index('--steps') + 1] == '8'
+
+            # CLI steps are ignored after resolving the selected model, regardless of option order.
+            proc = restart_server(['--steps', 'auto', '--model', folders[-1]])
+            _, data = request('/v1/images/generations', {})
+            assert json.loads(data)['metadata']['3_Denoising_steps'] == 8
+            args = json.loads((root / folders[-1] / 'last_args.json').read_text())
+            assert args[args.index('--steps') + 1] == '8'
 
             # An edit model selected with --model is the default for /edits, including path overrides.
             proc = restart_server(['--model', qwen_edit_id, '-w', str(root / 'qwen weights'),
-                                   '-n', str(root / 'qwen bundles'), '--seed', '17'])
+                                   '-n', str(root / 'qwen bundles'), '--seed', '17', '--steps', '4'])
             request('/v1/images/generations', {}, status=400)
             _, data = request('/v1/images/edits', {'prompt': 'x', 'image': png_b64})
             assert json.loads(data)['model'] == qwen_edit_id
@@ -596,13 +621,17 @@ time.sleep(0.08)
             assert args[args.index('--weights_path') + 1] == str(root / 'qwen weights')
             assert args[args.index('--npu_files_path') + 1] == str(root / 'qwen bundles')
             assert args[args.index('--seed') + 1] == '17'
+            assert args[args.index('--steps') + 1] == '8'
+            body, form_type = multipart({'steps': 'auto', 'prompt': 'x'}, [('image', wide_png)])
+            _, data = request('/v1/images/edits', body, content_type=form_type)
+            assert json.loads(data)['metadata']['3_Denoising_steps'] == 8
             # Selecting Qwen edit does not change the Qwen T2I settings.
             request('/v1/images/generations', {'model': model_ids[-1], 'prompt': 'x'})
             args = json.loads((root / folders[-1] / 'last_args.json').read_text())
             assert args[args.index('--seed') + 1] == '42'
             assert args[args.index('--weights_path') + 1] == str(root.parent / 'all_model_weights/qwen_image_2_1_turbo')
             assert set(outdir.iterdir()) == saved_files
-            print('PASS: seven-model routing, Qwen T2I/I2I paths and eight-step defaults, PNG passthrough, edit defaults, validation, chat follow-ups, storage and failure cleanup; existing Flux2 behavior preserved')
+            print('PASS: seven-model routing, fixed eight-step Qwen JSON/multipart/chat/CLI requests, PNG passthrough, edit defaults, validation, chat follow-ups, storage and failure cleanup; existing Flux2 behavior preserved')
 
             if windows:
                 # Weights beside the package folder come first; a model only in the package's own folder

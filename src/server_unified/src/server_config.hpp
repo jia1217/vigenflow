@@ -28,6 +28,7 @@ struct ModelConfig {
     bool edits_image = false;  // worker needs --input_image
     int default_steps = 4;
     bool writes_png = false;  // worker saves the final PNG itself; the others save a BMP the server converts
+    int fixed_steps = 0;  // nonzero: ignore client/CLI steps and always use this schedule
     std::string worker_exe;
     std::string weights_path;
     std::string npu_files_path;
