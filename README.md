@@ -4,6 +4,8 @@
 
 Local image generation and editing with **CPU + AMD NPU inference**, used through **OpenWebUI**.
 
+💬 **[Join our Discord](https://discord.gg/EhDtAAahv)** to ask questions, share your creations, and discuss VigenFlow.
+
 > **New: one-command install.** On Windows or Ubuntu, a single command installs VigenFlow and OpenWebUI and downloads the models you choose. See [Quick Install](#-quick-install).
 
 The latest release, **[v0.2.0 Beta 3](https://github.com/jia1217/vigenflow/releases/latest)**, adds **Qwen Image 2.1 Turbo** for text-to-image and image editing, bringing VigenFlow to seven models. All models use **BFP16 weights**, and **image editing** is served next to the text-to-image models.
