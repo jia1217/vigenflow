@@ -1,10 +1,8 @@
-# VigenFlow
+# VigenFlow [![Join Discord](https://img.shields.io/badge/Join-Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/EhDtAAahv)
 
 **FLUX, Z-Image, Krea 2 and Qwen Image on the NPU of an AMD Ryzen AI laptop, several times faster than the same laptop's integrated GPU.**
 
 Local image generation and editing with **CPU + AMD NPU inference**, used through **OpenWebUI**.
-
-💬 **[Join our Discord](https://discord.gg/EhDtAAahv)** to ask questions, share your creations, and discuss VigenFlow.
 
 > **New: one-command install.** On Windows or Ubuntu, a single command installs VigenFlow and OpenWebUI and downloads the models you choose. See [Quick Install](#-quick-install).
 
