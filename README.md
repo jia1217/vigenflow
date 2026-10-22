@@ -1,4 +1,4 @@
-# VigenFlow [![Join Discord](https://img.shields.io/badge/Join-Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/EhDtAAahv)
+# VigenFlow [![Join Discord](https://img.shields.io/badge/Join-Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/87DnMjsccu)
 
 **FLUX, Z-Image, Krea 2 and Qwen Image on the NPU of an AMD Ryzen AI laptop, several times faster than the same laptop's integrated GPU.**
 
