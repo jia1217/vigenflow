@@ -164,8 +164,8 @@ Download the package for your system, extract it, download the model weights onc
 
 Go to the [Latest Release](https://github.com/jia1217/vigenflow/releases/latest) page and download the package for your operating system:
 
-- 🐧 Ubuntu: `vigenflow_0.2.0-beta.2_ubuntu_amd64.zip`
-- 🪟 Windows: `vigenflow_0.2.0-beta.2_windows_amd64.zip`
+- 🐧 Ubuntu: `vigenflow_0.2.0-beta.3_ubuntu_amd64.zip`
+- 🪟 Windows: `vigenflow_0.2.0-beta.3_windows_amd64.zip`
 
 To be notified about new releases, click **Watch → Custom → Releases** on the [VigenFlow repository](https://github.com/jia1217/vigenflow) page.
 
@@ -179,13 +179,13 @@ The Ubuntu package needs a few runtime libraries. XRT comes with the [AMD XDNA d
 
 ```bash
 sudo apt install libboost-program-options1.83.0 libgomp1 libpng16-16t64 curl unzip
-unzip vigenflow_0.2.0-beta.2_ubuntu_amd64.zip
-cd vigenflow_0.2.0-beta.2_ubuntu_amd64
+unzip vigenflow_0.2.0-beta.3_ubuntu_amd64.zip
+cd vigenflow_0.2.0-beta.3_ubuntu_amd64
 ```
 
 #### 🪟 Windows
 
-Extract the ZIP package manually, then open **PowerShell** inside the extracted `vigenflow_0.2.0-beta.2_windows_amd64` folder.
+Extract the ZIP package manually, then open **PowerShell** inside the extracted `vigenflow_0.2.0-beta.3_windows_amd64` folder.
 
 ### 💾 Step 3: Download the Model Weights (One Time)
 
