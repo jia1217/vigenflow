@@ -50,15 +50,22 @@ One example per text-to-image model, plus image-editing examples, all generated 
 
 ## 🧠 Supported Models
 
-| Model | Model ID | Task | Denoising steps | Time per image | Windows | Ubuntu |
-| --- | --- | --- | ---: | ---: | :---: | :---: |
-| **FLUX.1-schnell** | `flux1-schnell` | Text-to-image | 4 | ~20 s | ✅ | ✅ |
-| **FLUX.2-klein-4B** | `flux2-klein-4B` | Text-to-image | 4 | ~9 s | ✅ | ✅ |
-| **FLUX.2-klein-4B Edit** | `flux2-klein-4B-edit` | Image-to-image | 4 | ~18 s | ✅ | ✅ |
-| **Krea 2 Turbo** | `krea2-turbo` | Text-to-image | 8 | ~48 s | ✅ | ✅ |
-| **Z-Image-Turbo** | `z-image-turbo` | Text-to-image | 4 or 8 | ~18 s | ✅ | ✅ |
-| **Qwen Image 2.1 Turbo** | `qwen-image-2.1-turbo` | Text-to-image | 8 | ~35 s | ✅ | ✅ |
-| **Qwen Image 2.1 Turbo Edit** | `qwen-image-2.1-turbo-edit` | Image-to-image | 8 | ~52 s | ✅ | ✅ |
+### 🖼️ Text-to-Image
+
+| Model | Model ID | Denoising steps | Time per image | Windows | Ubuntu |
+| --- | --- | ---: | ---: | :---: | :---: |
+| **FLUX.1-schnell** | `flux1-schnell` | 4 | ~20 s | ✅ | ✅ |
+| **FLUX.2-klein-4B** | `flux2-klein-4B` | 4 | ~9 s | ✅ | ✅ |
+| **Krea 2 Turbo** | `krea2-turbo` | 8 | ~48 s | ✅ | ✅ |
+| **Z-Image-Turbo** | `z-image-turbo` | 4 or 8 | ~18 s | ✅ | ✅ |
+| **Qwen Image 2.1 Turbo** | `qwen-image-2.1-turbo` | 8 | ~35 s | ✅ | ✅ |
+
+### ✏️ Image-to-Image (Editing)
+
+| Model | Model ID | Denoising steps | Time per image | Windows | Ubuntu |
+| --- | --- | ---: | ---: | :---: | :---: |
+| **FLUX.2-klein-4B Edit** | `flux2-klein-4B-edit` | 4 | ~18 s | ✅ | ✅ |
+| **Qwen Image 2.1 Turbo Edit** | `qwen-image-2.1-turbo-edit` | 8 | ~52 s | ✅ | ✅ |
 
 All models use BFP16 weights and make 1024 × 1024 images. You can switch between installed workers in the OpenWebUI model list without restarting `vgf-serve`.
 
