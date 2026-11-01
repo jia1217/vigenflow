@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: >-
+  If you use VigenFlow in research, publications, benchmarks, or projects built
+  on its code, please cite this repository. Please include the version or commit
+  you used.
+type: software
+title: "VigenFlow"
+authors:
+  - family-names: "jia1217"
+    website: "https://github.com/jia1217"
+abstract: >-
+  Local image generation and editing with CPU and AMD Ryzen AI NPU inference.
+repository-code: "https://github.com/jia1217/vigenflow"
+url: "https://github.com/jia1217/vigenflow"
+license: Apache-2.0

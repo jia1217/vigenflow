@@ -309,6 +309,20 @@ Thank you to everyone who contributes to VigenFlow and helps make the project be
 
 ---
 
+## 📚 Citation and Acknowledgement
+
+If you use VigenFlow in research, publications, benchmarks, or projects built on its code, please cite this repository. If VigenFlow's implementation or design ideas inform your own work, an acknowledgement and link are appreciated.
+
+Use GitHub's **Cite this repository** button or the metadata in [CITATION.cff](CITATION.cff). Please include the version or commit you used so others can identify the implementation behind your results.
+
+If your project or product uses VigenFlow, please acknowledge it in your README, project page, or product:
+
+```markdown
+Powered by [VigenFlow](https://github.com/jia1217/vigenflow)
+```
+
+---
+
 ## 📄 License
 
 The VigenFlow source code is licensed under the [Apache License 2.0](LICENSE).
