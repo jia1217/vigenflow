@@ -559,8 +559,7 @@
       "padded_k": 640,
       "bias_words": 18432,
       "gamma_words": 0,
-      "instructions_sha256": "878527da6daaa58604c972a44fcf7c60ecfeaa76d0bd551fc8258669a8b627ba",
-      "device_identical_to_source": true
+      "instructions_sha256": "878527da6daaa58604c972a44fcf7c60ecfeaa76d0bd551fc8258669a8b627ba"
     },
     "conv3x3_w64_c64_c1152_silu": {
       "id": "conv3x3_w64_c64_c1152_silu",
@@ -578,8 +577,7 @@
       "padded_k": 640,
       "bias_words": 18432,
       "gamma_words": 0,
-      "instructions_sha256": "2f9bfa5666498b8006406cd00007b09ff067f748dd3d9e3e712c1de8b8efa507",
-      "device_identical_to_source": true
+      "instructions_sha256": "2f9bfa5666498b8006406cd00007b09ff067f748dd3d9e3e712c1de8b8efa507"
     },
     "conv3x3_w1024_c144_c144_plain": {
       "id": "conv3x3_w1024_c144_c144_plain",
@@ -597,8 +595,7 @@
       "padded_k": 1408,
       "bias_words": 2304,
       "gamma_words": 3072,
-      "instructions_sha256": "d7875dbaf67a0172dd53dbc6e043ff42ec083d800860dc1e672010dfbc1a3ad7",
-      "device_identical_to_source": true
+      "instructions_sha256": "d7875dbaf67a0172dd53dbc6e043ff42ec083d800860dc1e672010dfbc1a3ad7"
     },
     "conv3x3_w1024_c144_c144_silu": {
       "id": "conv3x3_w1024_c144_c144_silu",
@@ -616,8 +613,7 @@
       "padded_k": 1408,
       "bias_words": 2304,
       "gamma_words": 3072,
-      "instructions_sha256": "fb6b5fbe53c15174a166f453473ebfb9b1ac7f4e36a3a5bd82ee01518b58a214",
-      "device_identical_to_source": true
+      "instructions_sha256": "fb6b5fbe53c15174a166f453473ebfb9b1ac7f4e36a3a5bd82ee01518b58a214"
     },
     "conv3x3_w1024_c288_c144_plain": {
       "id": "conv3x3_w1024_c288_c144_plain",
@@ -635,8 +631,7 @@
       "padded_k": 2688,
       "bias_words": 2304,
       "gamma_words": 3072,
-      "instructions_sha256": "ca7cc76bb67b752315d48853d931ee2453bef6ac674290f91e6ca973bada17f6",
-      "device_identical_to_source": true
+      "instructions_sha256": "ca7cc76bb67b752315d48853d931ee2453bef6ac674290f91e6ca973bada17f6"
     },
     "conv3x3_w1024_c288_c144_silu": {
       "id": "conv3x3_w1024_c288_c144_silu",
@@ -654,8 +649,7 @@
       "padded_k": 2688,
       "bias_words": 2304,
       "gamma_words": 3072,
-      "instructions_sha256": "6b794ccdcd3fe40205bd5cddfcd1768cdf0f60ba92ac2c711591456620680ea9",
-      "device_identical_to_source": true
+      "instructions_sha256": "6b794ccdcd3fe40205bd5cddfcd1768cdf0f60ba92ac2c711591456620680ea9"
     },
     "conv3x3_w512_c288_c288_plain": {
       "id": "conv3x3_w512_c288_c288_plain",
@@ -673,8 +667,7 @@
       "padded_k": 2688,
       "bias_words": 4608,
       "gamma_words": 0,
-      "instructions_sha256": "f1348c3b3ff800708932a2a64ffdf736755d5c32a928b881b31d78f85e352210",
-      "device_identical_to_source": true
+      "instructions_sha256": "f1348c3b3ff800708932a2a64ffdf736755d5c32a928b881b31d78f85e352210"
     },
     "conv3x3_w512_c288_c288_silu": {
       "id": "conv3x3_w512_c288_c288_silu",
@@ -692,8 +685,7 @@
       "padded_k": 2688,
       "bias_words": 4608,
       "gamma_words": 0,
-      "instructions_sha256": "ecc4d37d331d20f4a2663bc72e25bb22616b658580943e80941cd1f2d79dc822",
-      "device_identical_to_source": true
+      "instructions_sha256": "ecc4d37d331d20f4a2663bc72e25bb22616b658580943e80941cd1f2d79dc822"
     },
     "conv3x3_w1024_c288_c288_plain": {
       "id": "conv3x3_w1024_c288_c288_plain",
@@ -711,8 +703,7 @@
       "padded_k": 2688,
       "bias_words": 4608,
       "gamma_words": 0,
-      "instructions_sha256": "9f8e3427b4d51e398cb71a2ec096b407d8f0026aca38239f46370dc4567c77ca",
-      "device_identical_to_source": true
+      "instructions_sha256": "9f8e3427b4d51e398cb71a2ec096b407d8f0026aca38239f46370dc4567c77ca"
     },
     "conv3x3_w1024_c288_c288_silu": {
       "id": "conv3x3_w1024_c288_c288_silu",
@@ -730,8 +721,7 @@
       "padded_k": 2688,
       "bias_words": 4608,
       "gamma_words": 0,
-      "instructions_sha256": "8e17f60acd007e3a4be669c5c7da80738a6fcd63cc20d15458314f4682d0f5dd",
-      "device_identical_to_source": true
+      "instructions_sha256": "8e17f60acd007e3a4be669c5c7da80738a6fcd63cc20d15458314f4682d0f5dd"
     },
     "conv3x3_w512_c576_c288_plain": {
       "id": "conv3x3_w512_c576_c288_plain",
@@ -749,8 +739,7 @@
       "padded_k": 5248,
       "bias_words": 4608,
       "gamma_words": 0,
-      "instructions_sha256": "558e7b7f092593c1ef23f19b59f673b3cc3be11c6600f2378c948d0c1cf5e9ae",
-      "device_identical_to_source": true
+      "instructions_sha256": "558e7b7f092593c1ef23f19b59f673b3cc3be11c6600f2378c948d0c1cf5e9ae"
     },
     "conv3x3_w512_c576_c288_silu": {
       "id": "conv3x3_w512_c576_c288_silu",
@@ -768,8 +757,7 @@
       "padded_k": 5248,
       "bias_words": 4608,
       "gamma_words": 0,
-      "instructions_sha256": "fe1a3b5a7f6c1edd962db8400da12f5292253f049215d7e43037599140029b14",
-      "device_identical_to_source": true
+      "instructions_sha256": "fe1a3b5a7f6c1edd962db8400da12f5292253f049215d7e43037599140029b14"
     },
     "conv3x3_w256_c576_c576_plain": {
       "id": "conv3x3_w256_c576_c576_plain",
@@ -787,8 +775,7 @@
       "padded_k": 5248,
       "bias_words": 9216,
       "gamma_words": 0,
-      "instructions_sha256": "c5201aa1433a24387f30d37addb719cee4dc2c4ac7675080a2c5b642f0967b32",
-      "device_identical_to_source": true
+      "instructions_sha256": "c5201aa1433a24387f30d37addb719cee4dc2c4ac7675080a2c5b642f0967b32"
     },
     "conv3x3_w256_c576_c576_silu": {
       "id": "conv3x3_w256_c576_c576_silu",
@@ -806,8 +793,7 @@
       "padded_k": 5248,
       "bias_words": 9216,
       "gamma_words": 0,
-      "instructions_sha256": "3a53ae3b9394923116783a214b95881562ffe0cae41b0803425f14efaf2c586f",
-      "device_identical_to_source": true
+      "instructions_sha256": "3a53ae3b9394923116783a214b95881562ffe0cae41b0803425f14efaf2c586f"
     },
     "conv3x3_w512_c576_c576_plain": {
       "id": "conv3x3_w512_c576_c576_plain",
@@ -825,8 +811,7 @@
       "padded_k": 5248,
       "bias_words": 9216,
       "gamma_words": 0,
-      "instructions_sha256": "cf10cd07c880b5e041277acae290b9309feace74a575df059df983137972dcfa",
-      "device_identical_to_source": true
+      "instructions_sha256": "cf10cd07c880b5e041277acae290b9309feace74a575df059df983137972dcfa"
     },
     "conv3x3_w512_c576_c576_silu": {
       "id": "conv3x3_w512_c576_c576_silu",
@@ -844,8 +829,7 @@
       "padded_k": 5248,
       "bias_words": 9216,
       "gamma_words": 0,
-      "instructions_sha256": "ff02916f6c093af7f5c06023583c2263707136e2126ae8c8ff214e540176a416",
-      "device_identical_to_source": true
+      "instructions_sha256": "ff02916f6c093af7f5c06023583c2263707136e2126ae8c8ff214e540176a416"
     },
     "conv3x3_w256_c1152_c576_plain": {
       "id": "conv3x3_w256_c1152_c576_plain",
@@ -863,8 +847,7 @@
       "padded_k": 10368,
       "bias_words": 9216,
       "gamma_words": 0,
-      "instructions_sha256": "66df7a3df405d3764aadf0837255f9bd05910685d123b19a163ce892ea3ce5ed",
-      "device_identical_to_source": true
+      "instructions_sha256": "66df7a3df405d3764aadf0837255f9bd05910685d123b19a163ce892ea3ce5ed"
     },
     "conv3x3_w256_c1152_c576_silu": {
       "id": "conv3x3_w256_c1152_c576_silu",
@@ -882,8 +865,7 @@
       "padded_k": 10368,
       "bias_words": 9216,
       "gamma_words": 0,
-      "instructions_sha256": "389194d92d0c2cd58b06b44f15f145f74a460468e371f6d1908034cca5383e89",
-      "device_identical_to_source": true
+      "instructions_sha256": "389194d92d0c2cd58b06b44f15f145f74a460468e371f6d1908034cca5383e89"
     },
     "conv3x3_w64_c1152_c1152_plain": {
       "id": "conv3x3_w64_c1152_c1152_plain",
@@ -901,8 +883,7 @@
       "padded_k": 10368,
       "bias_words": 18432,
       "gamma_words": 0,
-      "instructions_sha256": "4240cba42d53f89994454f9253c5b28142f0a8caa14549f3f0194c6ddf15e2ac",
-      "device_identical_to_source": true
+      "instructions_sha256": "4240cba42d53f89994454f9253c5b28142f0a8caa14549f3f0194c6ddf15e2ac"
     },
     "conv3x3_w64_c1152_c1152_silu": {
       "id": "conv3x3_w64_c1152_c1152_silu",
@@ -920,8 +901,7 @@
       "padded_k": 10368,
       "bias_words": 18432,
       "gamma_words": 0,
-      "instructions_sha256": "4e9fd47ac6627f7572e4f0615c4ef5fba017b898e7fa880e722d18dafa6fe02a",
-      "device_identical_to_source": true
+      "instructions_sha256": "4e9fd47ac6627f7572e4f0615c4ef5fba017b898e7fa880e722d18dafa6fe02a"
     },
     "conv3x3_w128_c1152_c1152_plain": {
       "id": "conv3x3_w128_c1152_c1152_plain",
@@ -939,8 +919,7 @@
       "padded_k": 10368,
       "bias_words": 18432,
       "gamma_words": 0,
-      "instructions_sha256": "478bb6a4cf84bf7f43f0c07a6e42b7ed8c3badfd1f0857694b7617a91efde241",
-      "device_identical_to_source": true
+      "instructions_sha256": "478bb6a4cf84bf7f43f0c07a6e42b7ed8c3badfd1f0857694b7617a91efde241"
     },
     "conv3x3_w128_c1152_c1152_silu": {
       "id": "conv3x3_w128_c1152_c1152_silu",
@@ -958,8 +937,7 @@
       "padded_k": 10368,
       "bias_words": 18432,
       "gamma_words": 0,
-      "instructions_sha256": "1836bd663feed963840c1101115f28531ae72768c11fe58c6b995971bbfa9323",
-      "device_identical_to_source": true
+      "instructions_sha256": "1836bd663feed963840c1101115f28531ae72768c11fe58c6b995971bbfa9323"
     },
     "conv3x3_w256_c1152_c1152_plain": {
       "id": "conv3x3_w256_c1152_c1152_plain",
@@ -977,8 +955,7 @@
       "padded_k": 10368,
       "bias_words": 18432,
       "gamma_words": 0,
-      "instructions_sha256": "9e1e94e3f3092e3b8a371b4623517240c5c1771cefe1a8e133527472522d0ab4",
-      "device_identical_to_source": true
+      "instructions_sha256": "9e1e94e3f3092e3b8a371b4623517240c5c1771cefe1a8e133527472522d0ab4"
     },
     "conv3x3_w256_c1152_c1152_silu": {
       "id": "conv3x3_w256_c1152_c1152_silu",
@@ -996,26 +973,7 @@
       "padded_k": 10368,
       "bias_words": 18432,
       "gamma_words": 0,
-      "instructions_sha256": "c75e5845d3ed89e8b139e96411dea35005476404c723f7c10d8f3b3bf2905303",
-      "device_identical_to_source": true
-    }
-  },
-  "source_devices": {
-    "1152": {
-      "project": "/home/kelsey2/NPU_NEW/NPU_qwen/Z0_gm_test_MM_1152",
-      "xclbin_sha256": "9425d8560c9382dd7d5f513f7afbfbb61ec625dfc8cc606368a26df12de6b3c9"
-    },
-    "576": {
-      "project": "/home/kelsey2/NPU_NEW/NPU_qwen/Z0_gm_test_MM_512_all_GN",
-      "xclbin_sha256": "8b83fe7e7d82a96b15e146bb4ebbe6e59701a95397413c4c07e30a755935ce60"
-    },
-    "288": {
-      "project": "/home/kelsey2/NPU_NEW/NPU_qwen/Z0_gm_test_MM2_256_all_GN",
-      "xclbin_sha256": "cb0baa76e8616f449624d5b33101f0cf9d18629d589b2dfaa15ca13e26010f5d"
-    },
-    "144": {
-      "project": "/home/kelsey2/NPU_NEW/NPU_qwen/Z0_gm_test_MM2_128_GN",
-      "xclbin_sha256": "c4ef52096428a7bddf2c922770b853d9a5ecf4c501b08a790151e37b83e4899a"
+      "instructions_sha256": "c75e5845d3ed89e8b139e96411dea35005476404c723f7c10d8f3b3bf2905303"
     }
   }
 }

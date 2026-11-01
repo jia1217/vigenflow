@@ -21,23 +21,23 @@ qwen_image/
 └── SHA256SUMS
 ```
 
-- `base/`: runtime bundles from `NPU_qwen_turbo/build` for text-to-image generation.
-- `edit/`: runtime bundles from `NPU_qwen_image/build` for image editing.
+- `base/`: runtime bundles for text-to-image generation.
+- `edit/`: runtime bundles for image editing.
   The denoising bundle also supplies the text encoder's NPU attention program.
 
 Each task directory is a complete bundle root for its existing host. Both
 include the byte-identical VAE decoder bundles so either task can be distributed
-independently. Encoder instruction aliases are stored as regular files. Original
-bundles remain in the source projects for local development.
+independently. Encoder instruction aliases are stored as regular files.
 
-Run these commands from the corresponding project directory:
+Run these commands from the corresponding host executable directory, replacing
+`/path/to/vigenflow` with the repository location:
 
 ```bash
-# From NPU_NEW/NPU_qwen/NPU_qwen_turbo (text-to-image):
-./run.exe -n ../../vigenflow/src/npu_files/qwen_image/base
+# Text-to-image host:
+./run.exe -n /path/to/vigenflow/src/npu_files/qwen_image/base
 
-# From NPU_NEW/NPU_qwen/NPU_qwen_image (image editing):
-./run.exe -n ../../vigenflow/src/npu_files/qwen_image/edit
+# Image-editing host:
+./run.exe -n /path/to/vigenflow/src/npu_files/qwen_image/edit
 ```
 
 For Qwen, `-n` (or `--npu_files_path`) points directly to `base/` or `edit/`,
@@ -47,9 +47,7 @@ remains its local `build/`.
 
 Keep the selected task's complete directory, including `xclbins/`, `insts/`
 and JSON manifests. The `.txt` instruction dumps are retained alongside runtime
-`.bin` instructions; compiler work directories are excluded. Absolute
-source/compiler paths in manifest provenance describe the original build;
-runtime artifact paths are relative to each bundle.
+`.bin` instructions. Runtime artifact paths are relative to each bundle.
 
 The server registers `qwen-image-2.1-turbo` with `qwen_image/base` and
 `qwen-image-2.1-turbo-edit` with `qwen_image/edit`. Both use the shared

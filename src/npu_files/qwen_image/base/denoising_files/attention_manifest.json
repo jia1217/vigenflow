@@ -41,6 +41,5 @@
   "query_tile": 48,
   "softmax_exp": "aie2p_bf16",
   "input_rounding": "nearest_even",
-  "source": "Z0_all_atten_4352",
   "instruction_sha256": "1de1ebb261fd5a28feb6d3564721ee39d547b0859bf79ae36c9a4a2fb61685ff"
 }
