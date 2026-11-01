@@ -74,9 +74,5 @@
   "query_rows": 1536,
   "heads_per_call": 32,
   "processed_key_blocks": 74,
-  "score_dtype": "bfloat16",
-  "query_tile": 48,
-  "softmax_exp": "aie2p_bf16",
-  "input_rounding": "nearest_even",
-  "instruction_sha256": "0eed36535cc5697b732aebb0f4fd1d6ba77fbc8635152cde56b168c13b357ba4"
+  "score_dtype": "bfloat16"
 }
