@@ -1,53 +1,39 @@
 {
-  "xclbin": {
-    "path": "xclbins/mm_bfp_new.xclbin",
-    "sha256": "ef415e8d8b624d083ed61adbf75726470d5e642bb98022999c47205dab30b525"
-  },
   "instructions": [
     {
       "name": "mm_text_q",
       "M": 2048,
       "K": 4096,
       "N": 4096,
-      "path": "insts/mm_text_q.bin",
-      "bytes": 14096,
-      "sha256": "756413bc7c6465129afb918b5aaf0715134998a4543adb214ce15ed74b408e92"
+      "path": "insts/mm_text_q.bin"
     },
     {
       "name": "mm_text_kv",
       "M": 2048,
       "K": 4096,
       "N": 1024,
-      "path": "insts/mm_text_kv.bin",
-      "bytes": 14096,
-      "sha256": "71d20fe16fd9aacf30a8c1437dcc9fdcc52156d434abe19d87129656504d6a2c"
+      "path": "insts/mm_text_kv.bin"
     },
     {
       "name": "mm_text_o",
       "M": 2048,
       "K": 4096,
       "N": 4096,
-      "path": "insts/mm_text_o.bin",
-      "bytes": 14096,
-      "sha256": "756413bc7c6465129afb918b5aaf0715134998a4543adb214ce15ed74b408e92"
+      "path": "insts/mm_text_o.bin"
     },
     {
       "name": "mm_text_gate_up",
       "M": 2048,
       "K": 4096,
       "N": 12288,
-      "path": "insts/mm_text_gate_up.bin",
-      "bytes": 14096,
-      "sha256": "87a2b282dcd549c61bf8d77556b4dbca36ae4a1a68b8a11a393ab522c83c3b78"
+      "path": "insts/mm_text_gate_up.bin"
     },
     {
       "name": "mm_text_down",
       "M": 2048,
       "K": 12288,
       "N": 4096,
-      "path": "insts/mm_text_down.bin",
-      "bytes": 14096,
-      "sha256": "4fe1486788aee27c183bd39bf623f3dc65d099474cc94401e05e0851b628db75"
+      "path": "insts/mm_text_down.bin"
     }
   ]
 }

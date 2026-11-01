@@ -6,12 +6,10 @@
       "id": "conv_c96_w1024_ci4_plain",
       "xclbin": "xclbins/conv_c96.xclbin",
       "instructions": "insts/conv_c96_w1024_ci4_plain.bin",
-      "kind": "conv3x3",
       "input_channels": 4,
       "output_channels": 96,
       "width": 1024,
       "preprocess": 0,
-      "compact_k": 0,
       "padded_input_channels": 128,
       "packet": 96,
       "storage": 192,
@@ -27,12 +25,10 @@
       "id": "conv_c96_k896_w1024_ci96_silu",
       "xclbin": "xclbins/conv_c96_k896.xclbin",
       "instructions": "insts/conv_c96_k896_w1024_ci96_silu.bin",
-      "kind": "conv3x3",
       "input_channels": 96,
       "output_channels": 96,
       "width": 1024,
       "preprocess": 2,
-      "compact_k": 896,
       "padded_input_channels": 128,
       "packet": 96,
       "storage": 192,
@@ -48,12 +44,10 @@
       "id": "conv_c96_k896_w1024_ci96_plain",
       "xclbin": "xclbins/conv_c96_k896.xclbin",
       "instructions": "insts/conv_c96_k896_w1024_ci96_plain.bin",
-      "kind": "conv3x3",
       "input_channels": 96,
       "output_channels": 96,
       "width": 1024,
       "preprocess": 0,
-      "compact_k": 896,
       "padded_input_channels": 128,
       "packet": 96,
       "storage": 192,
@@ -69,7 +63,6 @@
       "id": "pointwise_m262144_k512_n1024",
       "xclbin": "xclbins/pointwise.xclbin",
       "instructions": "insts/pointwise_m262144_k512_n1024.bin",
-      "kind": "gemm1x1",
       "chunk_m": 262144,
       "padded_k": 512,
       "padded_n": 1024,
@@ -81,12 +74,10 @@
       "id": "conv_c192_w512_ci96_silu",
       "xclbin": "xclbins/conv_c192.xclbin",
       "instructions": "insts/conv_c192_w512_ci96_silu.bin",
-      "kind": "conv3x3",
       "input_channels": 96,
       "output_channels": 192,
       "width": 512,
       "preprocess": 1,
-      "compact_k": 0,
       "padded_input_channels": 128,
       "packet": 64,
       "storage": 128,
@@ -102,12 +93,10 @@
       "id": "conv_c192_w512_ci96_plain",
       "xclbin": "xclbins/conv_c192.xclbin",
       "instructions": "insts/conv_c192_w512_ci96_plain.bin",
-      "kind": "conv3x3",
       "input_channels": 96,
       "output_channels": 192,
       "width": 512,
       "preprocess": 0,
-      "compact_k": 0,
       "padded_input_channels": 128,
       "packet": 64,
       "storage": 128,
@@ -123,12 +112,10 @@
       "id": "conv_c192_w512_ci192_silu_k1792",
       "xclbin": "xclbins/conv_c192.xclbin",
       "instructions": "insts/conv_c192_w512_ci192_silu_k1792.bin",
-      "kind": "conv3x3",
       "input_channels": 192,
       "output_channels": 192,
       "width": 512,
       "preprocess": 1,
-      "compact_k": 1792,
       "padded_input_channels": 192,
       "packet": 64,
       "storage": 192,
@@ -144,12 +131,10 @@
       "id": "conv_c192_w512_ci192_plain_k1792",
       "xclbin": "xclbins/conv_c192.xclbin",
       "instructions": "insts/conv_c192_w512_ci192_plain_k1792.bin",
-      "kind": "conv3x3",
       "input_channels": 192,
       "output_channels": 192,
       "width": 512,
       "preprocess": 0,
-      "compact_k": 1792,
       "padded_input_channels": 192,
       "packet": 64,
       "storage": 192,
@@ -165,7 +150,6 @@
       "id": "pointwise_m65536_k512_n1024",
       "xclbin": "xclbins/pointwise.xclbin",
       "instructions": "insts/pointwise_m65536_k512_n1024.bin",
-      "kind": "gemm1x1",
       "chunk_m": 65536,
       "padded_k": 512,
       "padded_n": 1024,
@@ -177,12 +161,10 @@
       "id": "conv_c384_k1792_w256_ci192_silu",
       "xclbin": "xclbins/conv_c384_k1792.xclbin",
       "instructions": "insts/conv_c384_k1792_w256_ci192_silu.bin",
-      "kind": "conv3x3",
       "input_channels": 192,
       "output_channels": 384,
       "width": 256,
       "preprocess": 1,
-      "compact_k": 1792,
       "padded_input_channels": 192,
       "packet": 64,
       "storage": 192,
@@ -198,12 +180,10 @@
       "id": "conv_c384_k1792_w256_ci192_plain",
       "xclbin": "xclbins/conv_c384_k1792.xclbin",
       "instructions": "insts/conv_c384_k1792_w256_ci192_plain.bin",
-      "kind": "conv3x3",
       "input_channels": 192,
       "output_channels": 384,
       "width": 256,
       "preprocess": 0,
-      "compact_k": 1792,
       "padded_input_channels": 192,
       "packet": 64,
       "storage": 192,
@@ -219,12 +199,10 @@
       "id": "conv_c384_w256_ci384_silu",
       "xclbin": "xclbins/conv_c384.xclbin",
       "instructions": "insts/conv_c384_w256_ci384_silu.bin",
-      "kind": "conv3x3",
       "input_channels": 384,
       "output_channels": 384,
       "width": 256,
       "preprocess": 1,
-      "compact_k": 0,
       "padded_input_channels": 384,
       "packet": 64,
       "storage": 384,
@@ -240,12 +218,10 @@
       "id": "conv_c384_w256_ci384_plain",
       "xclbin": "xclbins/conv_c384.xclbin",
       "instructions": "insts/conv_c384_w256_ci384_plain.bin",
-      "kind": "conv3x3",
       "input_channels": 384,
       "output_channels": 384,
       "width": 256,
       "preprocess": 0,
-      "compact_k": 0,
       "padded_input_channels": 384,
       "packet": 64,
       "storage": 384,
@@ -261,7 +237,6 @@
       "id": "pointwise_m16384_k512_n1024",
       "xclbin": "xclbins/pointwise.xclbin",
       "instructions": "insts/pointwise_m16384_k512_n1024.bin",
-      "kind": "gemm1x1",
       "chunk_m": 16384,
       "padded_k": 512,
       "padded_n": 1024,
@@ -273,12 +248,10 @@
       "id": "conv_c384_w128_ci384_silu",
       "xclbin": "xclbins/conv_c384.xclbin",
       "instructions": "insts/conv_c384_w128_ci384_silu.bin",
-      "kind": "conv3x3",
       "input_channels": 384,
       "output_channels": 384,
       "width": 128,
       "preprocess": 1,
-      "compact_k": 0,
       "padded_input_channels": 384,
       "packet": 64,
       "storage": 384,
@@ -294,12 +267,10 @@
       "id": "conv_c384_w128_ci384_plain",
       "xclbin": "xclbins/conv_c384.xclbin",
       "instructions": "insts/conv_c384_w128_ci384_plain.bin",
-      "kind": "conv3x3",
       "input_channels": 384,
       "output_channels": 384,
       "width": 128,
       "preprocess": 0,
-      "compact_k": 0,
       "padded_input_channels": 384,
       "packet": 64,
       "storage": 384,
@@ -315,12 +286,10 @@
       "id": "conv_c384_w128_ci768_silu",
       "xclbin": "xclbins/conv_c384.xclbin",
       "instructions": "insts/conv_c384_w128_ci768_silu.bin",
-      "kind": "conv3x3",
       "input_channels": 768,
       "output_channels": 384,
       "width": 128,
       "preprocess": 1,
-      "compact_k": 0,
       "padded_input_channels": 768,
       "packet": 64,
       "storage": 768,
@@ -336,12 +305,10 @@
       "id": "conv_c384_w128_ci768_plain",
       "xclbin": "xclbins/conv_c384.xclbin",
       "instructions": "insts/conv_c384_w128_ci768_plain.bin",
-      "kind": "conv3x3",
       "input_channels": 768,
       "output_channels": 384,
       "width": 128,
       "preprocess": 0,
-      "compact_k": 0,
       "padded_input_channels": 768,
       "packet": 64,
       "storage": 768,
@@ -357,7 +324,6 @@
       "id": "pointwise_m4096_k1024_n3072",
       "xclbin": "xclbins/pointwise.xclbin",
       "instructions": "insts/pointwise_m4096_k1024_n3072.bin",
-      "kind": "gemm1x1",
       "chunk_m": 4096,
       "padded_k": 1024,
       "padded_n": 3072,
@@ -369,7 +335,6 @@
       "id": "pointwise_m4096_k1024_n1024",
       "xclbin": "xclbins/pointwise.xclbin",
       "instructions": "insts/pointwise_m4096_k1024_n1024.bin",
-      "kind": "gemm1x1",
       "chunk_m": 4096,
       "padded_k": 1024,
       "padded_n": 1024,
@@ -381,12 +346,10 @@
       "id": "conv_c192_w128_ci768_silu",
       "xclbin": "xclbins/conv_c192.xclbin",
       "instructions": "insts/conv_c192_w128_ci768_silu.bin",
-      "kind": "conv3x3",
       "input_channels": 768,
       "output_channels": 192,
       "width": 128,
       "preprocess": 1,
-      "compact_k": 0,
       "padded_input_channels": 768,
       "packet": 64,
       "storage": 768,
@@ -402,12 +365,10 @@
       "id": "conv_c192_w128_ci768_plain",
       "xclbin": "xclbins/conv_c192.xclbin",
       "instructions": "insts/conv_c192_w128_ci768_plain.bin",
-      "kind": "conv3x3",
       "input_channels": 768,
       "output_channels": 192,
       "width": 128,
       "preprocess": 0,
-      "compact_k": 0,
       "padded_input_channels": 768,
       "packet": 64,
       "storage": 768,
@@ -423,7 +384,6 @@
       "id": "pointwise_m4096_k512_n1024",
       "xclbin": "xclbins/pointwise.xclbin",
       "instructions": "insts/pointwise_m4096_k512_n1024.bin",
-      "kind": "gemm1x1",
       "chunk_m": 4096,
       "padded_k": 512,
       "padded_n": 1024,
@@ -434,7 +394,6 @@
   },
   "operations": {
     "encoder.conv_in": {
-      "name": "encoder.conv_in",
       "input_channels": 4,
       "output_channels": 96,
       "kernel": 3,
@@ -452,7 +411,6 @@
       "packed_sha256": "cb890cfb7758e349f847e5b2c1f261b67d3e5b5eab7158397cbd1d01610ae9b0"
     },
     "encoder.down_blocks.0.resnets.0.conv1": {
-      "name": "encoder.down_blocks.0.resnets.0.conv1",
       "input_channels": 96,
       "output_channels": 96,
       "kernel": 3,
@@ -470,7 +428,6 @@
       "packed_sha256": "3d82dca71e5a26adeaf9a45191b3bae9dcfa467355ff68e015a11f865a940dc0"
     },
     "encoder.down_blocks.0.resnets.0.conv2": {
-      "name": "encoder.down_blocks.0.resnets.0.conv2",
       "input_channels": 96,
       "output_channels": 96,
       "kernel": 3,
@@ -488,7 +445,6 @@
       "packed_sha256": "914025b5d3f35af52629075332ae7eabd096da1c424263b60aec12b6333f5184"
     },
     "encoder.down_blocks.0.resnets.1.conv1": {
-      "name": "encoder.down_blocks.0.resnets.1.conv1",
       "input_channels": 96,
       "output_channels": 96,
       "kernel": 3,
@@ -506,7 +462,6 @@
       "packed_sha256": "4a37ff90eaec83603e483cf57141c939d74751d975cb999cd0f195d4f8dfa412"
     },
     "encoder.down_blocks.0.resnets.1.conv2": {
-      "name": "encoder.down_blocks.0.resnets.1.conv2",
       "input_channels": 96,
       "output_channels": 96,
       "kernel": 3,
@@ -524,7 +479,6 @@
       "packed_sha256": "084be19761ea046049b1fa57e73215312b862cd66d17b51e732922c9505ed6c7"
     },
     "encoder.down_blocks.0.downsampler.resample.1": {
-      "name": "encoder.down_blocks.0.downsampler.resample.1",
       "input_channels": 96,
       "output_channels": 96,
       "kernel": 3,
@@ -542,7 +496,6 @@
       "packed_sha256": "d13418598acfc82b9bc1269ea5fc3e7b7375d87db9c68fd47af64b2a9bb40107"
     },
     "encoder.down_blocks.1.resnets.0.conv_shortcut": {
-      "name": "encoder.down_blocks.1.resnets.0.conv_shortcut",
       "input_channels": 96,
       "output_channels": 192,
       "kernel": 1,
@@ -558,7 +511,6 @@
       "packed_sha256": "706459b8feb870b4c9b0d13bc5ebba8e650822df8273a2bbe59dccb6a22d1cb5"
     },
     "encoder.down_blocks.1.resnets.0.conv1": {
-      "name": "encoder.down_blocks.1.resnets.0.conv1",
       "input_channels": 96,
       "output_channels": 192,
       "kernel": 3,
@@ -576,7 +528,6 @@
       "packed_sha256": "1a13aca27b9399c964890656baa344509e3a1f605fb3655f75bee53b899256ef"
     },
     "encoder.down_blocks.1.resnets.0.conv2": {
-      "name": "encoder.down_blocks.1.resnets.0.conv2",
       "input_channels": 192,
       "output_channels": 192,
       "kernel": 3,
@@ -594,7 +545,6 @@
       "packed_sha256": "7a44b82421695b49a8a1d0192d15efd0e06b8dd1f0a86687257b01e22dcf4bdd"
     },
     "encoder.down_blocks.1.resnets.1.conv1": {
-      "name": "encoder.down_blocks.1.resnets.1.conv1",
       "input_channels": 192,
       "output_channels": 192,
       "kernel": 3,
@@ -612,7 +562,6 @@
       "packed_sha256": "b630d6637858a11057509ee1a9809badbe62538645dded65a1d7dbfda3cee11a"
     },
     "encoder.down_blocks.1.resnets.1.conv2": {
-      "name": "encoder.down_blocks.1.resnets.1.conv2",
       "input_channels": 192,
       "output_channels": 192,
       "kernel": 3,
@@ -630,7 +579,6 @@
       "packed_sha256": "0bc713e4d0ece6b95c84c7a75bf9b61cc2bd544ab575a1cf872183daea2e878a"
     },
     "encoder.down_blocks.1.downsampler.resample.1": {
-      "name": "encoder.down_blocks.1.downsampler.resample.1",
       "input_channels": 192,
       "output_channels": 192,
       "kernel": 3,
@@ -648,7 +596,6 @@
       "packed_sha256": "717debdf5dcb2189acb1c2a56ab30abeb92489cbfff42fc34b8aac4296eab188"
     },
     "encoder.down_blocks.2.resnets.0.conv_shortcut": {
-      "name": "encoder.down_blocks.2.resnets.0.conv_shortcut",
       "input_channels": 192,
       "output_channels": 384,
       "kernel": 1,
@@ -664,7 +611,6 @@
       "packed_sha256": "a9121b15652995f9eab4baba48469b31cdf97c3b8a210c8ff3d993744e5c05fd"
     },
     "encoder.down_blocks.2.resnets.0.conv1": {
-      "name": "encoder.down_blocks.2.resnets.0.conv1",
       "input_channels": 192,
       "output_channels": 384,
       "kernel": 3,
@@ -682,7 +628,6 @@
       "packed_sha256": "2990e9df5c0c234815ab8ff0be6e863c5d8b2efa047f9bad9f0d9abd89052ad3"
     },
     "encoder.down_blocks.2.resnets.0.conv2": {
-      "name": "encoder.down_blocks.2.resnets.0.conv2",
       "input_channels": 384,
       "output_channels": 384,
       "kernel": 3,
@@ -700,7 +645,6 @@
       "packed_sha256": "bb2aa77cce038f19899221378099805b46ee17793a64e9b176f5b91d3d19e51b"
     },
     "encoder.down_blocks.2.resnets.1.conv1": {
-      "name": "encoder.down_blocks.2.resnets.1.conv1",
       "input_channels": 384,
       "output_channels": 384,
       "kernel": 3,
@@ -718,7 +662,6 @@
       "packed_sha256": "e406ef1fe39af92d72c7bb77ac3f2b5a954a7f9d2dbe2807e29c94d5eba1a3cc"
     },
     "encoder.down_blocks.2.resnets.1.conv2": {
-      "name": "encoder.down_blocks.2.resnets.1.conv2",
       "input_channels": 384,
       "output_channels": 384,
       "kernel": 3,
@@ -736,7 +679,6 @@
       "packed_sha256": "ac9a12b0c615ae86ada2313eccf60a998e23309befbd15f568663428d8e015c5"
     },
     "encoder.down_blocks.2.downsampler.resample.1": {
-      "name": "encoder.down_blocks.2.downsampler.resample.1",
       "input_channels": 384,
       "output_channels": 384,
       "kernel": 3,
@@ -754,7 +696,6 @@
       "packed_sha256": "412627488be9683957a430bdac65e7089cc81ce76d1f57a903de492913daaae0"
     },
     "encoder.down_blocks.3.resnets.0.conv_shortcut": {
-      "name": "encoder.down_blocks.3.resnets.0.conv_shortcut",
       "input_channels": 384,
       "output_channels": 768,
       "kernel": 1,
@@ -770,7 +711,6 @@
       "packed_sha256": "1f1ac5fa3d6e90443640e4faf350b37a25b218b3590c92d421ecbd1f4985cc55"
     },
     "encoder.down_blocks.3.resnets.0.conv1": {
-      "name": "encoder.down_blocks.3.resnets.0.conv1",
       "input_channels": 384,
       "output_channels": 768,
       "kernel": 3,
@@ -788,7 +728,6 @@
       "packed_sha256": "ab76b3baa813d0d51445242149e8a7412099281a28e3539050a9a632568484ba"
     },
     "encoder.down_blocks.3.resnets.0.conv2": {
-      "name": "encoder.down_blocks.3.resnets.0.conv2",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 3,
@@ -806,7 +745,6 @@
       "packed_sha256": "00ab7abe1a88dfc507bd705895a8b79f4230c6a4b09e73236949d13b4ab4a235"
     },
     "encoder.down_blocks.3.resnets.1.conv1": {
-      "name": "encoder.down_blocks.3.resnets.1.conv1",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 3,
@@ -824,7 +762,6 @@
       "packed_sha256": "0a3c528a4c7191cac5b10a7d95d369c2c917cdee048bb38ff31b0064974fdc23"
     },
     "encoder.down_blocks.3.resnets.1.conv2": {
-      "name": "encoder.down_blocks.3.resnets.1.conv2",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 3,
@@ -842,7 +779,6 @@
       "packed_sha256": "7eb8d0fb3a81604f35b5391e08a84a951be7eb9dfd0be15afef5b326d3decd5c"
     },
     "encoder.down_blocks.3.downsampler.resample.1": {
-      "name": "encoder.down_blocks.3.downsampler.resample.1",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 3,
@@ -860,7 +796,6 @@
       "packed_sha256": "58a02ee2ab15e622b33c22b219a79378aad55d9f9c116d2a1af907b98a92023e"
     },
     "encoder.down_blocks.4.resnets.0.conv1": {
-      "name": "encoder.down_blocks.4.resnets.0.conv1",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 3,
@@ -878,7 +813,6 @@
       "packed_sha256": "fcca0ec9f6e6eff9140bc70512e43351c6dba199c6bc0fa886902df6b45cb289"
     },
     "encoder.down_blocks.4.resnets.0.conv2": {
-      "name": "encoder.down_blocks.4.resnets.0.conv2",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 3,
@@ -896,7 +830,6 @@
       "packed_sha256": "2156605d7182d810e3001745d4778f1478d1e96bc2cc69f80763bb133bcbafb8"
     },
     "encoder.down_blocks.4.resnets.1.conv1": {
-      "name": "encoder.down_blocks.4.resnets.1.conv1",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 3,
@@ -914,7 +847,6 @@
       "packed_sha256": "cac99917ab854e9c3cdffd0921b6c92d009df7176ecbe8e8c2ea0df9444e814f"
     },
     "encoder.down_blocks.4.resnets.1.conv2": {
-      "name": "encoder.down_blocks.4.resnets.1.conv2",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 3,
@@ -932,7 +864,6 @@
       "packed_sha256": "c5714e469ce906669534b3ea2379505be1b3b08fc4389a633e4ef67bef72378c"
     },
     "encoder.mid_block.resnets.0.conv1": {
-      "name": "encoder.mid_block.resnets.0.conv1",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 3,
@@ -950,7 +881,6 @@
       "packed_sha256": "c82f79b05d8d38a413cb15f29c8c991ff040c800719df02dd3feac79f18fa553"
     },
     "encoder.mid_block.resnets.0.conv2": {
-      "name": "encoder.mid_block.resnets.0.conv2",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 3,
@@ -968,7 +898,6 @@
       "packed_sha256": "4b100d0fd97327cce260db7ec44d8b151f2149a277283e8d52fa5deb141140ba"
     },
     "encoder.mid_block.attentions.0.to_qkv": {
-      "name": "encoder.mid_block.attentions.0.to_qkv",
       "input_channels": 768,
       "output_channels": 2304,
       "kernel": 1,
@@ -984,7 +913,6 @@
       "packed_sha256": "f22de0e56f595c607d0bcd339b05a5b5366e013a340f3c875ccf1c4a5502ae42"
     },
     "encoder.mid_block.attentions.0.proj": {
-      "name": "encoder.mid_block.attentions.0.proj",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 1,
@@ -1000,7 +928,6 @@
       "packed_sha256": "4b500f270384f9d864e78b93e6a889789dead1cd4109236d6a7123907f2c4bcd"
     },
     "encoder.mid_block.resnets.1.conv1": {
-      "name": "encoder.mid_block.resnets.1.conv1",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 3,
@@ -1018,7 +945,6 @@
       "packed_sha256": "6367fb75fa29bca7fef5e1f926f5909895fd662739b53330fb62905003667939"
     },
     "encoder.mid_block.resnets.1.conv2": {
-      "name": "encoder.mid_block.resnets.1.conv2",
       "input_channels": 768,
       "output_channels": 768,
       "kernel": 3,
@@ -1036,7 +962,6 @@
       "packed_sha256": "52da9e703245fbce3f676e3fbaba3ce900a5d35b2c865aa415bebe79556598dc"
     },
     "encoder.conv_out": {
-      "name": "encoder.conv_out",
       "input_channels": 768,
       "output_channels": 128,
       "kernel": 3,
@@ -1054,7 +979,6 @@
       "packed_sha256": "3d45dfe4b4f46b6e083fdb703de98f6252131c98204047ce62ff3a693c883070"
     },
     "quant_conv": {
-      "name": "quant_conv",
       "input_channels": 128,
       "output_channels": 128,
       "kernel": 1,

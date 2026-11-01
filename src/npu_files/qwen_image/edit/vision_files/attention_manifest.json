@@ -1,11 +1,9 @@
 {
-  "tokens": 4096,
   "heads_per_call": 16,
   "head_dim": 72,
   "query_rows": 4608,
   "key_blocks": 64,
   "q_group_bytes": 1728,
   "kv_block_bytes": 5184,
-  "score_dtype": "bfloat16",
   "q_prescaled": true
 }

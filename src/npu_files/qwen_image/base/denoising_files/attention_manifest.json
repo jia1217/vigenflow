@@ -1,5 +1,4 @@
 {
-  "valid_keys_marker": 1330727749,
   "valid_keys_word_offsets": [
     14,
     32,
@@ -36,6 +35,5 @@
   ],
   "key_blocks": 72,
   "query_rows": 4608,
-  "heads_per_call": 32,
-  "score_dtype": "bfloat16"
+  "heads_per_call": 32
 }

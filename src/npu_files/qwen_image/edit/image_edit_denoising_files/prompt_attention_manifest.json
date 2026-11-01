@@ -73,6 +73,5 @@
   "key_blocks": 138,
   "query_rows": 1536,
   "heads_per_call": 32,
-  "processed_key_blocks": 74,
-  "score_dtype": "bfloat16"
+  "processed_key_blocks": 74
 }
