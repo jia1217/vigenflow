@@ -251,6 +251,38 @@ The default model is `z-image-turbo`. If you did not download its weights, start
 
 ---
 
+## 🤝 Contributors
+
+Contributions to VigenFlow are welcome! Whether you want to contribute code, report bugs, suggest improvements, improve documentation, or test on your hardware, your help is appreciated.
+
+To get involved, open an [issue](https://github.com/jia1217/vigenflow/issues) or submit a [pull request](https://github.com/jia1217/vigenflow/pulls).
+
+Thank you to everyone who contributes to VigenFlow and helps make the project better!
+
+---
+
+## 📚 Citation and Acknowledgement
+
+If you use VigenFlow in research, publications, benchmarks, or projects built on its code, please cite this repository. If VigenFlow's implementation or design ideas inform your own work, an acknowledgement and link are appreciated.
+
+Use GitHub's **Cite this repository** button or the metadata in [CITATION.cff](CITATION.cff). Please include the version or commit you used so others can identify the implementation behind your results.
+
+If your project or product uses VigenFlow, please acknowledge it in your README, project page, or product:
+
+```markdown
+Powered by [VigenFlow](https://github.com/jia1217/vigenflow)
+```
+
+---
+
+## 📄 License
+
+The VigenFlow source code is licensed under the [Apache License 2.0](LICENSE).
+
+Model weights are **not** covered by this license. Each model and LoRA keeps its original license, including the BFP16 weights in the release packages. See [MODEL_LICENSES.md](MODEL_LICENSES.md) for each model's license and whether it allows commercial use. Third-party libraries are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+---
+
 ## 🔗 Connect with OpenWebUI Desktop
 
 After launching `vgf-serve`, open **OpenWebUI Desktop** and configure it for your local VigenFlow server. All settings below are in OpenWebUI's **Admin Panel → Settings**.
@@ -296,35 +328,3 @@ sudo reboot
 ```
 
 After the reboot, `modinfo -n amdxdna` should print a path that contains `updates/dkms`, and `xrt-smi examine` should list the NPU.
-
----
-
-## 🤝 Contributors
-
-Contributions to VigenFlow are welcome! Whether you want to contribute code, report bugs, suggest improvements, improve documentation, or test on your hardware, your help is appreciated.
-
-To get involved, open an [issue](https://github.com/jia1217/vigenflow/issues) or submit a [pull request](https://github.com/jia1217/vigenflow/pulls).
-
-Thank you to everyone who contributes to VigenFlow and helps make the project better!
-
----
-
-## 📚 Citation and Acknowledgement
-
-If you use VigenFlow in research, publications, benchmarks, or projects built on its code, please cite this repository. If VigenFlow's implementation or design ideas inform your own work, an acknowledgement and link are appreciated.
-
-Use GitHub's **Cite this repository** button or the metadata in [CITATION.cff](CITATION.cff). Please include the version or commit you used so others can identify the implementation behind your results.
-
-If your project or product uses VigenFlow, please acknowledge it in your README, project page, or product:
-
-```markdown
-Powered by [VigenFlow](https://github.com/jia1217/vigenflow)
-```
-
----
-
-## 📄 License
-
-The VigenFlow source code is licensed under the [Apache License 2.0](LICENSE).
-
-Model weights are **not** covered by this license. Each model and LoRA keeps its original license, including the BFP16 weights in the release packages. See [MODEL_LICENSES.md](MODEL_LICENSES.md) for each model's license and whether it allows commercial use. Third-party libraries are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
