@@ -87,6 +87,15 @@ if ($StandaloneWorkersRoot) {
         }
     }
 }
+# The NPU files ship publicly: build records and local paths must stay out of them.
+$forbiddenList = Join-Path $PSScriptRoot 'npu_files_forbidden_strings.txt'
+$forbiddenFiles = Get-ChildItem -LiteralPath $npuFilesDir -Recurse -File |
+    Where-Object { $_.Extension -in '.json', '.md', '.txt' } |
+    Select-String -SimpleMatch -CaseSensitive -List -Pattern (Get-Content -LiteralPath $forbiddenList) |
+    ForEach-Object { $_.Path }
+if ($forbiddenFiles) {
+    throw "NPU files check failed. Remove the strings in $forbiddenList from:`n$($forbiddenFiles -join "`n")"
+}
 
 New-Item -ItemType Directory -Force $OutRoot | Out-Null
 $OutRoot = (Resolve-Path -LiteralPath $OutRoot).Path

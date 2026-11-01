@@ -46,6 +46,15 @@ for dir in "$EXE_MODELS_DIR" "$NPU_FILES_DIR"; do
     exit 1
   fi
 done
+# The NPU files ship publicly: build records and local paths must stay out of them.
+FORBIDDEN_STRINGS="$SCRIPT_DIR/npu_files_forbidden_strings.txt"
+forbidden_status=0
+forbidden_files="$(grep -rIlF -f "$FORBIDDEN_STRINGS" "$NPU_FILES_DIR")" || forbidden_status=$?
+if [[ "$forbidden_status" -ne 1 ]]; then
+  echo "NPU files check failed. Remove the strings in $FORBIDDEN_STRINGS from:" >&2
+  echo "$forbidden_files" >&2
+  exit 1
+fi
 # vgf-serve refuses to start unless every worker exists.
 for model in "${MODELS[@]}"; do
   if [[ ! -f "$EXE_MODELS_DIR/$model/run.exe" ]]; then
