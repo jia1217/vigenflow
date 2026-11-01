@@ -299,6 +299,16 @@ After the reboot, `modinfo -n amdxdna` should print a path that contains `update
 
 ---
 
+## 🤝 Contributors
+
+Contributions to VigenFlow are welcome! Whether you want to contribute code, report bugs, suggest improvements, improve documentation, or test on your hardware, your help is appreciated.
+
+To get involved, open an [issue](https://github.com/jia1217/vigenflow/issues) or submit a [pull request](https://github.com/jia1217/vigenflow/pulls).
+
+Thank you to everyone who contributes to VigenFlow and helps make the project better!
+
+---
+
 ## 📄 License
 
 The VigenFlow source code is licensed under the [Apache License 2.0](LICENSE).
