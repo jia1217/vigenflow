@@ -251,11 +251,11 @@ OpenWebUI runs on the host network so that it reaches `vgf-serve` at `127.0.0.1:
 port that `vgf-serve` publishes only to this computer. The
 connection and image settings in `compose.yaml` take effect only the first time OpenWebUI starts;
 after that, change them in **Admin Panel → Settings**. Set up each model in **Admin Panel →
-Settings → Models** as described in the main
-[README](../README.md#-connect-with-openwebui-desktop), step 3.
+Settings → Models** as described in the
+[OpenWebUI connection guide](openwebui.md), step 3.
 
 If you already run OpenWebUI, start only VigenFlow and add the connection
-`http://127.0.0.1:11283/v1` as in the README. If your OpenWebUI runs in a container on the default
+`http://127.0.0.1:11283/v1` as in the [connection guide](openwebui.md). If your OpenWebUI runs in a container on the default
 bridge network, it reaches VigenFlow at `http://host.docker.internal:11283/v1` instead (start it
 with `--add-host=host.docker.internal:host-gateway`).
 
