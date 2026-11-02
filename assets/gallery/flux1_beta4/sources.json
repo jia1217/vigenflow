@@ -1,0 +1,23 @@
+{
+  "method": "Documentation previews: each supplied PNG is displayed unchanged in the actual beta4 UI. No new inference was run. Original prompts, seeds, LoRA selections and timings are unknown and are not claimed for these saved examples.",
+  "images": [
+    {
+      "screenshot": "ui_1.png",
+      "source": "1_1216x832.png",
+      "width": 832,
+      "height": 1216
+    },
+    {
+      "screenshot": "ui_2.png",
+      "source": "2_832x1216.png",
+      "width": 1216,
+      "height": 832
+    },
+    {
+      "screenshot": "ui_3.png",
+      "source": "3_768x1024.png",
+      "width": 1024,
+      "height": 768
+    }
+  ]
+}
