@@ -19,6 +19,48 @@ VigenFlow also supports **FLUX.2, Z-Image, Krea 2, and Qwen Image** for generati
 
 ---
 
+## 🖼️ Beta 4 Examples
+
+These examples preview **Beta 4's built-in web UI**, with **LoRA styles**, **custom image sizes**, and **image editing with a before/after comparison**. The Windows build and additional Beta 4 models shown here are previews of upcoming support. Click any image to open the original PNG at full size.
+
+### Generated images
+
+<table>
+  <tr>
+    <td width="33%" align="center" valign="top"><a href="assets/examples/beta4/flux1-figure.png"><img src="assets/examples/beta4/flux1-figure.png" width="100%" alt="A figure-style character with silver hair, a red coat and a rose-trimmed hat in a snowy setting"></a><br><sub><b>FLUX.1-schnell</b><br>Figure-style portrait</sub></td>
+    <td width="33%" align="center" valign="top"><a href="assets/examples/beta4/qwen-moonlit-portrait.png"><img src="assets/examples/beta4/qwen-moonlit-portrait.png" width="100%" alt="An anime character in a black dress standing among flowers under a full moon"></a><br><sub><b>Qwen Image 2.1 Turbo</b><br>Moonlit anime portrait</sub></td>
+    <td width="33%" align="center" valign="top"><a href="assets/examples/beta4/qwen-gym-portrait.png"><img src="assets/examples/beta4/qwen-gym-portrait.png" width="100%" alt="An anime character with blue hair and a navy hoodie sitting in a sunlit gym"></a><br><sub><b>Qwen Image 2.1 Turbo</b><br>Input for the hair-color edit below</sub></td>
+  </tr>
+</table>
+
+### LoRA styles in the web UI
+
+The screenshots show the selected model, style, image size, and result.
+
+<table>
+  <tr>
+    <td width="50%" align="center" valign="top"><a href="assets/examples/beta4/flux1-asian-mix.png"><img src="assets/examples/beta4/flux1-asian-mix.png" width="100%" alt="VigenFlow UI with FLUX.1-schnell and Asian Mix LoRA selected, showing a portrait outside a temple"></a><br><sub><b>FLUX.1-schnell · Asian Mix LoRA / LoKr</b><br>832 × 1216</sub></td>
+    <td width="50%" align="center" valign="top"><a href="assets/examples/beta4/z-image-anime.png"><img src="assets/examples/beta4/z-image-anime.png" width="100%" alt="VigenFlow UI with Z-Image-Turbo and Anime Style LoRA selected, showing a character leaning on a retro television"></a><br><sub><b>Z-Image-Turbo · Anime Style LoRA</b><br>768 × 1344 · 8 steps</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top"><a href="assets/examples/beta4/krea2-melancholy.png"><img src="assets/examples/beta4/krea2-melancholy.png" width="100%" alt="VigenFlow UI with Krea 2 Turbo and Melancholy LoRA selected, showing a ballet dancer in a mirrored costume holding two lights"></a><br><sub><b>Krea 2 Turbo · Melancholy</b><br>1328 × 1936 custom size</sub></td>
+    <td width="50%" align="center" valign="top"><a href="assets/examples/beta4/krea2-engraved-portraits.png"><img src="assets/examples/beta4/krea2-engraved-portraits.png" width="100%" alt="VigenFlow UI with Krea 2 Turbo and Wall Street Journal Style selected, showing three black-and-white engraved portraits"></a><br><sub><b>Krea 2 Turbo · Wall Street Journal Style</b><br>1152 × 896</sub></td>
+  </tr>
+</table>
+
+### Image editing in the web UI
+
+**Qwen Image 2.1 Turbo Edit** examples with the built-in before/after comparison. The prompts are shown beneath each screenshot.
+
+<table>
+  <tr>
+    <td width="50%" align="center" valign="top"><a href="assets/examples/beta4/qwen-edit-hair-color.png"><img src="assets/examples/beta4/qwen-edit-hair-color.png" width="100%" alt="VigenFlow Qwen editing UI comparing an anime character's original blue hair with the edited red hair"></a><br><sub><b>Hair-color change · Consistency LoRA</b><br>1216 × 832<br>Change the girl's hair color to red.</sub></td>
+    <td width="50%" align="center" valign="top"><a href="assets/examples/beta4/qwen-edit-realistic-style.png"><img src="assets/examples/beta4/qwen-edit-realistic-style.png" width="100%" alt="VigenFlow Qwen editing UI comparing an anime-style winged character holding a kitten with a more realistic version"></a><br><sub><b>Anime-to-realistic style conversion</b><br>832 × 1216<br>Convert the anime style in the image into a realistic style.</sub></td>
+  </tr>
+</table>
+
+---
+
 ## 🎨 Gallery
 
 <a id="beta4-results"></a>
