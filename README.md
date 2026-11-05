@@ -11,7 +11,7 @@
 - ⚡ **Two memory modes:** Balanced reduces RAM usage; Performance keeps weights and reusable buffers loaded for faster subsequent images.
 - ⏱️ **Visible timings:** E2E runtime in seconds beside the seed and in the completion message, with stage timings below the image.
 
-**[Download Beta 4](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.4/vgf_0.2.0-beta.4_ubuntu_amd64_flux1.zip)** · **[Get started](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4)** · **[FLUX.1 results](#beta4-results)**
+**[Download Beta 4](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.4/vgf_0.2.0-beta.4_ubuntu_amd64_flux1.zip)** · **[Get started](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4)** · **[Beta 4 examples](#-beta-4-examples)**
 
 > **Upgrading from Beta 3?** The model weight paths are unchanged. Extract Beta 4 beside your existing `all_model_weights` folder to reuse `all_model_weights/flux1_schnell` without downloading the weights again.
 
@@ -62,26 +62,6 @@ The screenshots show the selected model, style, image size, and result.
 ---
 
 ## 🎨 Gallery
-
-<a id="beta4-results"></a>
-
-### FLUX.1-schnell · Beta 4 showcase
-
-Explore fantasy art, macro imagery, and fashion illustration with these saved FLUX.1-schnell examples. Click an image for the original PNG, or open its **UI preview** to see it in the Beta 4 browser interface. Dimensions below are **width × height**.
-
-<table>
-  <tr>
-    <td width="33%" align="center" valign="top"><a href="assets/gallery/flux1_beta4/1_1216x832.png"><img src="assets/gallery/flux1_beta4/1_1216x832.png" width="100%" alt="Fantasy artwork of a winged armored knight holding a kitten"></a><br><sub><b>Winged knight and kitten</b><br>832 × 1216 · FLUX.1-schnell<br><a href="assets/gallery/flux1_beta4/ui_1.png">UI preview</a></sub></td>
-    <td width="33%" align="center" valign="top"><a href="assets/gallery/flux1_beta4/2_832x1216.png"><img src="assets/gallery/flux1_beta4/2_832x1216.png" width="100%" alt="Macro image of a jeweled ladybug"></a><br><sub><b>Jeweled ladybug</b><br>1216 × 832 · FLUX.1-schnell<br><a href="assets/gallery/flux1_beta4/ui_2.png">UI preview</a></sub></td>
-    <td width="33%" align="center" valign="top"><a href="assets/gallery/flux1_beta4/3_768x1024.png"><img src="assets/gallery/flux1_beta4/3_768x1024.png" width="100%" alt="Fashion illustration featuring a flowing gold gown"></a><br><sub><b>Flowing gold gown</b><br>1024 × 768 · FLUX.1-schnell<br><a href="assets/gallery/flux1_beta4/ui_3.png">UI preview</a></sub></td>
-  </tr>
-</table>
-
-**The Beta 4 browser UI:** choose your LoRAs, set an image size, and preview or download the result from one page.
-
-[![VigenFlow Beta 4 browser UI displaying the saved winged knight and kitten image](assets/gallery/flux1_beta4/ui_1.png)](assets/gallery/flux1_beta4/ui_1.png)
-
-*These UI previews display saved images. The controls shown are not a record of their original prompts, seeds, LoRA selections, or timings.*
 
 ### More models and image editing · Beta 3
 
