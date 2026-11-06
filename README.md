@@ -8,7 +8,6 @@
 
 - 🎨 **LoRA styles:** select styles and add their trigger words, or configure your own LoRAs through `loras.jsonc`.
 - 🖼️ **Custom resolutions:** 16–2048 pixels per side, in multiples of 16, for square, portrait, and landscape images.
-- ⚡ **Two memory modes:** Balanced reduces RAM usage; Performance keeps weights and reusable buffers loaded for faster subsequent images.
 - ⏱️ **Visible timings:** E2E runtime in seconds beside the seed and in the completion message, with stage timings below the image.
 
 **[Download Beta 4](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.4/vgf_0.2.0-beta.4_ubuntu_amd64_flux1.zip)** · **[Get started](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4)** · **[Beta 4 examples](#-beta-4-examples)**
@@ -16,6 +15,24 @@
 > **Upgrading from Beta 3?** The model weight paths are unchanged. Extract Beta 4 beside your existing `all_model_weights` folder to reuse `all_model_weights/flux1_schnell` without downloading the weights again.
 
 VigenFlow also supports **FLUX.2, Z-Image, Krea 2, and Qwen Image** for generation and editing. The **[Beta 3 packages](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.3)** include all seven models on Windows and Ubuntu; the Beta 4 prerelease above includes **FLUX.1-schnell only**. The existing [Quick Install](docs/quick-install.md) installs the multi-model release with OpenWebUI.
+
+---
+
+## ⚡ Performance
+
+Approximate inference times for one **1024 × 1024** image on an **AMD Ryzen AI 9 HX 370**, with prompts encoded at **512 text tokens**. Models are grouped by task and sorted by time within each group.
+
+| Model | Task | Steps | Inference time |
+| --- | --- | ---: | ---: |
+| **FLUX.2-klein-4B** | Generate | 4 | ~9 s |
+| **Z-Image-Turbo** | Generate | 4 | ~18 s |
+| **FLUX.1-schnell** | Generate | 4 | ~20 s |
+| **Qwen Image 2.1 Turbo** | Generate | 8 | ~35 s |
+| **Krea 2 Turbo** | Generate | 8 | ~48 s |
+| **FLUX.2-klein-4B Edit** | Edit | 4 | ~18 s |
+| **Qwen Image 2.1 Turbo Edit** | Edit | 8 | ~52 s |
+
+Inference time excludes startup and weight loading. Models use different step counts and produce different image quality. See [performance details and the Ryzen AI Software comparison](docs/performance.md) for timing definitions and comparison settings.
 
 ---
 
@@ -107,40 +124,26 @@ The table below describes the **Beta 3 multi-model packages** for Windows and Ub
 
 ### 🖼️ Text-to-Image
 
-| Model | Model ID | Denoising steps | Time per image | Windows | Ubuntu |
-| --- | --- | ---: | ---: | :---: | :---: |
-| **FLUX.1-schnell** | `flux1-schnell` | 4 | ~20 s | ✅ | ✅ |
-| **FLUX.2-klein-4B** | `flux2-klein-4B` | 4 | ~9 s | ✅ | ✅ |
-| **Krea 2 Turbo** | `krea2-turbo` | 8 | ~48 s | ✅ | ✅ |
-| **Z-Image-Turbo** | `z-image-turbo` | 4 or 8 | ~18 s | ✅ | ✅ |
-| **Qwen Image 2.1 Turbo** | `qwen-image-2.1-turbo` | 8 | ~35 s | ✅ | ✅ |
+| Model | Model ID | Denoising steps | Windows | Ubuntu |
+| --- | --- | ---: | :---: | :---: |
+| **FLUX.1-schnell** | `flux1-schnell` | 4 | ✅ | ✅ |
+| **FLUX.2-klein-4B** | `flux2-klein-4B` | 4 | ✅ | ✅ |
+| **Krea 2 Turbo** | `krea2-turbo` | 8 | ✅ | ✅ |
+| **Z-Image-Turbo** | `z-image-turbo` | 4 or 8 | ✅ | ✅ |
+| **Qwen Image 2.1 Turbo** | `qwen-image-2.1-turbo` | 8 | ✅ | ✅ |
 
 ### ✏️ Image-to-Image (Editing)
 
-| Model | Model ID | Denoising steps | Time per image | Windows | Ubuntu |
-| --- | --- | ---: | ---: | :---: | :---: |
-| **FLUX.2-klein-4B Edit** | `flux2-klein-4B-edit` | 4 | ~18 s | ✅ | ✅ |
-| **Qwen Image 2.1 Turbo Edit** | `qwen-image-2.1-turbo-edit` | 8 | ~52 s | ✅ | ✅ |
+| Model | Model ID | Denoising steps | Windows | Ubuntu |
+| --- | --- | ---: | :---: | :---: |
+| **FLUX.2-klein-4B Edit** | `flux2-klein-4B-edit` | 4 | ✅ | ✅ |
+| **Qwen Image 2.1 Turbo Edit** | `qwen-image-2.1-turbo-edit` | 8 | ✅ | ✅ |
 
-All models use BFP16 weights. The Beta 3 workers make 1024 × 1024 images; Beta 4's FLUX.1-schnell worker also supports custom resolutions. You can switch between installed workers in the OpenWebUI model list without restarting `vgf-serve`.
+All models use BFP16 weights. All seven models run on Windows and Ubuntu when their native workers are installed. The Beta 3 workers make 1024 × 1024 images; Beta 4's FLUX.1-schnell worker also supports custom resolutions. You can switch between installed workers in the OpenWebUI model list without restarting `vgf-serve`.
 
-The times are approximate, for one 1024 × 1024 image on an AMD Ryzen AI 9 HX 370, with prompts encoded at 512 text tokens.
+Both Qwen models always run eight steps. Any client `steps` value is ignored for Qwen, including a global OpenWebUI setting of 4.
 
 Krea 2 Turbo's weights are under the [Krea 2 Community License](https://www.krea.ai/krea-2-licensing), not Apache-2.0, and its commercial use is limited; see [MODEL_LICENSES.md](MODEL_LICENSES.md). The Flux and Z-Image models in the table above are Apache-2.0. The opt-in Qwen Image 2.1 Turbo weights use the Qwen RESEARCH LICENSE AGREEMENT (research/evaluation only; separate license required for commercial use).
-
-### Compared with AMD Ryzen AI Software 1.8
-
-AMD's [Ryzen AI Software 1.8](https://ryzenai.docs.amd.com/en/latest/sd_demo.html) runs FLUX.1-schnell and FLUX.2-klein-4B on the NPU as preview demos. On the same Ryzen AI 9 HX 370, VigenFlow is faster with prompts twice as long, and it also runs three models that Ryzen AI 1.8 does not:
-
-| Model | VigenFlow | Ryzen AI Software 1.8 |
-| --- | --- | --- |
-| FLUX.1-schnell | ~20 s, 512 text tokens | ~23 s, 256 text tokens |
-| FLUX.2-klein-4B | ~9 s, 512 text tokens | ~10 s, 256 text tokens |
-| FLUX.2-klein-4B Edit | ~18 s | Not supported |
-| Krea 2 Turbo | ~48 s | Not supported |
-| Z-Image-Turbo | ~18 s | Not supported |
-
-All times are for one 1024 × 1024 image, and both FLUX comparisons use 4 steps. In our tests, Ryzen AI 1.8's FLUX demos accept prompts of up to 256 text tokens. At the same 256 text tokens, VigenFlow's FLUX.2-klein-4B takes about 8 s; VigenFlow ships only the 512-token version so that longer prompts fit.
 
 ---
 
