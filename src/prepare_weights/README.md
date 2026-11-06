@@ -16,18 +16,30 @@ bash build_ubuntu.sh               # -> prepare_base.exe
 
 ## Build and run (Windows)
 
-```bat
+```powershell
 vcpkg install nlohmann-json:x64-windows
-build_windows.bat                                  &rem -> vigenflow_win\prepare_base.exe
-vigenflow_win\prepare_base.exe --config prepare_models.jsonc --only flux2_klein_4B
+.\build_windows.bat --test   # builds the x64 executable, copies the catalog, runs the local tests
+.\vigenflow_win\prepare_base.exe --config prepare_models.jsonc --only flux2_klein_4B
+
+# Qwen's shared text-to-image and image-edit weights:
+.\vigenflow_win\prepare_base.exe --only qwen_image_2_1_turbo --weights_root C:\VigenFlow\all_model_weights
 ```
 
 `build_windows.bat` uses MSVC (it finds Visual Studio with `vswhere`) and `nlohmann/json.hpp` from vcpkg
-(`VCPKG_ROOT`, default `C:\dev\vcpkg`). The exe has the C runtime linked in, so in the package it needs only
+(`VCPKG_ROOT`, default `C:\dev\vcpkg`). It initializes the x64 toolchain even when started from an x86
+Developer Command Prompt and refreshes `vigenflow_win\prepare_models.jsonc` from the current catalog,
+including the opt-in Qwen entry. `--test` needs Python 3.9 or newer; omit it to build without Python.
+The exe has the C runtime linked in, so in the package it needs only
 `prepare_models.jsonc` beside it (`prepare\`). It starts Windows' own `curl.exe` (Windows 10 1803 and later)
-directly, not through `cmd.exe`, so paths with spaces, `&` or `%` work. Its manifest allows paths longer
+directly, not through `cmd.exe`, so paths with spaces, `&` or `%` work. Its UTF-8 process manifest also
+supports non-English user folders, model directories and packed filenames. Its manifest allows paths longer
 than 260 characters where `LongPathsEnabled` is set in the registry; without that, the download cache names
 each commit by 12 hex digits instead of 40 to keep its paths short.
+
+The copied catalog is ready for the release package's `prepare\` folder. Its `weights_root` remains
+relative to the catalog: for local development use `--config prepare_models.jsonc` as above to retain
+the source catalog's default location, or pass `--weights_root` to select your existing shared weights.
+Both Qwen hosts use the resulting `all_model_weights\qwen_image_2_1_turbo` directory as `-w`.
 
 ## Check
 
@@ -37,9 +49,10 @@ python tests\test_prepare_base.py vigenflow_win\prepare_base.exe   # Windows
 ```
 
 The check runs the real tool against a local fake Hugging Face server (no network, models or login):
-packing, a resumed multi-shard download with parallel byte ranges, a byte-exact unpack, cleanup, the
-config found from the exe's folder, Krea and Qwen license prompts, Qwen's five-stage package and notices,
-disabled-model selection, rejection of missing notices, and the one-run-per-weights-root lock.
+packing, a resumed multi-shard download with parallel byte ranges, a byte-exact unpack, cleanup,
+Unicode paths and packed filenames, config found from the exe's folder, Krea and Qwen license prompts,
+Qwen's five-stage package and notices, disabled-model selection, rejection of missing notices, and the
+one-run-per-weights-root lock.
 
 `curl` (8.3 or newer) does the downloads. Paths do not depend on the current directory:
 `prepare_models.jsonc` is read from next to `prepare_base.exe`, and its `"weights_root"` is relative to that
