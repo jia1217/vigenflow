@@ -111,9 +111,9 @@ The table below describes the **Beta 3 multi-model packages** for Windows and Ub
 | --- | --- | ---: | ---: | :---: | :---: |
 | **FLUX.1-schnell** | `flux1-schnell` | 4 | ~20 s | ✅ | ✅ |
 | **FLUX.2-klein-4B** | `flux2-klein-4B` | 4 | ~9 s | ✅ | ✅ |
-| **Krea 2 Turbo** | `krea2-turbo` | 8 | ~48 s | ✅ | ✅ |
+| **Krea 2 Turbo** | `krea2-turbo` | 8 | ~45 s | ✅ | ✅ |
 | **Z-Image-Turbo** | `z-image-turbo` | 4 or 8 | ~18 s | ✅ | ✅ |
-| **Qwen Image 2.1 Turbo** | `qwen-image-2.1-turbo` | 8 | ~35 s | ✅ | ✅ |
+| **Qwen Image 2.1 Turbo** | `qwen-image-2.1-turbo` | 8 | ~33 s | ✅ | ✅ |
 
 ### ✏️ Image-to-Image (Editing)
 
@@ -137,7 +137,7 @@ AMD's [Ryzen AI Software 1.8](https://ryzenai.docs.amd.com/en/latest/sd_demo.htm
 | FLUX.1-schnell | ~20 s, 512 text tokens | ~23 s, 256 text tokens |
 | FLUX.2-klein-4B | ~9 s, 512 text tokens | ~10 s, 256 text tokens |
 | FLUX.2-klein-4B Edit | ~18 s | Not supported |
-| Krea 2 Turbo | ~48 s | Not supported |
+| Krea 2 Turbo | ~45 s | Not supported |
 | Z-Image-Turbo | ~18 s | Not supported |
 
 All times are for one 1024 × 1024 image, and both FLUX comparisons use 4 steps. In our tests, Ryzen AI 1.8's FLUX demos accept prompts of up to 256 text tokens. At the same 256 text tokens, VigenFlow's FLUX.2-klein-4B takes about 8 s; VigenFlow ships only the 512-token version so that longer prompts fit.
