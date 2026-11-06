@@ -355,18 +355,8 @@ void download_model(const ModelEntry& m, HfClient& hf, const Options& opt) {
 
 int main(int argc, char** argv) {
     g_log_tag = "[prepare_base]";
-#ifdef _WIN32
-    struct ConsoleEncoding {
-        UINT previous = 0;
-        void enable() { previous = GetConsoleOutputCP(); if (previous) SetConsoleOutputCP(CP_UTF8); }
-        ~ConsoleEncoding() { if (previous) SetConsoleOutputCP(previous); }
-    } console_encoding;
-#endif
     try {
         Options opt = parse_args(argc, argv);
-#ifdef _WIN32
-        console_encoding.enable();  // keep error messages UTF-8 too, then restore the caller's console
-#endif
         const Config config = load_config(opt.config);
         resolve_paths(opt, config, argv[0]);
         if (opt.pack_dir.empty()) opt.pack_dir = opt.weights_root.parent_path() / "packed_weights";

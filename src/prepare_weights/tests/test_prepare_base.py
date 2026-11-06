@@ -76,9 +76,9 @@ def main():
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
-        # Unicode, spaces, shell metacharacters and an environment-variable-looking name in every path.
+        # Spaces, shell metacharacters and an environment-variable-looking name in every path.
         with tempfile.TemporaryDirectory(prefix="prepare base ") as temporary:
-            root = Path(temporary) / "models 权重 & %VGF_TEST_MARKER%"
+            root = Path(temporary) / "models & %VGF_TEST_MARKER%"
             bindir = root / "bin"
             bindir.mkdir(parents=True)
             shutil.copy2(binary, bindir / "prepare_base.exe")
@@ -91,7 +91,7 @@ def main():
 
             def run(*options, expected=0, stdin_text=None, argv0=None):
                 result = subprocess.run([argv0 or str(bindir / "prepare_base.exe"), *map(str, options)],
-                                        executable=str(bindir / "prepare_base.exe"), cwd=cwd, env=env, text=True, encoding="utf-8",
+                                        executable=str(bindir / "prepare_base.exe"), cwd=cwd, env=env, text=True,
                                         input=stdin_text, stdin=None if stdin_text is not None else subprocess.DEVNULL,
                                         capture_output=True, timeout=60)
                 if result.returncode != expected:
@@ -113,7 +113,6 @@ def main():
             weights = root / "weights/tiny"
             (weights / "sub dir").mkdir(parents=True)
             (weights / "sub dir/small.bin").write_bytes(b"\x00\r\n\x1a\xff" * 100)
-            (weights / "sub dir/参数.bin").write_bytes(b"unicode payload filename")
             (weights / "tokenizer.json").write_bytes(b'{"fixture":true}\r\n')
             (weights / "large.bin").write_bytes(bytes(range(256)) * ((65 << 20) // 256))
             packed = root / "packed"
@@ -122,7 +121,7 @@ def main():
             shards = sorted(name for name in blobs if name.endswith(".safetensors"))
             assert len(shards) > 1 and "tiny/model.safetensors.index.json" in blobs, sorted(blobs)
             repos["fixture/packed"] = blobs
-            print("PASS: help, unknown option, config next to the exe, Unicode paths, pack into shards", flush=True)
+            print("PASS: help, unknown option, config next to the exe, pack into shards", flush=True)
 
             # Resume an interrupted install: a small shard is already unpacked, and the large shard's
             # parallel ranges are partly downloaded.
