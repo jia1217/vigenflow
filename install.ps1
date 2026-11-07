@@ -2,11 +2,11 @@
 #
 #   irm https://raw.githubusercontent.com/jia1217/vigenflow/main/install.ps1 | iex
 #
-# Checks the NPU driver, downloads the latest Windows release, asks which models to download and starts
-# vgf-serve.exe in its own window, and OpenWebUI too if you want it (run with uv, so neither Docker nor
-# Python has to be installed). Run it again to update VigenFlow, update the weights or add models;
-# downloaded weights are kept. The install folder holds what installing a release zip by hand gives:
-#   vigenflow_<version>_windows_amd64\   the release package
+# Checks the NPU driver, downloads the latest Windows release, asks which models to download, starts
+# vgf-serve.exe in its own window and opens its web UI. OpenWebUI is optional (run with uv, so neither
+# Docker nor Python has to be installed). Run it again to update VigenFlow, update the weights or add
+# models; downloaded weights are kept. The install folder holds what installing a release zip by hand gives:
+#   vgf-<version>-windows\               the release package (vigenflow_<version>_windows_amd64\ before Beta 4)
 #   all_model_weights\                   the weights, shared by every version
 #   openwebui\                           OpenWebUI, its Python and its data (optional)
 #   Start VigenFlow.cmd, Start OpenWebUI.cmd, also in the Start menu under VigenFlow
@@ -16,7 +16,7 @@
 #   VIGENFLOW_MODELS               models to download, comma-separated, or all (default: ask)
 #   VIGENFLOW_ACCEPT_KREA_LICENSE  yes accepts Krea 2 Turbo's license (krea2_turbo)
 #   VIGENFLOW_ACCEPT_QWEN_LICENSE  yes accepts Qwen's license (qwen_image_2_1_turbo)
-#   VIGENFLOW_WEBUI                1 or 0: start OpenWebUI or not (default: ask)
+#   VIGENFLOW_WEBUI                1 or 0: also start OpenWebUI or not (default: ask; VigenFlow has its own web UI)
 #
 # Written for Windows PowerShell 5.1, which irm | iex runs in by default.
 
@@ -129,7 +129,8 @@ function Install-VigenFlow {
     # --- Latest release ---------------------------------------------------------------------------------
     Say 'Finding the latest VigenFlow release'
     $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -Headers @{ 'User-Agent' = 'vigenflow-install' }
-    $asset = @($release.assets | Where-Object { $_.name -like '*_windows_amd64.zip' })[0]
+    # Beta 4 names the package vgf-<version>-windows.zip; earlier releases vigenflow_<version>_windows_amd64.zip.
+    $asset = @($release.assets | Where-Object { $_.name -like 'vgf-*-windows.zip' -or $_.name -like '*_windows_amd64.zip' })[0]
     if (-not $asset) { throw "Release $($release.tag_name) has no Windows package." }
     $packageName = [IO.Path]::GetFileNameWithoutExtension($asset.name)
     $package = Join-Path $root $packageName
@@ -137,7 +138,8 @@ function Install-VigenFlow {
     $server = Join-Path $serverDir 'vgf-serve.exe'
 
     # A vgf-serve.exe started from this folder holds the port and its files; stop it, and its window.
-    Get-ChildItem -LiteralPath $root -Directory -Filter 'vigenflow_*_windows_amd64' -ErrorAction SilentlyContinue |
+    Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like 'vgf-*-windows' -or $_.Name -like 'vigenflow_*_windows_amd64' } |
         ForEach-Object { Stop-Launcher $startServer $_.FullName }
     if (Test-PortInUse $apiPort) {
         throw "Port $apiPort is in use, probably by a vgf-serve started from another folder. Close it and run this again."
@@ -151,6 +153,17 @@ function Install-VigenFlow {
         Say "Downloading $($asset.name) ($([math]::Round($asset.size / 1MB)) MB)"
         & curl.exe -fL --retry 3 -o $zip $asset.browser_download_url
         if ($LASTEXITCODE -ne 0) { throw "The download failed (curl exit code $LASTEXITCODE)." }
+        # The release's <zip>.sha256, when it has one, holds the zip's SHA-256 as its first word.
+        $sumAsset = @($release.assets | Where-Object { $_.name -eq "$($asset.name).sha256" })[0]
+        if ($sumAsset) {
+            $expected = ((& curl.exe -fsSL --retry 3 $sumAsset.browser_download_url) -join ' ').Trim() -split '\s+' | Select-Object -First 1
+            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash
+            if ($LASTEXITCODE -ne 0 -or -not $expected -or $actual -ne $expected.ToUpperInvariant()) {
+                Remove-Item -LiteralPath $zip -Force
+                throw "The downloaded $($asset.name) does not match $($sumAsset.name). Run this installer again."
+            }
+            Write-Host '  SHA-256 checked'
+        }
         if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
         Expand-Archive -LiteralPath $zip -DestinationPath $staging
         if (Test-Path -LiteralPath $package) { Remove-Item -LiteralPath $package -Recurse -Force }
@@ -190,8 +203,9 @@ Models you already have are only updated.
     # Asked now, so nothing waits for an answer after the long downloads.
     $webui = $env:VIGENFLOW_WEBUI
     if (-not $webui) {
-        $webui = '1'
-        if ((Ask 'Also start OpenWebUI, the chat page you use VigenFlow in (about 2 GB the first time)? [Y/n]' 'y') -match '^[Nn]') { $webui = '0' }
+        # VigenFlow has its own web UI; OpenWebUI adds a chat page on top of it.
+        $webui = '0'
+        if ((Ask 'Also install OpenWebUI, a chat page for VigenFlow (about 2 GB the first time)? [y/N]' 'n') -match '^[Yy]') { $webui = '1' }
     }
 
     Say 'Downloading the model weights (the first time takes a while; an interrupted download resumes)'
@@ -299,15 +313,19 @@ Models you already have are only updated.
     }
 
     # --- Done -------------------------------------------------------------------------------------------
+    $uiUrl = "http://127.0.0.1:$apiPort/"
     Say 'VigenFlow is running'
     Write-Host "  Models downloaded: $($installed -join ', ')"
+    Write-Host "  Web UI: $uiUrl (pick a model, type a prompt, generate)"
     if ($webuiUrl) {
-        Write-Host "  1. Open $webuiUrl and create an account (the first one is the admin)."
-        Write-Host "  2. Start a new chat and pick a VigenFlow model you downloaded, for example $defaultModel."
-        Write-Host '  3. Turn on Image under Integrations in the message box, and type what you want to see.'
+        Write-Host "  OpenWebUI: open $webuiUrl, create an account (the first one is the admin), start a chat with a"
+        Write-Host '  VigenFlow model and turn on Image under Integrations in the message box.'
     } else {
-        Write-Host "  Connect your OpenWebUI to http://127.0.0.1:$apiPort/v1 as in the VigenFlow README."
+        Start-Process $uiUrl
+        Write-Host "  To use OpenWebUI instead, connect it to http://127.0.0.1:$apiPort/v1 as in the VigenFlow README."
     }
+    Write-Host '  LoRA styles: paste your Civitai API key into "civitai_token" in'
+    Write-Host "  $(Join-Path $serverDir 'exe_models')\<model>\loras.jsonc, and add or remove entries there."
     Write-Host ''
     Write-Host '  After a restart, start VigenFlow (and OpenWebUI) again from the Start menu, under VigenFlow,'
     Write-Host "  or with the .cmd files in $root."
