@@ -2,26 +2,23 @@
 
 **Create images locally with AMD NPU acceleration and a built-in browser UI.**
 
-**[v0.2.0 Beta 4 — FLUX.1-schnell prerelease](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4)** brings prompts, LoRA styles, image settings, previews, and PNG downloads together in your browser. This package supports **FLUX.1-schnell on Ubuntu x86-64**, using **CPU + AMD NPU inference**. OpenWebUI is optional.
+**[v0.2.0 Beta 4](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4)** adds a **built-in web UI**: generate and edit images with all seven models from your browser, on **Windows and Ubuntu**. Everything runs locally with **CPU + AMD NPU inference**; no Python, Docker or extra frontend is needed, and OpenWebUI is optional.
 
-> **Coming soon:** Windows builds and support for additional models in **Beta 4**, with the built-in browser UI.
-
-- 🎨 **LoRA styles:** select styles and add their trigger words, or configure your own LoRAs through `loras.jsonc`.
-- 🖼️ **Custom resolutions:** 16–2048 pixels per side, in multiples of 16, for square, portrait, and landscape images.
-- ⚡ **Two memory modes:** Balanced reduces RAM usage; Performance keeps weights and reusable buffers loaded for faster subsequent images.
+- 🌐 **Web UI:** pick a model, enter a prompt, and download the PNG. Image editing has a before/after slider.
+- 📐 **Custom image sizes:** 16–2048 pixels per side, in multiples of 16, for all seven models, including editing.
+- 🎨 **LoRA styles:** select a style from the model's list and add its trigger words; its weights download on first use. Configure your own LoRAs through `loras.jsonc`.
+- 🖼️ **Easier editing:** FLUX.2 and Qwen edit models accept one reference image of any size, not just 1024 × 1024.
 - ⏱️ **Visible timings:** E2E runtime in seconds beside the seed and in the completion message, with stage timings below the image.
 
-**[Download Beta 4](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.4/vgf_0.2.0-beta.4_ubuntu_amd64_flux1.zip)** · **[Get started](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4)** · **[Beta 4 examples](#-beta-4-examples)**
+**[Download for Windows](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.4/vgf_0.2.0-beta.4_windows_amd64.zip)** · **[Download for Ubuntu](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.4/vgf_0.2.0-beta.4_ubuntu_amd64.zip)** · **[Get started](#-use-the-built-in-browser-ui)** · **[Beta 4 examples](#-beta-4-examples)**
 
-> **Upgrading from Beta 3?** The model weight paths are unchanged. Extract Beta 4 beside your existing `all_model_weights` folder to reuse `all_model_weights/flux1_schnell` without downloading the weights again.
-
-VigenFlow also supports **FLUX.2, Z-Image, Krea 2, and Qwen Image** for generation and editing. The **[Beta 3 packages](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.3)** include all seven models on Windows and Ubuntu; the Beta 4 prerelease above includes **FLUX.1-schnell only**. The existing [Quick Install](docs/quick-install.md) installs the multi-model release with OpenWebUI.
+> **Upgrading from Beta 3?** The model weight paths are unchanged. Extract Beta 4 beside your existing `all_model_weights` folder to reuse your weights without downloading them again. Stop the Beta 3 server first; the OpenAI-compatible API is still at `/v1`.
 
 ---
 
 ## 🖼️ Beta 4 Examples
 
-These examples preview **Beta 4's built-in web UI**, with **LoRA styles**, **custom image sizes**, and **image editing with a before/after comparison**. The Windows build and additional Beta 4 models shown here are previews of upcoming support. Click any image to open the original PNG at full size.
+These examples show **Beta 4's built-in web UI**, with **LoRA styles**, **custom image sizes**, and **image editing with a before/after comparison**. Click any image to open the original PNG at full size.
 
 ### Generated images
 
@@ -63,9 +60,9 @@ The screenshots show the selected model, style, image size, and result.
 
 ## 🎨 Gallery
 
-### More models and image editing · Beta 3
+### More models and image editing
 
-The multi-model release includes the examples below, generated on the NPU at **1024 × 1024**. Click an image, or open the **[full gallery](docs/gallery.md)**, for more examples and the exact prompts. These additional models are available in Beta 3, outside the FLUX.1-only Beta 4 package.
+The examples below were generated on the NPU at **1024 × 1024**. Click an image, or open the **[full gallery](docs/gallery.md)**, for more examples and the exact prompts.
 
 <!-- One image per text-to-image model here, up to five per row; the editing table below shows an input image and its edits. Each model's full set and prompts go in docs/gallery.md. -->
 <table>
@@ -103,7 +100,7 @@ The multi-model release includes the examples below, generated on the NPU at **1
 
 ## 🧠 Supported Models
 
-The table below describes the **Beta 3 multi-model packages** for Windows and Ubuntu. **Beta 4 currently packages FLUX.1-schnell only for Ubuntu**, with LoRAs, custom resolutions, and Balanced/Performance memory modes.
+The Beta 4 packages for Windows and Ubuntu include all seven models, each with LoRA styles and custom image sizes.
 
 ### 🖼️ Text-to-Image
 
@@ -122,7 +119,7 @@ The table below describes the **Beta 3 multi-model packages** for Windows and Ub
 | **FLUX.2-klein-4B Edit** | `flux2-klein-4B-edit` | 4 | ~18 s | ✅ | ✅ |
 | **Qwen Image 2.1 Turbo Edit** | `qwen-image-2.1-turbo-edit` | 8 | ~52 s | ✅ | ✅ |
 
-All models use BFP16 weights. The Beta 3 workers make 1024 × 1024 images; Beta 4's FLUX.1-schnell worker also supports custom resolutions. You can switch between installed workers in the OpenWebUI model list without restarting `vgf-serve`.
+All models use BFP16 weights and make images from 16 to 2048 pixels per side, in multiples of 16. The two editing models share their generation model's weights, so they need no separate download. You can switch between installed models in the web UI or the OpenWebUI model list without restarting `vgf-serve`.
 
 The times are approximate, for one 1024 × 1024 image on an AMD Ryzen AI 9 HX 370, with prompts encoded at 512 text tokens.
 
@@ -149,7 +146,7 @@ All times are for one 1024 × 1024 image, and both FLUX comparisons use 4 steps.
 Planned for a future release:
 
 - [ ] **SeedVR2** and **VOSR2** support for image upscaling.
-- [ ] Extend **BFP16 LoRA support** to more model packages. FLUX.1-schnell LoRAs are available now in the [Beta 4 Ubuntu prerelease](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4).
+- [x] ~~Extend **BFP16 LoRA support** to more model packages.~~ All seven models support LoRA styles in [Beta 4](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4).
 
 Which model should come next? Vote in [issue #4](https://github.com/jia1217/vigenflow/issues/4).
 
@@ -160,7 +157,7 @@ Which model should come next? Vote in [issue #4](https://github.com/jia1217/vige
 You need:
 
 - [ ] **An AMD Ryzen AI 300-series processor** with an XDNA 2 NPU (`npu2`). VigenFlow is tested on the [AMD Ryzen AI 9 HX 370](https://www.amd.com/en/newsroom/press-releases/2024-10-10-amd-launches-new-ryzen-ai-pro-300-series-processo.html); other processors need matching NPU binaries and runtime support.
-- [ ] **Windows x64 or Ubuntu 24.04 x86_64.**
+- [ ] **Windows x64 or Ubuntu 24.04 x86_64**, on a CPU with AVX-512.
 - [ ] **Free disk space for the models you want:** 8 GB for FLUX.2-klein-4B alone, about 65 GB for the original four weight sets, or about 85 GB including Qwen, plus up to 10 GB while they download. [Step 3](docs/installation.md#-step-3-download-the-model-weights-one-time) lists each model's size.
 - [ ] **The NPU driver**, installed once as shown below.
 
@@ -187,8 +184,8 @@ Ubuntu has no official XRT packages. The PPA's `amdxdna-dkms` driver replaces th
 
 ### 🧭 Choose How to Install
 
-- **[Beta 4 · FLUX.1-schnell on Ubuntu](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4):** download the package and use the built-in browser UI, with LoRAs and custom sizes.
-- **[Quick Install](docs/quick-install.md) · multi-model release:** one command installs VigenFlow and OpenWebUI and downloads the models you choose.
+- **[Beta 4 packages](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4) · recommended:** download the Windows or Ubuntu package and use the [built-in browser UI](#-use-the-built-in-browser-ui), with all seven models, LoRAs and custom sizes.
+- **[Quick Install](docs/quick-install.md):** one command installs VigenFlow and OpenWebUI and downloads the models you choose.
 - **[Beta 3 release packages](docs/installation.md):** download and start each part yourself, then connect [OpenWebUI Desktop](https://github.com/open-webui/desktop).
 
 ---
@@ -233,17 +230,39 @@ Model weights are **not** covered by this license. Each model and LoRA keeps its
 
 ## 📦 Installation
 
-See the **[manual installation guide](docs/installation.md)** for Beta 3 release packages, model downloads, and server startup on Windows and Ubuntu.
+For Beta 4, see [Use the Built-in Browser UI](#-use-the-built-in-browser-ui) above. The **[manual installation guide](docs/installation.md)** covers the Beta 3 release packages, model downloads, and server startup on Windows and Ubuntu.
 
 ---
 
 ## 🖼️ Use the Built-in Browser UI
 
-**Beta 4 package:** run `bash start.sh` and open **http://127.0.0.1:11285/**. Its FLUX.1-schnell UI includes LoRAs and custom resolutions; see [the Beta 4 release instructions](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4).
+Download and extract the [Beta 4 package](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4) for your system, then download the weights for a model and start the server from the package folder.
 
-Enter a prompt, select optional LoRAs, choose an image size and seed, and click **Generate image**. The result includes a PNG download, a full-size preview, and E2E runtime in seconds. **Advanced settings** contains the Balanced and Performance memory modes.
+#### 🪟 Windows
 
-The UI is included in the Beta 4 server executable and uses the same model weights as the API. It needs no separate UI installation or account. The Beta 3 packages and current quick installers use OpenWebUI; see the [connection guide](docs/openwebui.md).
+```powershell
+.\prepare\prepare_base.exe --only flux1_schnell
+.\server_running\start_windows.bat --model flux1-schnell
+```
+
+Open **http://127.0.0.1:11283/**. Use `--port 11286` for another port.
+
+#### 🐧 Ubuntu
+
+```bash
+prepare/prepare_base.exe --only flux1_schnell
+bash start.sh
+```
+
+Open **http://127.0.0.1:11285/**. Use `VGF_PORT=11290 bash start.sh` for another port.
+
+Other weight options are `flux2_klein_4B` (FLUX.2 generation and editing), `z_image_turbo`, `krea2_turbo` and `qwen_image_2_1_turbo` (Qwen generation and editing); Krea 2 and Qwen ask you to accept their model terms. The weights are saved in `all_model_weights` beside the package, so later versions can reuse them. Add `-k true` to the start command to keep every PNG in `server_running/images`, and press **Ctrl+C** to stop the server.
+
+Pick a model, enter a prompt, select optional LoRAs, choose an image size and seed, and click **Generate image**. For the editing models, choose an **Image to edit** and describe the change. The result includes a PNG download, a full-size preview, and E2E runtime in seconds.
+
+Each model's LoRA styles are listed in `server_running/exe_models/<model>/loras.jsonc`. Most Civitai downloads need your Civitai API key in that file's `"civitai_token"` field. Add or remove entries as you like, then refresh the browser page; no restart is needed.
+
+The UI is included in the server executable and uses the same model weights as the API. It needs no separate UI installation or account. To use OpenWebUI instead, see the [connection guide](docs/openwebui.md).
 
 ---
 
