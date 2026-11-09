@@ -26,7 +26,6 @@ SOURCES=(
   "${SOURCES[@]}" \
   -I./src -I./include \
   -pthread \
-  -lboost_system \
   -lboost_filesystem -lpng \
   ${LDFLAGS:-} \
   -o "$OUT"
