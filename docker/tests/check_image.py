@@ -12,7 +12,6 @@ from pathlib import Path
 import shlex
 import subprocess
 import time
-from urllib.error import URLError
 from urllib.request import urlopen
 
 MODELS = {'flux1-schnell', 'flux2-klein-4B', 'flux2-klein-4B-edit', 'krea2-turbo',
@@ -44,7 +43,7 @@ def main():
                 with urlopen(base + '/health', timeout=1) as response:
                     assert response.status == 200
                 break
-            except URLError:
+            except OSError:  # URLError, or a reset while Docker's port proxy waits for the server
                 time.sleep(0.1)
         else:
             raise RuntimeError('Server did not become healthy')
