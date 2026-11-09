@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Check a built Docker/Podman image without an NPU or model weights.
 
-python3 docker/tests/check_image.py vigenflow:qwen-beta3 [--engine 'sudo docker']
+python3 docker/tests/check_image.py vigenflow:beta4 [--engine 'sudo docker']
 Starts a temporary container, checks server discovery and packaged checksums, then removes it.
-This does not run image generation or editing.
+This does not run image generation or editing. The workers need AVX-512, so their --help check is
+skipped on a machine without it.
 """
 import argparse
 import json
+from pathlib import Path
 import shlex
 import subprocess
 import time
@@ -53,11 +55,18 @@ def main():
         help_text = run('exec', container, '/usr/local/bin/vigenflow', '--help')
         assert all(model in help_text for model in MODELS)
         run('exec', container, '/usr/local/bin/vigenflow', 'prepare', '--help')
-        run('exec', container, 'sh', '-ec',
-            'test ! -e ' + APP + '/server_running/lib; '
-            'for worker in ' + APP + '/server_running/exe_models/*/run.exe; do '
-            '"$worker" --help >/dev/null; done')
-        print('PASS: image checksums, entrypoint help, health, all seven model IDs, and workers without lib/')
+        with urlopen(base + '/', timeout=5) as response:
+            assert response.status == 200 and b'<html' in response.read().lower(), 'no browser UI at /'
+        run('exec', container, 'test', '!', '-e', APP + '/server_running/lib')
+        checked = 'workers without lib/'
+        if 'avx512f' in Path('/proc/cpuinfo').read_text().split():
+            run('exec', container, 'sh', '-ec',
+                'for worker in ' + APP + '/server_running/exe_models/*/run.exe; do '
+                '"$worker" --help >/dev/null; done')
+            checked += ' and their --help'
+        else:
+            print('No AVX-512 on this machine: worker --help check skipped')
+        print('PASS: image checksums, entrypoint help, health, browser UI, all seven model IDs, ' + checked)
     except Exception:
         print(run('logs', container))
         raise

@@ -4,23 +4,23 @@
 #   curl -fsSL https://raw.githubusercontent.com/jia1217/vigenflow/main/docker/install.sh | bash
 #
 # Checks the NPU driver (and offers to install it on Ubuntu), installs Docker on Ubuntu when there is no
-# Docker or Podman, asks which models to download, then starts VigenFlow and OpenWebUI. Run it again to
-# update VigenFlow, update the weights or add models; downloaded weights are kept.
+# Docker or Podman, asks which models to download, then starts VigenFlow, whose browser UI is at
+# http://localhost:11283/. Run it again to update VigenFlow, update the weights or add models;
+# downloaded weights and LoRAs are kept.
 #
 # Unattended runs:
 #   VIGENFLOW_MODELS=flux2_klein_4B,z_image_turbo   models to download, or "all" (default: ask; 1 = FLUX.2)
 #   VIGENFLOW_ACCEPT_KREA_LICENSE=yes               accept Krea 2 Turbo's license (krea2_turbo)
 #   VIGENFLOW_ACCEPT_QWEN_LICENSE=yes               accept Qwen's license (qwen_image_2_1_turbo)
-#   VIGENFLOW_WEBUI=0                               do not start OpenWebUI
-#   VIGENFLOW_IMAGE, VIGENFLOW_WEBUI_IMAGE           other images
+#   CIVITAI_TOKEN, HF_TOKEN                         passed to VigenFlow for LoRA downloads
+#   VIGENFLOW_IMAGE                                 another image
 set -euo pipefail
 
 IMAGE="${VIGENFLOW_IMAGE:-ghcr.io/jia1217/vigenflow:latest}"
-WEBUI_IMAGE="${VIGENFLOW_WEBUI_IMAGE:-ghcr.io/open-webui/open-webui:v0.11.4}"
 WEIGHTS_VOLUME=vigenflow-weights
 WEIGHTS_DIR=/opt/vigenflow/all_model_weights
 PORT=11283
-WEBUI_NAME=vigenflow-webui  # not open-webui, so an OpenWebUI the user already runs is left alone
+OLD_WEBUI_NAME=vigenflow-webui  # the OpenWebUI container that installers before Beta 4 started
 
 say() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 die() { printf '\nError: %s\n' "$*" >&2; exit 1; }
@@ -147,8 +147,7 @@ fi
 say "Downloading the model weights (the first time takes a while; an interrupted download resumes)"
 prepare_ok=1
 for m in "${SELECTED_MODELS[@]}"; do
-    # Select each weight set explicitly: Qwen is disabled in the default catalog.
-    # Keep each license acceptance scoped to its own model.
+    # One model per prepare run, so that each license acceptance applies to its own model only.
     PREPARE_ARGS=(--only "$m")
     case "$m" in
         krea2_turbo)
@@ -182,10 +181,16 @@ done
 
 # --- Start VigenFlow ----------------------------------------------------------------------------------
 say "Starting VigenFlow (default model: $DEFAULT_MODEL)"
+# LoRAs download inside the container, into the weights volume; most Civitai LoRAs need a token.
+TOKEN_FLAGS=()
+for token in CIVITAI_TOKEN HF_TOKEN; do
+    if [ -n "${!token:-}" ]; then TOKEN_FLAGS+=(-e "$token=${!token}"); fi
+done
 "${DOCKER[@]}" rm -f vigenflow >/dev/null 2>&1 || true
 "${DOCKER[@]}" run -d --name vigenflow "${NPU_FLAGS[@]}" \
     -p "127.0.0.1:$PORT:$PORT" \
     -v "$WEIGHTS_VOLUME:$WEIGHTS_DIR" \
+    ${TOKEN_FLAGS[@]+"${TOKEN_FLAGS[@]}"} \
     --restart unless-stopped \
     "$IMAGE" serve --model "$DEFAULT_MODEL" >/dev/null
 for _ in $(seq 30); do
@@ -197,51 +202,24 @@ if ! curl -fsS "http://127.0.0.1:$PORT/v1/models" >/dev/null 2>&1; then
     die "VigenFlow did not start; its log is above."
 fi
 
-# --- OpenWebUI ----------------------------------------------------------------------------------------
-WEBUI_URL=""
-if [ "${VIGENFLOW_WEBUI:-1}" != 0 ]; then
-    "${DOCKER[@]}" rm -f "$WEBUI_NAME" >/dev/null 2>&1 || true
-    WEBUI_PORT=8080
-    while ss -ltnH "sport = :$WEBUI_PORT" 2>/dev/null | grep -q .; do WEBUI_PORT=$((WEBUI_PORT + 1)); done
-    say "Starting OpenWebUI on port $WEBUI_PORT (the first start downloads it and takes a few minutes)"
-    # Host network: OpenWebUI reaches VigenFlow at 127.0.0.1, an address the browser can open too. The
-    # connection settings apply on the first start only; later they are kept in the vigenflow-webui volume.
-    "${DOCKER[@]}" run -d --name "$WEBUI_NAME" --network host \
-        -v vigenflow-webui:/app/backend/data \
-        -e HOST=127.0.0.1 -e PORT="$WEBUI_PORT" \
-        -e ENABLE_OLLAMA_API=False \
-        -e OPENAI_API_BASE_URL="http://127.0.0.1:$PORT/v1" -e OPENAI_API_KEY=vigenflow \
-        -e ENABLE_IMAGE_GENERATION=True -e IMAGE_GENERATION_ENGINE=openai \
-        -e IMAGES_OPENAI_API_BASE_URL="http://127.0.0.1:$PORT/v1" -e IMAGES_OPENAI_API_KEY=vigenflow \
-        --restart unless-stopped \
-        "$WEBUI_IMAGE" >/dev/null
-    WEBUI_URL="http://localhost:$WEBUI_PORT"
-    for _ in $(seq 180); do
-        curl -fsS "http://127.0.0.1:$WEBUI_PORT/health" >/dev/null 2>&1 && break
-        sleep 2
-    done
-    curl -fsS "http://127.0.0.1:$WEBUI_PORT/health" >/dev/null 2>&1 ||
-        say "OpenWebUI is still starting; if the page does not open yet, wait a minute ($D logs -f $WEBUI_NAME)"
-fi
-
-CONTAINERS="vigenflow${WEBUI_URL:+ $WEBUI_NAME}"
-
 # --- Done ---------------------------------------------------------------------------------------------
 say "VigenFlow is running"
 printf '  Models downloaded: %s\n' "${INSTALLED[*]}"
-if [ -n "$WEBUI_URL" ]; then
-    cat <<EOF
-  1. Open $WEBUI_URL and create an account (the first one is the admin).
-  2. Start a new chat and pick a VigenFlow model you downloaded, for example $DEFAULT_MODEL.
-  3. Turn on Image under Integrations in the message box, and type what you want to see.
-     The time each image took is shown under it.
-EOF
-else
-    printf '  Connect your OpenWebUI to http://127.0.0.1:%s/v1 as in the VigenFlow README.\n' "$PORT"
-fi
 cat <<EOF
+  Open http://localhost:$PORT/ in your browser, pick a model you downloaded, type a prompt and
+  generate. The image size and LoRA styles are on the same page; the editing models take an image.
 
   Log:                               $D logs -f vigenflow
-  Stop / start:                      $D stop $CONTAINERS   /   $D start $CONTAINERS
+  Stop / start:                      $D stop vigenflow   /   $D start vigenflow
   Update, or add models:             run this installer again.
 EOF
+# Installers before Beta 4 also started OpenWebUI. VigenFlow no longer uses it; it is left as it is,
+# because its volume holds the user's chats.
+if "${DOCKER[@]}" container inspect "$OLD_WEBUI_NAME" >/dev/null 2>&1; then
+    cat <<EOF
+
+  VigenFlow no longer uses OpenWebUI. To remove the one an earlier install started:
+  Remove it:                         $D rm -f $OLD_WEBUI_NAME
+  Then remove its chats too:         $D volume rm $OLD_WEBUI_NAME
+EOF
+fi

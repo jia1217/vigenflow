@@ -1,8 +1,9 @@
 name: Vigenflow Server Docker Image
 
-# Builds docker/Dockerfile, the image users run (docs/docker.md). A v* tag or a manual run pushes it
-# to ghcr.io/<owner>/vigenflow; pull requests only build it. latest, which docker/install.sh pulls,
-# follows v* tags and manual runs on the default branch.
+# Builds docker/Dockerfile, the image users run (docs/docker.md), from the release package that the
+# Dockerfile pins (VIGENFLOW_VERSION). A v* tag or a manual run pushes it to ghcr.io/<owner>/vigenflow
+# as that version and as latest, which docker/install.sh pulls; pull requests only build it. Each
+# build that is not cached downloads the release zip, which adds one to its download count.
 
 on:
   push:
@@ -11,12 +12,6 @@ on:
   pull_request:
     paths:
       - "docker/**"
-      - "src/exe_models/**"
-      - "src/lib/**"
-      - "src/models/**"
-      - "src/npu_files/**"
-      - "src/prepare_weights/**"
-      - "src/server_unified/**"
       - ".dockerignore"
       - ".github/workflows/docker-server.yml"
   workflow_dispatch:
@@ -50,6 +45,9 @@ jobs:
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           echo "name=ghcr.io/${owner}/${IMAGE_BASENAME}" >> "$GITHUB_OUTPUT"
+          version="$(sed -n 's/^ARG VIGENFLOW_VERSION=//p' docker/Dockerfile)"
+          test -n "$version"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -61,8 +59,9 @@ jobs:
           images: ${{ steps.image.outputs.name }}
           flavor: |
             latest=false
+          # The image's version is the package inside it, not the git tag that triggered the build.
           tags: |
-            type=semver,pattern={{version}}
+            type=raw,value=${{ steps.image.outputs.version }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=branch

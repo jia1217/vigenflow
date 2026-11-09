@@ -25,6 +25,8 @@ if args == ['--version']:
     print('Docker version test')
 elif args == ['context', 'show']:
     print('default')
+elif args[:2] == ['container', 'inspect']:
+    sys.exit(0 if (root / 'old_webui').exists() else 1)
 elif args and args[0] == 'run' and 'prepare' in args:
     options = args[args.index('prepare') + 1:]
     assert options[0] == '--only', options
@@ -42,12 +44,15 @@ elif args and args[0] == 'run' and '-d' in args:
 
 
 class InstallerTest(unittest.TestCase):
-    def run_installer(self, models=None, *, krea=False, qwen=False, installed=()):
+    def run_installer(self, models=None, *, krea=False, qwen=False, installed=(),
+                      old_webui=False, extra_env=None):
         with tempfile.TemporaryDirectory(prefix='vgf-installer-test-') as tmp:
             root = Path(tmp)
             bindir = root / 'bin'
             bindir.mkdir()
             (root / 'installed.json').write_text(json.dumps(list(installed)))
+            if old_webui:
+                (root / 'old_webui').touch()
             docker = bindir / 'docker'
             docker.write_text(f'#!{sys.executable}\n' + FAKE_DOCKER)
             docker.chmod(0o755)
@@ -63,12 +68,15 @@ class InstallerTest(unittest.TestCase):
             env = {key: value for key, value in os.environ.items()
                    if not key.startswith('VIGENFLOW_')}
             env.update(PATH=str(bindir) + ':' + os.defpath, BASH_ENV=str(startup),
-                       VGF_TEST_STATE=str(root), VIGENFLOW_WEBUI='0',
+                       VGF_TEST_STATE=str(root),
                        VIGENFLOW_IMAGE='vigenflow:test',
                        VIGENFLOW_ACCEPT_KREA_LICENSE='yes' if krea else 'no',
                        VIGENFLOW_ACCEPT_QWEN_LICENSE='yes' if qwen else 'no')
+            env.pop('CIVITAI_TOKEN', None)
+            env.pop('HF_TOKEN', None)
             if models is not None:
                 env['VIGENFLOW_MODELS'] = models
+            env.update(extra_env or {})
             result = subprocess.run(['bash', str(INSTALLER)], cwd=root, env=env,
                                     stdin=subprocess.DEVNULL, capture_output=True, text=True,
                                     start_new_session=True, timeout=20)
@@ -132,6 +140,30 @@ class InstallerTest(unittest.TestCase):
         self.assertFalse(any(c[0] == 'pull' for c in calls))
         self.assertEqual(prepares, [])
         self.assertEqual(starts, [])
+
+    def test_only_the_built_in_ui_is_started(self):
+        result, calls, _, starts = self.run_installer()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(starts, [['--model', 'flux2-klein-4B']])
+        self.assertEqual([c for c in calls if c[0] == 'run' and '-d' in c and 'serve' not in c], [])
+        self.assertIn('http://localhost:11283/', result.stdout)
+        self.assertNotIn('vigenflow-webui', result.stdout)
+
+    def test_old_openwebui_is_left_alone_with_a_note(self):
+        result, calls, _, _ = self.run_installer(old_webui=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(any('vigenflow-webui' in c and c[0] in ('rm', 'run', 'stop') for c in calls))
+        self.assertIn('rm -f vigenflow-webui', result.stdout)
+
+    def test_lora_tokens_reach_the_server_only_when_set(self):
+        result, calls, _, _ = self.run_installer(extra_env={'CIVITAI_TOKEN': 'abc'})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        server = [c for c in calls if c[0] == 'run' and 'serve' in c][0]
+        self.assertIn('CIVITAI_TOKEN=abc', server)
+        self.assertFalse(any(arg.startswith('HF_TOKEN') for arg in server))
+        result, calls, _, _ = self.run_installer()
+        server = [c for c in calls if c[0] == 'run' and 'serve' in c][0]
+        self.assertFalse(any('TOKEN' in arg for arg in server))
 
 
 if __name__ == '__main__':

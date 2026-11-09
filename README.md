@@ -185,14 +185,14 @@ Ubuntu has no official XRT packages. The PPA's `amdxdna-dkms` driver replaces th
 ### 🧭 Choose How to Install
 
 - **[Beta 4 packages](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4) · recommended:** download the Windows or Ubuntu package and use the [built-in browser UI](#-use-the-built-in-browser-ui), with all seven models, LoRAs and custom sizes.
-- **[Quick Install](docs/quick-install.md):** one command installs VigenFlow and OpenWebUI and downloads the models you choose.
+- **[Quick Install](docs/quick-install.md):** one command installs VigenFlow with its built-in web UI and downloads the models you choose.
 - **[Beta 3 release packages](docs/installation.md):** download and start each part yourself, then connect [OpenWebUI Desktop](https://github.com/open-webui/desktop).
 
 ---
 
 ## ⚡ Quick Install
 
-See the **[Quick Install guide](docs/quick-install.md)** for one-command setup on Windows or Ubuntu with OpenWebUI.
+See the **[Quick Install guide](docs/quick-install.md)** for one-command setup on Windows or Ubuntu.
 
 ---
 

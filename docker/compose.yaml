@@ -1,8 +1,7 @@
 # VigenFlow with Docker Compose (docs/docker.md). From the repository root:
 #
 #   docker compose -f docker/compose.yaml run --rm vigenflow prepare   # download the weights once
-#   docker compose -f docker/compose.yaml up -d                        # vgf-serve on 127.0.0.1:11283
-#   docker compose -f docker/compose.yaml --profile webui up -d        # and OpenWebUI on port 8080
+#   docker compose -f docker/compose.yaml up -d                        # browser UI at http://127.0.0.1:11283/
 
 services:
   vigenflow:
@@ -24,29 +23,11 @@ services:
       - "127.0.0.1:11283:11283"
     # Qwen-only setup: VIGENFLOW_MODEL=qwen-image-2.1-turbo docker compose -f docker/compose.yaml up -d
     command: ["serve", "--model", "${VIGENFLOW_MODEL:-z-image-turbo}"]
-    restart: unless-stopped
-
-  # OpenWebUI uses the host network so that it reaches vgf-serve at 127.0.0.1:11283, which vgf-serve
-  # publishes only to this computer.
-  open-webui:
-    profiles: ["webui"]
-    image: ghcr.io/open-webui/open-webui:v0.11.4
-    network_mode: host
     environment:
-      # Read on the first start only; later, change them in Admin Panel > Settings.
-      ENABLE_OLLAMA_API: "False"
-      OPENAI_API_BASE_URL: http://127.0.0.1:11283/v1
-      OPENAI_API_KEY: vigenflow
-      ENABLE_IMAGE_GENERATION: "True"
-      IMAGE_GENERATION_ENGINE: openai
-      IMAGES_OPENAI_API_BASE_URL: http://127.0.0.1:11283/v1
-      IMAGES_OPENAI_API_KEY: vigenflow
-    volumes:
-      - open-webui:/app/backend/data
-    depends_on:
-      - vigenflow
+      # LoRA downloads: most Civitai LoRAs need a Civitai API key. Unset means empty.
+      CIVITAI_TOKEN: ${CIVITAI_TOKEN:-}
+      HF_TOKEN: ${HF_TOKEN:-}
     restart: unless-stopped
 
 volumes:
   vigenflow-weights:
-  open-webui:
