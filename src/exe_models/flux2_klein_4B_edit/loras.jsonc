@@ -1,0 +1,38 @@
+// FLUX.2-klein-4B Edit: LoRA list for this package's image editing worker.
+// API model: flux2-klein-4B-edit
+// Edit this file, then click Refresh in the browser to reload the list.
+// Generation and editing keep separate lists and share the same LoRA weight folder.
+//
+// From this directory, inspect the list without loading or downloading weights:
+//   ./run.exe --list_loras
+//   ./run.exe --lora_config loras.jsonc --list_loras
+// Add these options to a generation or editing command:
+//   --lora pixelart   select a configured name; repeat --lora for several
+//   --lora none   disable all LoRAs for this request
+//   --lora_scale 0.8   override the scales of every LoRA selected for the request
+// With no --lora option, the CLI uses entries whose "enabled" is true.
+// Quote names containing spaces. The browser and API use these exact names.
+//
+// "file" is relative to this configuration file's directory. The shared folder is:
+//   ../../../../all_model_weights/flux2_klein_4B/loras/
+// A missing file is downloaded from "source" when selected for generation or editing.
+// "trigger" contains optional prompt words; "scale" is the configured merge strength.
+// The "license" field records supplied metadata and is not checked by the worker.
+// Civitai authentication: CIVITAI_TOKEN in the environment takes precedence over
+// this file's "civitai_token". Keep credentials private when sharing the package.
+// JSON with // comments is accepted; trailing commas are not.
+{
+  "civitai_token": "",
+  "loras": [
+    {
+      "name": "Elusarca's Scribbly Doodle LoRA | Klein 9B & 4B",
+      "file": "../../../../all_model_weights/flux2_klein_4B/loras/klein4b-doodle_v1.safetensors",
+      "scale": 1.0,
+      "trigger": "Redraw this image in the most clumsy, scribbly, and utterly pathetic way possible. Use a white background, and make it look like it was drawn by a terrible artist. It should be vaguely similar but also not really, kind of matching but also off in a confusing, awkward way, with that low-quality pixel-by-pixel feel that really emphasizes how ridiculously bad it is.",
+      "source": "https://civitai.com/models/2593550/elusarcas-scribbly-doodle-lora-or-klein-9b-and-4b?modelVersionId=2913489",
+      "license": "Civitai permissions: generated images may not be sold, may run on paid generators, merges allowed, no credit needed; the LoRA itself may not be sold",
+      "enabled": false
+    }
+
+  ]
+}

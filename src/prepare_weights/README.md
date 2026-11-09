@@ -55,9 +55,9 @@ relative to the current directory as usual.
 | `flux2_klein_4B` | [Kelsey1217/FLUX.2-klein-4B-NPU-BFP16](https://huggingface.co/Kelsey1217/FLUX.2-klein-4B-NPU-BFP16) | 8 GB |
 | `krea2_turbo` | [Kelsey1217/Krea-2-Turbo-NPU-BFP16](https://huggingface.co/Kelsey1217/Krea-2-Turbo-NPU-BFP16) | 19 GB |
 | `z_image_turbo` | [Kelsey1217/Z-Image-Turbo-NPU-BFP16](https://huggingface.co/Kelsey1217/Z-Image-Turbo-NPU-BFP16) | 12 GB |
-| `qwen_image_2_1_turbo` (opt-in) | [Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16](https://huggingface.co/Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16) | 19.59 GB / 18.24 GiB |
+| `qwen_image_2_1_turbo` | [Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16](https://huggingface.co/Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16) | 19.59 GB / 18.24 GiB |
 
-All five repositories are public; the original four remain enabled by default, and Qwen is opt-in. FLUX.2 text-to-image and image editing share the `flux2_klein_4B` weights.
+All five repositories are public and enabled by default (Qwen since Beta 4). FLUX.2 text-to-image and image editing share the `flux2_klein_4B` weights.
 
 The Krea 2 Turbo weights are under the Krea 2 Community License (not Apache 2.0), so before downloading
 them `prepare_base.exe` prints the license and use-policy links and waits for you to type `I agree`:
@@ -74,9 +74,9 @@ keep them with any copy.
 
 ### Qwen Image 2.1 Turbo
 
-The Qwen package is published and pinned to revision
-`f5f2b6496af7340ea2032a9fc3243bb0d0c67934`. Its catalog entry remains **opt-in**
-(`enabled: false`); use `--only qwen_image_2_1_turbo` to install it. It prepares one
+The Qwen package is published, and since Beta 4 its catalog entry is enabled and follows the
+repository's latest upload, as the other models do; `--only qwen_image_2_1_turbo` installs only Qwen.
+It prepares one
 `all_model_weights/qwen_image_2_1_turbo/` folder for both tasks:
 
 - Text-to-image: `text_encoder/`, `denoising/`, `vae_decoder/`.
@@ -178,7 +178,7 @@ The [Hugging Face upload guide](https://huggingface.co/docs/huggingface_hub/guid
 documents uploading and resuming large folders. This command publishes the weights; it is a maintainer
 step, not part of downloading them. Preserve the upstream license and conversion notices and describe
 the NPU+CPU format in the model card. Once the
-upload is complete, set the Qwen entry's `packed_revision` to the **packed repository's commit hash**
-(distinct from the upstream checkpoint `revision`) only after testing that candidate revision into a
-new weights root. Keep the previous pinned revision until the new package has passed validation.
-Qwen remains opt-in so publishing an update does not add it to existing default installations.
+upload is complete, installations that follow `main` get it on their next `prepare_base.exe` run, so
+test a candidate upload into a new weights root before publishing it. To hold installations on a
+tested upload, set the Qwen entry's `packed_revision` to the **packed repository's commit hash**
+(distinct from the upstream checkpoint `revision`).

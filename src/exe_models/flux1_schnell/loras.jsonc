@@ -1,0 +1,54 @@
+// FLUX.1-schnell: LoRA list for this package's generation worker.
+// API model: flux1-schnell
+// Edit this file, then click Refresh in the browser to reload the list.
+//
+// From this directory, inspect the list without loading or downloading weights:
+//   ./run.exe --list_loras
+//   ./run.exe --lora_config loras.jsonc --list_loras
+// Add these options to a generation or editing command:
+//   --lora pvc   select a configured name; repeat --lora for several
+//   --lora none   disable all LoRAs for this request
+//   --lora_scale 0.8   override the scales of every LoRA selected for the request
+// With no --lora option, the CLI uses entries whose "enabled" is true.
+// Quote names containing spaces. The browser and API use these exact names.
+//
+// "file" is relative to this configuration file's directory. The shared folder is:
+//   ../../../../all_model_weights/flux1_schnell/loras/
+// A missing file is downloaded from "source" when selected for generation or editing.
+// "trigger" contains optional prompt words; "scale" is the configured merge strength.
+// The "license" field records supplied metadata and is not checked by the worker.
+// Civitai authentication: CIVITAI_TOKEN in the environment takes precedence over
+// this file's "civitai_token". Keep credentials private when sharing the package.
+// JSON with // comments is accepted; trailing commas are not.
+{
+  "civitai_token": "",
+  "loras": [
+    {
+      "name": "pvc",
+      "file": "../../../../all_model_weights/flux1_schnell/loras/pvc-shnell-7250+7500.safetensors",
+      "scale": 1.0,
+      "trigger": "pvc figure, nendoroid",
+      "source": "https://huggingface.co/p1atdev/flux.1-schnell-pvc-style-lora",
+      "license": "apache-2.0",
+      "enabled": false
+    },
+    {
+      "name": "vector",
+      "file": "../../../../all_model_weights/flux1_schnell/loras/simplevector.safetensors",
+      "scale": 1.0,
+      "trigger": "v3ct0r style, simple flat vector art, isolated on white bg",
+      "source": "https://huggingface.co/furaidosu/flux-lora-simple-vector",
+      "license": "apache-2.0",
+      "enabled": false
+    },
+    {
+      "name": "[Flux1-schnell] Asian Mix Lora / Lokr",
+      "file": "../../../../all_model_weights/flux1_schnell/loras/hinaFluxAsianMixLora-schnell_v2.safetensors",
+      "scale": 1.0,
+      "trigger": "asian woman",
+      "source": "https://civitai.com/models/715862/flux1-schnell-asian-mix-lora-lokr?modelVersionId=2257626",
+      "license": "Civitai permissions: images may be sold, may run on Civitai's generator only, no merges, credit required; the LoRA itself may not be sold; the model page forbids commercial use",
+      "enabled": false
+    }
+  ]
+}

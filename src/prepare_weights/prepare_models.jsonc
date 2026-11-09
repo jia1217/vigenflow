@@ -75,20 +75,17 @@
       "keep_sources": false
     },
     // Pre-packed only, shared by text-to-image and image editing (all five NPU+CPU stages).
-    // Published at the repo root; packed_revision pins the verified four-shard release.
-    // Opt-in: --only qwen_image_2_1_turbo downloads it while enabled remains false, preserving
-    // the existing default download size. This adds weight preparation, not a server model/worker.
+    // Published at the repo root. Enabled by default since Beta 4, which follows the repo's latest upload.
     // Qwen RESEARCH LICENSE AGREEMENT: research/evaluation only; commercial use needs a separate
     // license. prepare_base.exe asks for I agree and preserves LICENSE and Notice in the model folder.
     {
       "id": "qwen_image_2_1_turbo",
       "packed_repo": "Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16",
-      "packed_revision": "f5f2b6496af7340ea2032a9fc3243bb0d0c67934",
       "packed_path": "",
       "recipe": "qwen_image_2_1_turbo",
       "source": "Qwen/Qwen-Image-2.1-Turbo",
-      "revision": "fc13ba1986fcb905854dc8de2f52eee395f49b5b",
-      "enabled": false,
+      "revision": "main",
+      "enabled": true,
       "keep_sources": false
     }
   ]

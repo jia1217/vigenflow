@@ -4,6 +4,7 @@
 #   vigenflow_<VERSION>_ubuntu_amd64/
 #     server_running/vgf-serve
 #     server_running/exe_models/<model>/run.exe   workers with their model runtimes included
+#     server_running/exe_models/<model>/loras.jsonc   each worker's editable LoRA list
 #     server_running/images/
 #     all_npu_files/<model>/                       from src/npu_files
 #     prepare/prepare_base.exe, prepare_models.jsonc
@@ -19,7 +20,7 @@ SRC_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$SRC_ROOT/.." && pwd)"
 PREPARE_DIR="$SRC_ROOT/prepare_weights"
 
-VERSION="${VERSION:-0.2.0-beta.3}"
+VERSION="${VERSION:-0.2.0-beta.4}"
 ARCH="${ARCH:-amd64}"
 PACKAGE_NAME="${PACKAGE_NAME:-vigenflow_${VERSION}_ubuntu_${ARCH}}"
 OUT_ROOT="${OUT_ROOT:-$SCRIPT_DIR/release}"
@@ -57,8 +58,8 @@ if [[ "$forbidden_status" -ne 1 ]]; then
 fi
 # vgf-serve refuses to start unless every worker exists.
 for model in "${MODELS[@]}"; do
-  if [[ ! -f "$EXE_MODELS_DIR/$model/run.exe" ]]; then
-    echo "Missing worker: $EXE_MODELS_DIR/$model/run.exe" >&2
+  if [[ ! -f "$EXE_MODELS_DIR/$model/run.exe" || ! -f "$EXE_MODELS_DIR/$model/loras.jsonc" ]]; then
+    echo "Missing worker or LoRA list: $EXE_MODELS_DIR/$model/{run.exe,loras.jsonc}" >&2
     echo "Build workers with make -C src/models/<model>." >&2
     exit 1
   fi
@@ -97,7 +98,13 @@ mkdir -p "$STAGE_DIR/server_running/images" "$STAGE_DIR/server_running/exe_model
 install -m 0755 "$SERVER_BIN" "$STAGE_DIR/server_running/vgf-serve"
 for model in "${MODELS[@]}"; do
   install -D -m 0755 "$EXE_MODELS_DIR/$model/run.exe" "$STAGE_DIR/server_running/exe_models/$model/run.exe"
+  install -m 0644 "$EXE_MODELS_DIR/$model/loras.jsonc" "$STAGE_DIR/server_running/exe_models/$model/loras.jsonc"
 done
+# A LoRA list ships without credentials: downloads read CIVITAI_TOKEN or the user's own key.
+if grep -lE '"civitai_token"[[:space:]]*:[[:space:]]*"[^"]+' "$STAGE_DIR"/server_running/exe_models/*/loras.jsonc; then
+  echo "Clear civitai_token in the LoRA lists above before packaging." >&2
+  exit 1
+fi
 cp -a "$NPU_FILES_DIR" "$STAGE_DIR/all_npu_files"
 
 install -m 0755 "$PREPARE_BIN" "$STAGE_DIR/prepare/prepare_base.exe"

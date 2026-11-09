@@ -1,0 +1,45 @@
+// Z-Image-Turbo: LoRA list for this package's generation worker.
+// API model: z-image-turbo
+// Edit this file, then click Refresh in the browser to reload the list.
+//
+// From this directory, inspect the list without loading or downloading weights:
+//   ./run.exe --list_loras
+//   ./run.exe --lora_config loras.jsonc --list_loras
+// Add these options to a generation or editing command:
+//   --lora pixel_art   select a configured name; repeat --lora for several
+//   --lora none   disable all LoRAs for this request
+//   --lora_scale 0.8   override the scales of every LoRA selected for the request
+// With no --lora option, the CLI uses entries whose "enabled" is true.
+// Quote names containing spaces. The browser and API use these exact names.
+//
+// "file" is relative to this configuration file's directory. The shared folder is:
+//   ../../../../all_model_weights/z_image_turbo/loras/
+// A missing file is downloaded from "source" when selected for generation or editing.
+// "trigger" contains optional prompt words; "scale" is the configured merge strength.
+// The "license" field records supplied metadata and is not checked by the worker.
+// Civitai authentication: CIVITAI_TOKEN in the environment takes precedence over
+// this file's "civitai_token". Keep credentials private when sharing the package.
+// JSON with // comments is accepted; trailing commas are not.
+{
+  "civitai_token": "",
+  "loras": [
+    {
+      "name": "pixel_art",
+      "file": "../../../../all_model_weights/z_image_turbo/loras/pixel_art_style_z_image_turbo.safetensors",
+      "scale": 1.0,
+      "trigger": "Pixel art style.",
+      "source": "https://huggingface.co/tarn59/pixel_art_style_lora_z_image_turbo",
+      "license": "apache-2.0",
+      "enabled": false
+    },
+    {
+      "name": "Anime Style Lora",
+      "file": "../../../../all_model_weights/z_image_turbo/loras/hina_zImageTurbo_anime_v2.52-dream.safetensors",
+      "scale": 1.0,
+      "trigger": "anime style, illustrious style",
+      "source": "https://civitai.com/models/2186398/z-image-turbo-anime-style-lora?modelVersionId=2540433",
+      "license": "Civitai permissions: images may be sold, may run on Civitai's generator only, no merges, no credit needed; the LoRA itself may not be sold",
+      "enabled": false
+    }
+  ]
+}

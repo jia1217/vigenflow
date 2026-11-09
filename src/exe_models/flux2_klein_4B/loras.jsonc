@@ -1,0 +1,55 @@
+// FLUX.2-klein-4B: LoRA list for this package's generation worker.
+// API model: flux2-klein-4B
+// Edit this file, then click Refresh in the browser to reload the list.
+// Generation and editing keep separate lists and share the same LoRA weight folder.
+//
+// From this directory, inspect the list without loading or downloading weights:
+//   ./run.exe --list_loras
+//   ./run.exe --lora_config loras.jsonc --list_loras
+// Add these options to a generation or editing command:
+//   --lora pixelart   select a configured name; repeat --lora for several
+//   --lora none   disable all LoRAs for this request
+//   --lora_scale 0.8   override the scales of every LoRA selected for the request
+// With no --lora option, the CLI uses entries whose "enabled" is true.
+// Quote names containing spaces. The browser and API use these exact names.
+//
+// "file" is relative to this configuration file's directory. The shared folder is:
+//   ../../../../all_model_weights/flux2_klein_4B/loras/
+// A missing file is downloaded from "source" when selected for generation or editing.
+// "trigger" contains optional prompt words; "scale" is the configured merge strength.
+// The "license" field records supplied metadata and is not checked by the worker.
+// Civitai authentication: CIVITAI_TOKEN in the environment takes precedence over
+// this file's "civitai_token". Keep credentials private when sharing the package.
+// JSON with // comments is accepted; trailing commas are not.
+{
+  "civitai_token": "",
+  "loras": [
+    {
+      "name": "pixelart",
+      "file": "../../../../all_model_weights/flux2_klein_4B/loras/pytorch_lora_weights.safetensors",
+      "scale": 1.0,
+      "trigger": "pixel art sprite",
+      "source": "https://huggingface.co/Limbicnation/pixel-art-lora",
+      "license": "apache-2.0",
+      "enabled": false
+    },
+    {
+      "name": "Fluxtoon_Style",
+      "file": "../../../../all_model_weights/flux2_klein_4B/loras/flux2-klein-4b-lora-Fluxtoon-Style.safetensors",
+      "scale": 1.0,
+      "trigger": "Fluxtoon Style",
+      "source": "https://civitai.com/models/2633419/fluxtoon-style-flux2-klein-4b-lora?modelVersionId=2956723",
+      "license": "Civitai permissions: images may be sold, may run on paid generators, merges allowed, no credit needed; the LoRA itself may not be sold",
+      "enabled": false
+    },
+    {
+      "name": "mikkoph/mikkoani-klein4b",
+      "file": "../../../../all_model_weights/flux2_klein_4B/loras/klein4b-mikkoani.safetensors",
+      "scale": 2.0,
+      "trigger": "@mikkoani illustration",
+      "source": "https://huggingface.co/mikkoph/mikkoani-klein4b",
+      "license": "apache-2.0",
+      "enabled": false
+    }
+  ]
+}

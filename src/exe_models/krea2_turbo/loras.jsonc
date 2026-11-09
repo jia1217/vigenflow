@@ -1,0 +1,62 @@
+// Krea-2-Turbo: LoRA list for this package's generation worker.
+// API model: krea2-turbo
+// Edit this file, then click Refresh in the browser to reload the list.
+//
+// From this directory, inspect the list without loading or downloading weights:
+//   ./run.exe --list_loras
+//   ./run.exe --lora_config loras.jsonc --list_loras
+// Add these options to a generation or editing command:
+//   --lora Krea2-realism-V2   select a configured name; repeat --lora for several
+//   --lora none   disable all LoRAs for this request
+//   --lora_scale 0.8   override the scales of every LoRA selected for the request
+// With no --lora option, the CLI uses entries whose "enabled" is true.
+// Quote names containing spaces. The browser and API use these exact names.
+//
+// "file" is relative to this configuration file's directory. The shared folder is:
+//   ../../../../all_model_weights/krea2_turbo/loras/
+// A missing file is downloaded from "source" when selected for generation or editing.
+// "trigger" contains optional prompt words; "scale" is the configured merge strength.
+// The "license" field records supplied metadata and is not checked by the worker.
+// Civitai authentication: CIVITAI_TOKEN in the environment takes precedence over
+// this file's "civitai_token". Keep credentials private when sharing the package.
+// JSON with // comments is accepted; trailing commas are not.
+{
+  "civitai_token": "",
+  "loras": [
+    {
+      "name": "Krea2-realism-V2",
+      "file": "../../../../all_model_weights/krea2_turbo/loras/Krea2-realism-V2.safetensors",
+      "scale": 1.5,
+      "source": "https://huggingface.co/RudySen/Krea2-realism-V2",
+      "license": "mit",
+      "enabled": false
+    },
+    {
+      "name": "krea/Krea-2-LoRA-retroanime",
+      "file": "../../../../all_model_weights/krea2_turbo/loras/retroanime.safetensors",
+      "scale": 1.5,
+      "trigger": "Purple retro anime style",
+      "source": "https://huggingface.co/krea/Krea-2-LoRA-retroanime",
+      "license": "krea-2-community-license",
+      "enabled": false
+    },
+    {
+      "name": "Krea2 - Melancholy",
+      "file": "../../../../all_model_weights/krea2_turbo/loras/Krea_2_zidiusArt_Melancholy_v2.safetensors",
+      "scale": 1.0,
+      "trigger": "zidiusArt",
+      "source": "https://civitai.com/models/2747740/krea2-melancholy?modelVersionId=3116962",
+      "license": "krea-2-community-license",
+      "enabled": false
+    },
+    {
+      "name": "Wall Street Journal Style",
+      "file": "../../../../all_model_weights/krea2_turbo/loras/wallStreetJournal_v1.safetensors",
+      "scale": 1.0,
+      "trigger": "WSJ",
+      "source": "https://civitai.com/models/3034125/wall-street-journal-style?modelVersionId=3447400",
+      "license": "krea-2-community-license",
+      "enabled": false
+    }
+  ]
+}
