@@ -1,0 +1,303 @@
+#include "worker.hpp"
+
+#include "file_utils.hpp"
+#include "server_config.hpp"
+
+// Boost 1.86+ moved the classic process API under boost/process/v1/.
+#if __has_include(<boost/process/v1/child.hpp>)
+#include <boost/process/v1/args.hpp>
+#include <boost/process/v1/child.hpp>
+#include <boost/process/v1/cmd.hpp>
+#include <boost/process/v1/io.hpp>
+#include <boost/process/v1/pipe.hpp>
+#include <boost/process/v1/start_dir.hpp>
+namespace bp = boost::process::v1;
+#else
+#include <boost/process/args.hpp>
+#include <boost/process/child.hpp>
+#include <boost/process/cmd.hpp>
+#include <boost/process/io.hpp>
+#include <boost/process/pipe.hpp>
+#include <boost/process/start_dir.hpp>
+namespace bp = boost::process;
+#endif
+
+#include <boost/gil/extension/io/bmp.hpp>
+#include <boost/gil/extension/io/png.hpp>
+
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <filesystem>
+#include <iostream>
+#include <regex>
+#include <stdexcept>
+#include <thread>
+#include <vector>
+#include <mutex>
+
+namespace fs = std::filesystem;
+
+namespace server {
+
+namespace {
+
+struct ProgressTiming {
+    double elapsed_seconds = 0.0;
+    double seconds_per_step = 0.0;
+};
+
+// Parse the last "<label>:  NN%|....| i/N [mm:ss<mm:ss, X.XXs/it]" line printed by run.exe.
+std::optional<ProgressTiming> parse_progress_timing(
+    const std::string& output,
+    const std::string& label) {
+    const std::regex re(
+        label +
+        R"(:\s+\d+%\|[^\r\n]*\|\s+\d+/\d+\s+\[(\d+):(\d+)<[^\]\r\n]*,\s*([0-9]+\.?[0-9]*)s/it\])");
+
+    std::optional<ProgressTiming> result;
+    for (std::sregex_iterator it(output.begin(), output.end(), re), end; it != end; ++it) {
+        ProgressTiming timing;
+        timing.elapsed_seconds =
+            std::stoi((*it)[1].str()) * 60.0 + std::stoi((*it)[2].str());
+        timing.seconds_per_step = std::stod((*it)[3].str());
+        result = timing;
+    }
+    return result;
+}
+
+// Parse run.exe's "E2E runtime: <value><unit>" or "E2E time: <value> s" line (the Windows FLUX.1, Z-Image and
+// FLUX.2 edit workers print the latter).
+std::optional<double> parse_e2e_runtime_seconds(const std::string& output) {
+    static const std::regex re(R"(E2E\s+(?:runtime|time):\s*([0-9]+(?:\.[0-9]+)?)\s*(us|ms|s)?)");
+
+    std::optional<double> result;
+    for (std::sregex_iterator it(output.begin(), output.end(), re), end; it != end; ++it) {
+        double value = std::stod((*it)[1].str());
+        const std::string unit = (*it)[2].matched ? (*it)[2].str() : "ms";
+        if (unit == "us") {
+            value /= 1000000.0;
+        } else if (unit == "ms") {
+            value /= 1000.0;
+        }
+        result = value;
+    }
+    return result;
+}
+
+GenerationTimingInfo parse_generation_timing_info(const std::string& output) {
+    GenerationTimingInfo timing;
+
+    if (const auto text_timing = parse_progress_timing(output, "Text Encoder")) {
+        timing.text_encoder_seconds = text_timing->seconds_per_step;
+    }
+    if (const auto denoising_timing = parse_progress_timing(output, "Denoising")) {
+        timing.denoising_seconds_per_step = denoising_timing->seconds_per_step;
+        timing.denoising_total_seconds = denoising_timing->elapsed_seconds;
+    }
+    if (const auto vae_timing = parse_progress_timing(output, "VAE Decoder")) {
+        timing.vae_decoder_seconds = vae_timing->seconds_per_step;
+    }
+    timing.e2e_runtime_seconds = parse_e2e_runtime_seconds(output);
+
+    return timing;
+}
+
+#ifdef _WIN32
+// Quote one argument so the worker's C runtime splits the command line back into the same
+// argv element, including quotes, trailing backslashes and newlines in prompts.
+std::string quote_windows_arg(const std::string& arg) {
+    if (!arg.empty() && arg.find_first_of(" \t\n\v\"") == std::string::npos) return arg;
+    std::string quoted = "\"";
+    for (auto it = arg.begin();; ++it) {
+        std::size_t backslashes = 0;
+        while (it != arg.end() && *it == '\\') {
+            ++it;
+            ++backslashes;
+        }
+        if (it == arg.end()) {
+            quoted.append(backslashes * 2, '\\');  // before the closing quote
+            break;
+        }
+        if (*it == '"') {
+            quoted.append(backslashes * 2 + 1, '\\');
+        } else {
+            quoted.append(backslashes, '\\');
+        }
+        quoted.push_back(*it);
+    }
+    quoted.push_back('"');
+    return quoted;
+}
+#endif
+
+}  // namespace
+
+WorkerResult run_worker(const GenParams& params) {
+    // Also serialize direct callers: all workers share one NPU.
+    static std::mutex worker_mutex;
+    std::lock_guard worker_lock(worker_mutex);
+    const auto& model = *params.model;
+    ensure_output_dir();
+
+    static std::atomic<std::uint64_t> job_counter{0};
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::system_clock::now().time_since_epoch())
+                        .count();
+
+    // Most workers write BMP output, encoded as PNG below; a writes_png worker's file is the response.
+    const std::string filename = "output_" + std::to_string(ms) + "_" + std::to_string(++job_counter) +
+                                 (model.writes_png ? ".png" : ".bmp");
+    const std::string fullpath = (fs::path(config::output_dir) / filename).string();
+
+    std::vector<std::string> exec_args;
+    if (!model.weights_path.empty()) {
+        exec_args.insert(exec_args.end(), {"--weights_path", model.weights_path});
+    }
+    if (!model.npu_files_path.empty()) {
+        exec_args.insert(exec_args.end(), {"--npu_files_path", model.npu_files_path});
+    }
+    if (!params.prompt.empty()) {
+        // One argv element preserves quotes, newlines and leading option-like text.
+        exec_args.push_back("--prompt=" + params.prompt);
+    }
+    if (model.edits_image) {
+        if (params.input_image.empty()) throw std::logic_error("edit request without an input image");
+        exec_args.insert(exec_args.end(), {"--input_image", params.input_image});
+    }
+    // Only other sizes are passed, so a 1024x1024 request also runs on workers without these options.
+    if (params.width != config::kImageWidth || params.height != config::kImageHeight) {
+        exec_args.insert(exec_args.end(), {
+            "--height", std::to_string(params.height), "--width", std::to_string(params.width)});
+    }
+    std::string loras;
+    if (params.loras) {
+        if (params.loras->empty()) exec_args.insert(exec_args.end(), {"--lora", "none"});
+        for (const auto& name : *params.loras) {
+            exec_args.insert(exec_args.end(), {"--lora", name});
+            loras += (loras.empty() ? "" : ",") + name;
+        }
+    }
+    exec_args.insert(exec_args.end(), {
+        "--seed", std::to_string(params.seed),
+        "--steps", std::to_string(params.steps),
+        "--output", fullpath});
+
+    std::cout << "[INFO] Model: " << model.id << "\n";
+    std::cout << "[INFO] Starting " << model.worker_exe << " (seed=" << params.seed
+              << ", steps=" << params.steps << ", size=" << params.width << "x" << params.height
+              << (params.loras ? ", loras=" + (loras.empty() ? std::string("none") : loras) : "") << ")\n";
+    std::cout << "[INFO] Output path: " << fullpath << "\n";
+
+    const auto start_time = std::chrono::steady_clock::now();
+
+    bp::ipstream child_output;
+    std::string worker_output;
+
+    // Start run.exe in its own folder so its relative default paths resolve.
+#ifdef _WIN32
+    // Boost.Process only doubles embedded quotes, which a backslash before a quote breaks.
+    std::string command_line = quote_windows_arg(model.worker_exe);
+    for (const auto& arg : exec_args) command_line += " " + quote_windows_arg(arg);
+    bp::child child(
+        bp::cmd(command_line),
+        (bp::std_out & bp::std_err) > child_output,
+        bp::start_dir = fs::path(model.worker_exe).parent_path().string());
+#else
+    bp::child child(
+        model.worker_exe,
+        bp::args(exec_args),
+        (bp::std_out & bp::std_err) > child_output,
+        bp::start_dir = fs::path(model.worker_exe).parent_path().string());
+#endif
+
+    std::thread output_reader([&]() {
+        char ch = '\0';
+        while (child_output.get(ch)) {
+            worker_output.push_back(ch);
+            std::cout.put(ch);
+            if (ch == '\n' || ch == '\r') {
+                std::cout.flush();
+            }
+        }
+    });
+
+    child.wait();
+    if (output_reader.joinable()) {
+        output_reader.join();
+    }
+
+    if (child.exit_code() != 0) {
+        cleanup_generated_image(fullpath, false);
+        std::cerr << "[ERROR] run.exe failed with exit code " << child.exit_code() << "\n";
+        // The worker's own reason (its last "Error: " line, e.g. not enough memory), if it printed one.
+        if (const auto at = worker_output.rfind("Error: "); at != std::string::npos) {
+            const auto end = worker_output.find_first_of("\r\n", at);
+            const auto reason = worker_output.substr(at + 7, end == std::string::npos ? end : end - at - 7);
+            if (!reason.empty()) throw std::runtime_error(reason);
+        }
+        throw std::runtime_error(
+            "run.exe failed with exit code " + std::to_string(child.exit_code()));
+    }
+    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::steady_clock::now() - start_time)
+                                .count();
+
+    if (!fs::exists(fullpath)) {
+        throw std::runtime_error("run.exe finished but output image was not created");
+    }
+
+    GenerationTimingInfo timing = parse_generation_timing_info(worker_output);
+    timing.worker_wall_seconds = static_cast<double>(elapsed_ms) / 1000.0;
+    if (timing.e2e_runtime_seconds) {
+        std::cout << "[INFO] Model inference time: " << *timing.e2e_runtime_seconds << " s\n";
+    }
+    std::cout << "[INFO] Worker wall time: " << timing.worker_wall_seconds
+              << " s (includes startup, loading, inference and shutdown)\n";
+
+    if (model.writes_png) {
+        // Served unchanged, so only check that the worker left a readable PNG.
+        try {
+            boost::gil::read_image_info(fullpath, boost::gil::png_tag{});
+        } catch (...) {
+            cleanup_generated_image(fullpath, false);
+            throw;
+        }
+        std::cout << "[INFO] Image ready: " << fullpath << "\n";
+        std::cout << "[INFO] Waiting for next request\n";
+        return {fullpath, timing};
+    }
+
+    // Encode real PNG bytes for clients that display the image inline.
+    const std::string png_path = fs::path(fullpath).replace_extension(".png").string();
+    try {
+        const auto bmp = boost::gil::read_image_info(fullpath, boost::gil::bmp_tag{});
+        boost::gil::rgb8_image_t image;
+        boost::gil::read_image(fullpath, image, boost::gil::bmp_tag{});
+        // ponytail: Boost.GIL ignores top-down BMP orientation; remove this flip when its reader is fixed.
+        if (bmp._info._top_down) {
+            boost::gil::write_view(png_path, boost::gil::flipped_up_down_view(boost::gil::const_view(image)),
+                                  boost::gil::png_tag{});
+        } else {
+            boost::gil::write_view(png_path, boost::gil::const_view(image), boost::gil::png_tag{});
+        }
+    } catch (...) {
+        cleanup_generated_image(fullpath, false);
+        cleanup_generated_image(png_path, false);
+        throw;
+    }
+    cleanup_generated_image(fullpath, false);
+    std::cout << "[INFO] Image ready: " << png_path << "\n";
+    std::cout << "[INFO] Waiting for next request\n";
+
+    return {png_path, timing};
+}
+
+void cleanup_generated_image(const std::string& image_path, bool keep_on_disk) {
+    if (keep_on_disk) return;
+
+    std::error_code ec;
+    fs::remove(image_path, ec);
+}
+
+}  // namespace server
