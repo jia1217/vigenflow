@@ -10,9 +10,21 @@
 - 🖼️ **Easier editing:** FLUX.2 and Qwen edit models accept one reference image of any size, not just 1024 × 1024.
 - ⏱️ **Visible timings:** E2E runtime in seconds beside the seed and in the completion message, with stage timings below the image.
 
-**[Download for Windows](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.4/vgf_0.2.0-beta.4_windows_amd64.zip)** · **[Download for Ubuntu](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.4/vgf_0.2.0-beta.4_ubuntu_amd64.zip)** · **[Get started](#-use-the-built-in-browser-ui)** · **[Beta 4 examples](#-beta-4-examples)**
+**[Download for Windows](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.4/vgf_0.2.0-beta.4_windows_amd64.zip)** · **[Download for Ubuntu](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.4/vgf_0.2.0-beta.4_ubuntu_amd64.zip)** · **[Get started](#-use-the-built-in-browser-ui)** · **[Beta 4 examples](#-beta-4-examples)** · **[Beta 5 preview](#-beta-5-preview)**
 
 > **Upgrading from Beta 3?** The model weight paths are unchanged. Extract Beta 4 beside your existing `all_model_weights` folder to reuse your weights without downloading them again. Stop the Beta 3 server first; the OpenAI-compatible API is still at `/v1`.
+
+---
+
+## 🧪 Beta 5 Preview
+
+Beta 5 is in testing and not released yet. It adds **multi-reference image editing** to the Studio web UI: **Qwen Image 2.1 Turbo Edit** takes up to 10 reference images, which you can reorder and mention in the prompt. Click the image to open the original PNG at full size.
+
+<table>
+  <tr>
+    <td align="center" valign="top"><a href="assets/examples/beta5/qwen-edit-multi-reference.png"><img src="assets/examples/beta5/qwen-edit-multi-reference.png" width="100%" alt="VigenFlow Studio with Qwen Image 2.1 Turbo Edit and three reference images: a cartoon rabbit, a duck in a brown jacket, and a duck wearing sunglasses. The before/after view shows the rabbit wearing the brown jacket and black sunglasses"></a><br><sub><b>Qwen Image 2.1 Turbo Edit · 3 reference images</b><br>1024 × 1024 · 93 s<br>The rabbit from image 1 wears the outfit from image 2 and the sunglasses from image 3.</sub></td>
+  </tr>
+</table>
 
 ---
 
