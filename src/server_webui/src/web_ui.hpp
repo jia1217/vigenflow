@@ -685,12 +685,16 @@ body:has(#reference-view[open]) { overflow:hidden; }
   }
 
   const qwenEdit = 'qwen-image-2.1-turbo-edit';
+  const fluxEdit = 'flux2-klein-4B-edit';
+  const referenceLimits = new Map([[qwenEdit, 10], [fluxEdit, 4]]);
   const referenceBudget = 16384;
   const references = [];
   let nextReferenceId = 1;
   let draggedReferenceIndex = null;
   let inputSize = null;
-  const isMultiReference = () => selectedModel()?.id === qwenEdit;
+  const referenceLimit = () => referenceLimits.get(selectedModel()?.id) ?? 1;
+  const isMultiReference = () => referenceLimit() > 1;
+  const hasReferenceBudget = () => selectedModel()?.id === qwenEdit;
   const generationDimensions = {};
   const editDimensions = {};
   let previousSize;
@@ -916,7 +920,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
     $('input-field').hidden = !model.edits_image;
     $('input-image').disabled = !model.edits_image;
     $('input-image').multiple = isMultiReference();
-    $('input-image').accept = isMultiReference() ? 'image/png,image/jpeg' : 'image/png,image/jpeg,image/bmp,image/gif';
+    $('input-image').accept = hasReferenceBudget() ? 'image/png,image/jpeg' : 'image/png,image/jpeg,image/bmp,image/gif';
     renderReferences();
     updateAction(model);
   }
@@ -1032,18 +1036,22 @@ body:has(#reference-view[open]) { overflow:hidden; }
     if ($('controls').disabled) return;
     const model = selectedModel();
     const inputs = activeReferences();
-    const plan = model.edits_image ? referencePlan() : [];
     if (model.edits_image && !inputs.length) {
       status('Add a reference image.', true);
       return;
     }
-    if (isMultiReference() && tokenCount(plan) > referenceBudget) {
+    if (model.edits_image && inputs.length > referenceLimit()) {
+      status('Remove references to fit the ' + referenceLimit() + '-image limit.', true);
+      return;
+    }
+    const plan = model.edits_image ? referencePlan() : [];
+    if (hasReferenceBudget() && tokenCount(plan) > referenceBudget) {
       status('Choose Max size or a smaller input limit to fit the reference token budget.', true);
       return;
     }
     const prompt = promptForModel(model).trim();
     if (model.edits_image && $('prompt').querySelector('[data-missing]')) {
-      status('Add Image 1 or remove its mention.', true);
+      status('Add the missing reference or remove its mention.', true);
       return;
     }
     if (!prompt || new TextEncoder().encode(prompt).length > 16384 || prompt.includes('\0')) {
@@ -1273,7 +1281,8 @@ body:has(#reference-view[open]) { overflow:hidden; }
     if (!model.edits_image) return composer.value;
     const copy = composer.cloneNode(true);
     copy.querySelectorAll('.ref-chip').forEach(chip => {
-      const reference = model.id === qwenEdit ? '<image' + chip.dataset.position + '>' : chip.textContent.toLowerCase();
+      const position = chip.dataset.position;
+      const reference = model.id === qwenEdit ? '<image' + position + '>' : 'image ' + position;
       chip.replaceWith(reference);
     });
     return copy.textContent;
@@ -1333,12 +1342,15 @@ body:has(#reference-view[open]) { overflow:hidden; }
     const list = $('reference-list');
     list.replaceChildren();
     $('ref-upload-label').textContent = isMultiReference() ? 'Add reference' : inputSize ? 'Replace' : 'Add image';
-    $('input-help').hidden = Boolean(inputSize);
-    $('input-help').textContent = isMultiReference()
-      ? 'Drop or paste up to 10 references. PNG or JPEG, up to 40 MB each.'
-      : 'Drop or paste an image. PNG, JPEG, BMP or GIF, up to 40 MB.';
+    const limit = referenceLimit();
+    $('input-help').hidden = Boolean(inputSize) && inputs.length <= limit;
+    const formats = hasReferenceBudget() ? 'PNG or JPEG' : 'PNG, JPEG, BMP or GIF';
+    const uploadHint = limit > 1 ? 'Drop or paste up to ' + limit + ' references.' : 'Drop or paste an image.';
+    $('input-help').textContent = inputs.length > limit
+      ? 'Remove references to fit the ' + limit + '-image limit.'
+      : uploadHint + ' ' + formats + ', up to 40 MB each.';
     $('reference-size').hidden = !inputSize;
-    $('reference-budget-help').hidden = !isMultiReference();
+    $('reference-budget-help').hidden = !hasReferenceBudget();
     if (!inputSize) {
       $('source-size').checked = false;
       toggleMatchSize();
@@ -1475,20 +1487,22 @@ body:has(#reference-view[open]) { overflow:hidden; }
 
   async function addReferences(files) {
     if (!selectedModel()?.edits_image || $('controls').disabled) return;
-    const multi = isMultiReference();
-    if (multi ? references.length + files.length > 10 : files.length !== 1) {
-      status(multi ? 'Add up to 10 references.' : 'Add one image at a time.', true);
+    const limit = referenceLimit();
+    const multi = limit > 1;
+    if (multi ? references.length + files.length > limit : files.length !== 1) {
+      status(multi ? 'Add up to ' + limit + ' references.' : 'Add one image at a time.', true);
       return;
     }
     disableControls(true);
     const loaded = [];
     const hadInput = Boolean(inputSize);
+    const pngOrJpeg = hasReferenceBudget();
     try {
       for (const file of files) {
-        const pattern = multi ? /\.(png|jpe?g)$/i : /\.(png|jpe?g|bmp|gif)$/i;
-        const types = multi ? /^image\/(png|jpeg)$/ : /^image\/(png|jpeg|bmp|x-ms-bmp|gif)$/;
+        const pattern = pngOrJpeg ? /\.(png|jpe?g)$/i : /\.(png|jpe?g|bmp|gif)$/i;
+        const types = pngOrJpeg ? /^image\/(png|jpeg)$/ : /^image\/(png|jpeg|bmp|x-ms-bmp|gif)$/;
         if (!pattern.test(file.name) && !types.test(file.type)) {
-          throw new Error(multi ? 'Choose a PNG or JPEG image.' : 'Choose a PNG, JPEG, BMP or GIF image.');
+          throw new Error(pngOrJpeg ? 'Choose a PNG or JPEG image.' : 'Choose a PNG, JPEG, BMP or GIF image.');
         }
         if (file.size > 40 * 1024 * 1024) throw new Error(file.name + ' must be at most 40 MB.');
         const url = URL.createObjectURL(file);
@@ -1542,14 +1556,13 @@ body:has(#reference-view[open]) { overflow:hidden; }
 
   function referencePlan(limit = inputLimit.querySelector(':checked').value) {
     const inputs = activeReferences();
-    const multi = isMultiReference();
-    const align = multi || $('source-size').checked;
+    const align = hasReferenceBudget() || inputs.length > 1 || $('source-size').checked;
     const longEdge = limit === 'original' || limit === 'max' ? 2048 : Number(limit);
     const planAt = factor => inputs.map(reference => preparedDimensions(
       reference, factor * Math.min(1, longEdge / Math.max(reference.width, reference.height)), align
     ));
     const full = planAt(1);
-    if (limit !== 'max' || tokenCount(full) <= referenceBudget) return full;
+    if (limit !== 'max' || !hasReferenceBudget() || tokenCount(full) <= referenceBudget) return full;
     let lower = 0;
     let upper = 1;
     for (let i = 0; i < 24; i++) {
@@ -1565,7 +1578,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
     for (const size of [512, 1024, 2048]) limitOption(size).disabled = size > longest || (size === longest && longest < 2048);
     const original = limitOption('original');
     const max = limitOption('max');
-    max.parentElement.hidden = max.disabled = !isMultiReference() || tokenCount(referencePlan('2048')) <= referenceBudget;
+    max.parentElement.hidden = max.disabled = !hasReferenceBudget() || tokenCount(referencePlan('2048')) <= referenceBudget;
     original.parentElement.hidden = original.disabled = longest >= 2048 || !max.disabled;
     const fallback = !max.disabled ? max : original.disabled ? limitOption(2048) : original;
     const preferred = limitOption(preferredInputLimit);
@@ -1582,7 +1595,8 @@ body:has(#reference-view[open]) { overflow:hidden; }
     $('sending-size').textContent = plan.length === 1 ? 'Sending: ' + label(first) : '';
     $('reference-list').querySelectorAll('.reference-sending').forEach((element, index) => {
       if (isMultiReference() && plan[index]) {
-        element.textContent = 'Sending: ' + label(plan[index]) + ' · ' + referenceTokens(plan[index]).toLocaleString() + ' tokens';
+        const tokens = hasReferenceBudget() ? ' · ' + referenceTokens(plan[index]).toLocaleString() + ' tokens' : '';
+        element.textContent = 'Sending: ' + label(plan[index]) + tokens;
       }
     });
     if ($('source-size').checked && selectedModel()?.edits_image) {
@@ -1591,7 +1605,8 @@ body:has(#reference-view[open]) { overflow:hidden; }
     }
     const budget = $('reference-budget');
     const tokens = tokenCount(plan);
-    budget.hidden = !isMultiReference();
+    budget.hidden = !hasReferenceBudget();
+    if (budget.hidden) return;
     budget.toggleAttribute('data-over-limit', tokens > referenceBudget);
     budget.textContent = tokens.toLocaleString() + ' / ' + referenceBudget.toLocaleString() + ' reference tokens' +
       (tokens > referenceBudget ? ' · Over budget. Choose Max size or a smaller limit.' : '');
