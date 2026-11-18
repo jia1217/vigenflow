@@ -1559,13 +1559,17 @@ body:has(#reference-view[open]) { overflow:hidden; }
     const budget = referenceBudget();
     const align = usesNativeReferences() || Boolean(budget) || $('source-size').checked;
     const longEdge = limit === 'original' || limit === 'max' ? 2048 : Number(limit);
-    const planAt = factor => inputs.map(reference => preparedDimensions(
-      reference, factor * Math.min(1, longEdge / Math.max(reference.width, reference.height)), align
+    const full = inputs.map(reference => preparedDimensions(
+      reference, Math.min(1, longEdge / Math.max(reference.width, reference.height)), align
     ));
-    const full = planAt(1);
     if (limit !== 'max' || !budget || tokenCount(full) <= budget) return full;
+    const planAt = areaLimit => full.map(image => {
+      const factor = Math.min(1, Math.sqrt(areaLimit / (image.width * image.height)));
+      const dimensions = preparedDimensions({ width: image.width, height: image.height }, factor, align);
+      return { ...dimensions, reference: image.reference };
+    });
     let lower = 0;
-    let upper = 1;
+    let upper = Math.max(...full.map(image => image.width * image.height));
     for (let i = 0; i < 24; i++) {
       const midpoint = (lower + upper) / 2;
       if (tokenCount(planAt(midpoint)) <= budget) lower = midpoint;
