@@ -380,14 +380,13 @@ body:has(#reference-view[open]) { overflow:hidden; }
                   <div class="size-track">
                     <label><input type="radio" name="reference-limit" value="512"><span>512</span></label>
                     <label><input type="radio" name="reference-limit" value="1024"><span>1024</span></label>
-                    <label><input type="radio" name="reference-limit" value="2048" checked><span>2048</span></label>
-                    <label hidden><input type="radio" name="reference-limit" value="original" disabled><span>Original</span></label>
-                    <label hidden><input type="radio" name="reference-limit" value="max" disabled><span>Max size</span></label>
+                    <label><input type="radio" name="reference-limit" value="2048"><span>2048</span></label>
+                    <label><input type="radio" name="reference-limit" value="max" checked><span>Auto</span></label>
                   </div>
                 </fieldset>
                 <small id="reference-budget" class="help" role="status" aria-describedby="reference-budget-help" hidden></small>
-                <small id="reference-budget-help" class="help" hidden>Each 16 × 16 block is one token. Max size fits all references into the budget. Choose 1024 or 512 to save more memory.</small>
-                <small id="input-size-note" hidden>Long edge per reference, in pixels. Original keeps the uploaded size.</small>
+                <small id="reference-budget-help" class="help" hidden>Each 16 × 16 block is one token. Auto fits the budget by reducing larger images first. Smaller images keep their size until needed.</small>
+                <small id="input-size-note" hidden>Long-edge limits only reduce larger images. Auto uses up to 2048 px and fits the reference token budget.</small>
                 <small id="input-upscaling-note" class="help">Upscaling for input pictures coming soon.</small>
               </div>
               <div id="edit-size" class="section" hidden>
@@ -1046,7 +1045,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
     const plan = model.edits_image ? referencePlan() : [];
     const budget = referenceBudget(model);
     if (budget && tokenCount(plan) > budget) {
-      status('Choose Max size or a smaller input limit to fit the reference token budget.', true);
+      status('Choose Auto or a smaller input limit to fit the reference token budget.', true);
       return;
     }
     const prompt = promptForModel(model).trim();
@@ -1558,7 +1557,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
     const inputs = activeReferences();
     const budget = referenceBudget();
     const align = usesNativeReferences() || Boolean(budget) || $('source-size').checked;
-    const longEdge = limit === 'original' || limit === 'max' ? 2048 : Number(limit);
+    const longEdge = limit === 'max' ? 2048 : Number(limit);
     const full = inputs.map(reference => preparedDimensions(
       reference, Math.min(1, longEdge / Math.max(reference.width, reference.height)), align
     ));
@@ -1579,16 +1578,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
   }
 
   function updateInputLimits() {
-    const longest = Math.max(...activeReferences().map(({ width, height }) => Math.max(width, height)));
-    for (const size of [512, 1024, 2048]) limitOption(size).disabled = size > longest || (size === longest && longest < 2048);
-    const original = limitOption('original');
-    const max = limitOption('max');
-    const budget = referenceBudget();
-    max.parentElement.hidden = max.disabled = !budget || tokenCount(referencePlan('2048')) <= budget;
-    original.parentElement.hidden = original.disabled = longest >= 2048 || !max.disabled;
-    const fallback = !max.disabled ? max : original.disabled ? limitOption(2048) : original;
-    const preferred = limitOption(preferredInputLimit);
-    (preferred && !preferred.disabled ? preferred : fallback).checked = true;
+    (limitOption(preferredInputLimit) || limitOption('max')).checked = true;
     updateSendingSize();
   }
 
@@ -1616,7 +1606,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
     const tokens = tokenCount(plan);
     budgetInfo.toggleAttribute('data-over-limit', tokens > budget);
     budgetInfo.textContent = tokens.toLocaleString() + ' / ' + budget.toLocaleString() + ' reference tokens' +
-      (tokens > budget ? ' · Over budget. Choose Max size or a smaller limit.' : '');
+      (tokens > budget ? ' · Over budget. Choose Auto or a smaller limit.' : '');
   }
 
   inputLimit.addEventListener('change', event => {
