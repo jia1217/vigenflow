@@ -279,6 +279,10 @@ body:has(#reference-view[open]) { overflow:hidden; }
 #image-frame:not([data-comparing="true"]) #output { cursor:zoom-in; }
 #full-reference { width:100%; height:100%; min-height:0; object-fit:contain; }
 #input-limit { margin-top:8px; }
+/* Upscaler: one image, no prompt mentions, no input-size controls. */
+body[data-task="upscale"] #input-limit, body[data-task="upscale"] #input-size-note,
+body[data-task="upscale"] #input-upscaling-note, body[data-task="upscale"] .ref-insert,
+body[data-task="upscale"] #sending-info { display:none; }
 #input-limit legend { margin-bottom:6px; font-size:12px; }
 .size-track {
   display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:2px; padding:3px;
@@ -363,7 +367,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
         </div>
             <div id="input-field" class="field" hidden>
               <div class="ref-header">
-                <h2>References</h2>
+                <h2 id="ref-heading">References</h2>
                 <label class="ref-upload"><span id="ref-upload-label">Add image</span><input id="input-image" type="file" accept="image/png,image/jpeg,image/bmp,image/gif" aria-describedby="input-help"></label>
               </div>
               <small id="input-help" class="help">Drop or paste an image. PNG, JPEG, BMP or GIF, up to 40 MB.</small>
@@ -636,18 +640,32 @@ body:has(#reference-view[open]) { overflow:hidden; }
     $('connection-state').textContent = label;
   }
 
+  // Wording per task: text to image, image editing, or upscaling (no prompt, square output).
+  function taskWords(model) {
+    if (model?.upscales) return { action: 'Upscale image', busy: 'Upscaling', done: 'Upscaled', empty: 'No upscaled image yet',
+      hint: 'Add an image to upscale.', creating: 'Upscaling your image…' };
+    if (model?.edits_image) return { action: 'Edit image', busy: 'Editing', done: 'Edited', empty: 'No edited image yet',
+      hint: 'Add an image and a prompt.', creating: 'Applying your changes…' };
+    return { action: 'Generate image', busy: 'Generating', done: 'Generated', empty: 'No image yet',
+      hint: 'Enter a prompt to start.', creating: 'Creating your image…' };
+  }
+
   function updateAction(model) {
-    $('generate').textContent = model.edits_image ? 'Edit image' : 'Generate image';
+    const words = taskWords(model);
+    $('generate').textContent = words.action;
     $('prompt-label').textContent = model.edits_image ? 'Editing instructions' : 'Prompt';
     $('prompt').placeholder = model.edits_image
       ? 'Describe what you want to change…'
       : 'Describe your image…';
+    // The upscaler takes no prompt: hide the editor and presets, keep status and the button.
+    const noPrompt = model.prompt_required === false;
+    $('prompt-label').closest('.composer-label').hidden = noPrompt;
+    $('prompt').hidden = noPrompt;
+    $('save-preset').hidden = noPrompt;
     if (!outputUrl) {
       $('preview-state').textContent = 'Waiting for input';
-      $('preview-message').textContent = model.edits_image ? 'No edited image yet' : 'No image yet';
-      $('preview-hint').textContent = model.edits_image
-        ? 'Add an image and a prompt.'
-        : 'Enter a prompt to start.';
+      $('preview-message').textContent = words.empty;
+      $('preview-hint').textContent = words.hint;
     }
   }
 
@@ -775,7 +793,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
 
   function updateCustomSize() {
     const limits = selectedModel()?.size_limits;
-    const edit = Boolean(selectedModel()?.edits_image && limits);
+    const edit = Boolean(selectedModel()?.edits_image && !selectedModel()?.upscales && limits);
     const ready = edit && Boolean(inputSize);
     const dimensions = $('custom-size');
     if (edit !== (dimensions.parentElement.id === 'edit-dimensions')) {
@@ -806,12 +824,13 @@ body:has(#reference-view[open]) { overflow:hidden; }
   }
 
   function chosenSize(model) {
-    if ($('size').value !== 'custom' && !(model.edits_image && model.size_limits)) return $('size').value;
+    if ($('size').value !== 'custom' && !(model.edits_image && !model.upscales && model.size_limits)) return $('size').value;
     const limits = model.size_limits;
     const sides = [Number($('width').value), Number($('height').value)];
     if (sides.some(side => !Number.isInteger(side) || side < limits.min || side > limits.max || side % limits.multiple)) {
       throw new Error(`Each side must be ${limits.min}–${limits.max} px · step ${limits.multiple}.`);
     }
+    if (model.upscales && sides[0] !== sides[1]) throw new Error('Upscaling output is square: use the same width and height.');
     return `${sides[0]}x${sides[1]}`;
   }
 
@@ -918,6 +937,9 @@ body:has(#reference-view[open]) { overflow:hidden; }
     $('input-image').disabled = !model.edits_image;
     $('input-image').multiple = isMultiReference();
     $('input-image').accept = usesNativeReferences(model) ? 'image/png,image/jpeg' : 'image/png,image/jpeg,image/bmp,image/gif';
+    document.body.dataset.task = model.upscales ? 'upscale' : model.edits_image ? 'edit' : 'generate';
+    $('ref-heading').textContent = model.upscales ? 'Image to upscale' : 'References';
+    $('view-edited').textContent = model.upscales ? 'Upscaled image' : 'Edited image';
     renderReferences();
     updateAction(model);
   }
@@ -935,10 +957,13 @@ body:has(#reference-view[open]) { overflow:hidden; }
       if (!Array.isArray(data.data) || !data.data.length) throw new Error('No models available.');
       models = data.data;
       const groups = [];
-      for (const [edits, label] of [[false, 'Generation'], [true, 'Editing']]) {
+      // Image models in two groups; the SeedVR2 upscaler is listed with the edit models.
+      const tasks = [['Generation', model => !model.edits_image],
+                     ['Editing', model => Boolean(model.edits_image)]];
+      for (const [label, belongs] of tasks) {
         const group = document.createElement('optgroup');
         group.label = label;
-        for (const model of models.filter(model => Boolean(model.edits_image) === edits)) {
+        for (const model of models.filter(belongs)) {
           group.append(new Option(model.id, model.id));
         }
         if (group.children.length) groups.push(group);
@@ -1034,7 +1059,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
     const model = selectedModel();
     const inputs = activeReferences();
     if (model.edits_image && !inputs.length) {
-      status('Add a reference image.', true);
+      status(model.upscales ? 'Add an image to upscale.' : 'Add a reference image.', true);
       return;
     }
     const limit = referenceLimit(model);
@@ -1048,12 +1073,13 @@ body:has(#reference-view[open]) { overflow:hidden; }
       status('Choose Auto or a smaller input limit to fit the reference token budget.', true);
       return;
     }
-    const prompt = promptForModel(model).trim();
-    if (model.edits_image && $('prompt').querySelector('[data-missing]')) {
+    const needsPrompt = model.prompt_required !== false;
+    const prompt = needsPrompt ? promptForModel(model).trim() : '';
+    if (needsPrompt && model.edits_image && $('prompt').querySelector('[data-missing]')) {
       status('Add the missing reference or remove its mention.', true);
       return;
     }
-    if (!prompt || new TextEncoder().encode(prompt).length > 16384 || prompt.includes('\0')) {
+    if (needsPrompt && (!prompt || new TextEncoder().encode(prompt).length > 16384 || prompt.includes('\0'))) {
       status('Prompt must be 1–16384 bytes, without NUL.', true);
       return;
     }
@@ -1065,6 +1091,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
       response_format: $('response-format').value,
       steps: Number($('steps').value), seed: Number($('seed').value)
     };
+    if (!needsPrompt) { delete params.prompt; delete params.steps; }
     if (model.loras) params.loras = [...$('lora-list').querySelectorAll('input:checked')].map(box => box.value);
     let body;
     let editInput = null;
@@ -1083,13 +1110,14 @@ body:has(#reference-view[open]) { overflow:hidden; }
     const elapsed = () => (performance.now() - started) / 1000;
     $('preview-panel').dataset.busy = 'true';
     $('preview-panel').setAttribute('aria-busy', 'true');
-    $('generate').textContent = model.edits_image ? 'Editing…' : 'Generating…';
+    const words = taskWords(model);
+    $('generate').textContent = words.busy + '…';
     if (!outputUrl) {
-      $('preview-message').textContent = model.edits_image ? 'Applying your changes…' : 'Creating your image…';
+      $('preview-message').textContent = words.creating;
       $('preview-hint').textContent = 'Loading the model may take a moment.';
     }
-    status(`${model.edits_image ? 'Editing' : 'Generating'} your image…`);
-    const progress = () => { $('preview-state').textContent = `${model.edits_image ? 'Editing' : 'Generating'} · ${elapsed().toFixed(0)} s`; };
+    status(`${words.busy} your image…`);
+    const progress = () => { $('preview-state').textContent = `${words.busy} · ${elapsed().toFixed(0)} s`; };
     progress();
     const timer = setInterval(progress, 1000);
     let nextUrl = '';
@@ -1128,7 +1156,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
       beforeUrl = nextBeforeUrl;
       nextBeforeUrl = '';
       $('output').src = outputUrl;
-      $('output').alt = `${model.edits_image ? 'Edited' : 'Generated'} image: ${prompt}`;
+      $('output').alt = model.upscales ? 'Upscaled image' : `${words.done} image: ${prompt}`;
       $('image-frame').style.setProperty('--image-ratio', decoded.naturalWidth / decoded.naturalHeight);
       if (beforeUrl) $('before-image').src = beforeUrl;
       else $('before-image').removeAttribute('src');
@@ -1136,7 +1164,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
       $('comparison-unavailable').hidden = !editInput || Boolean(beforeUrl);
       updateComparisonPosition(50);
       showComparison(Boolean(beforeUrl));
-      $('result-heading').textContent = model.edits_image ? 'Edited image' : 'Generated image';
+      $('result-heading').textContent = `${words.done} image`;
       $('download').href = outputUrl;
       $('open-image').href = outputUrl;
       $('download').download = `vigenflow-${model.id}-${params.seed}.png`;
@@ -1170,7 +1198,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
       $('generation-form').removeAttribute('aria-busy');
       $('preview-panel').dataset.busy = 'false';
       $('preview-panel').removeAttribute('aria-busy');
-      $('generate').textContent = model.edits_image ? 'Edit image' : 'Generate image';
+      $('generate').textContent = taskWords(model).action;
     }
   });
   const composer = $('prompt');
@@ -1404,6 +1432,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
         hidePicker();
         insertReference({ value, start, end }, reference, start && !/\s/.test(value[start - 1]) ? ' ' : '');
       }, 'Insert ' + tag);
+      insert.classList.add('ref-insert');
       const remove = referenceButton('×', () => removeReference(index), 'Remove ' + tag);
       remove.title = 'Remove ' + tag;
       const fields = document.createElement('div');
