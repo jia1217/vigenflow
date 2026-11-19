@@ -11,7 +11,7 @@
 - 🧹 **Lower memory use:** each request frees all of its memory when the image is done.
 - 📐 **Still included:** custom image sizes from 16 to 2048 pixels per side, LoRA styles, and visible E2E timings.
 
-**[Download for Windows](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.5/vgf-beta5-windows.zip)** · **[Download for Ubuntu](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.5)** · **[Get started](#-use-the-built-in-browser-ui)** · **[What's new in Beta 5](#-whats-new-in-beta-5)** · **[Beta 4 examples](#-beta-4-examples)**
+**[Download for Windows](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.5/vgf_0.2.0-beta.5_windows_amd64.zip)** · **[Download for Ubuntu](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.5/vgf_0.2.0-beta.5_ubuntu_amd64.zip)** · **[Get started](#-use-the-built-in-browser-ui)** · **[What's new in Beta 5](#-whats-new-in-beta-5)** · **[Beta 4 examples](#-beta-4-examples)**
 
 > **Upgrading from Beta 4?** The model weight paths are unchanged. Extract Beta 5 beside your existing `all_model_weights` folder to reuse your weights without downloading them again. Stop the Beta 4 server first; the OpenAI-compatible API is still at `/v1`. API requests must no longer contain the old `mode` or `memory_reserve_gib` fields.
 
