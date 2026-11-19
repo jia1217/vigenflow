@@ -20,7 +20,7 @@
 ## ✨ What's New in Beta 5
 
 - 🖼️ **Multi-reference editing.** **FLUX.2-klein-4B Edit** takes up to 4 reference images and **Qwen Image 2.1 Turbo Edit** up to 10. Reorder them and mention them in your prompt, for example "the rabbit from image 1 wears the jacket from image 2". The **Auto** input limit sizes the references to fit the model.
-- 🔍 **SeedVR2-3B upscaler.** Choose `seedvr2-3B` under *Editing*, add a picture and pick a square output size of up to 2048 × 2048; no prompt is needed. Non-square upscaling comes in the next release.
+- 🔍 **SeedVR2-3B upscaler.** Choose `seedvr2-3B` under *Editing*, add a picture and pick a square output size of up to 2048 × 2048; no prompt is needed.
 - 🎨 **Vigen Studio web UI**, designed by our new contributor [@olwaht](https://github.com/olwaht):
   - 💾 **Saved prompts:** save a prompt with **Save as preset**, manage your presets on the **Prompts** page, and type **/** in the prompt box to reuse one.
   - 📎 **@ mentions:** type **@** in the prompt to pick which reference image you mean.
