@@ -2,23 +2,41 @@
 
 **Create images locally with AMD NPU acceleration and a built-in browser UI.**
 
-**[v0.2.0 Beta 4](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4)** adds a **built-in web UI**: generate and edit images with all seven models from your browser, on **Windows and Ubuntu**. Everything runs locally with **CPU + AMD NPU inference**; no Python, Docker or extra frontend is needed, and OpenWebUI is optional.
+**[v0.2.0 Beta 5](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.5)** adds **multi-reference editing**, the **SeedVR2-3B image upscaler** and the new **Vigen Studio** web UI, on **Windows and Ubuntu**. Everything runs locally with **CPU + AMD NPU inference**; no Python, Docker or extra frontend is needed, and OpenWebUI is optional.
 
-- 🌐 **Web UI:** pick a model, enter a prompt, and download the PNG. Image editing has a before/after slider.
-- 📐 **Custom image sizes:** 16–2048 pixels per side, in multiples of 16, for all seven models, including editing.
-- 🎨 **LoRA styles:** select a style from the model's list and add its trigger words; its weights download on first use. Configure your own LoRAs through `loras.jsonc`.
-- 🖼️ **Easier editing:** FLUX.2 and Qwen edit models accept one reference image of any size, not just 1024 × 1024.
-- ⏱️ **Visible timings:** E2E runtime in seconds beside the seed and in the completion message, with stage timings below the image.
+- 🖼️ **Multi-reference editing:** combine several images in one edit. FLUX.2-klein-4B Edit takes up to 4 references and Qwen Image 2.1 Turbo Edit up to 10.
+- 🔍 **SeedVR2-3B upscaler:** upscale a picture to a square image of up to 2048 × 2048, with no prompt needed.
+- 🎨 **Vigen Studio web UI:** save prompts as presets and reuse them with **/**, and type **@** to point at a reference image in your prompt.
+- ⚡ **Faster models:** new NPU builds of all seven models; Qwen Image Edit is about 15 % faster than in Beta 4.
+- 🧹 **Lower memory use:** each request frees all of its memory when the image is done.
+- 📐 **Still included:** custom image sizes from 16 to 2048 pixels per side, LoRA styles, and visible E2E timings.
 
-**[Download for Windows](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.4/vgf_0.2.0-beta.4_windows_amd64.zip)** · **[Download for Ubuntu](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.4/vgf_0.2.0-beta.4_ubuntu_amd64.zip)** · **[Get started](#-use-the-built-in-browser-ui)** · **[Beta 4 examples](#-beta-4-examples)** · **[Beta 5 preview](#-beta-5-preview)**
+**[Download for Windows](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.5/vgf-beta5-windows.zip)** · **[Download for Ubuntu](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.5)** · **[Get started](#-use-the-built-in-browser-ui)** · **[What's new in Beta 5](#-whats-new-in-beta-5)** · **[Beta 4 examples](#-beta-4-examples)**
 
-> **Upgrading from Beta 3?** The model weight paths are unchanged. Extract Beta 4 beside your existing `all_model_weights` folder to reuse your weights without downloading them again. Stop the Beta 3 server first; the OpenAI-compatible API is still at `/v1`.
+**🪟 One-line install on Windows.** In PowerShell, run:
+
+```powershell
+irm https://raw.githubusercontent.com/jia1217/vigenflow/main/install.ps1 | iex
+```
+
+It checks the NPU driver, downloads the latest release and the models you choose, starts the server, and opens the web UI. Run it again to update VigenFlow or add models.
+
+> **Upgrading from Beta 4?** The model weight paths are unchanged. Extract Beta 5 beside your existing `all_model_weights` folder to reuse your weights without downloading them again. Stop the Beta 4 server first; the OpenAI-compatible API is still at `/v1`. API requests must no longer contain the old `mode` or `memory_reserve_gib` fields.
 
 ---
 
-## 🧪 Beta 5 Preview
+## ✨ What's New in Beta 5
 
-Beta 5 is in testing and not released yet. It adds **multi-reference image editing** to the Studio web UI: **Qwen Image 2.1 Turbo Edit** takes up to 10 reference images, which you can reorder and mention in the prompt. Click the image to open the original PNG at full size.
+- 🖼️ **Multi-reference editing.** **FLUX.2-klein-4B Edit** takes up to 4 reference images and **Qwen Image 2.1 Turbo Edit** up to 10. Reorder them and mention them in your prompt, for example "the rabbit from image 1 wears the jacket from image 2". The **Auto** input limit sizes the references to fit the model.
+- 🔍 **SeedVR2-3B upscaler.** Choose `seedvr2-3B` under *Editing*, add a picture and pick a square output size of up to 2048 × 2048; no prompt is needed. Non-square upscaling comes in the next release.
+- 🎨 **Vigen Studio web UI**, designed by our new contributor [@olwaht](https://github.com/olwaht):
+  - 💾 **Saved prompts:** save a prompt with **Save as preset**, manage your presets on the **Prompts** page, and type **/** in the prompt box to reuse one.
+  - 📎 **@ mentions:** type **@** in the prompt to pick which reference image you mean.
+  - Reference cards, a before/after slider, light and dark themes, and **Ctrl / ⌘ + Enter** to generate.
+- ⚡ **Faster models.** All seven models use new NPU builds. Qwen Image Edit is about 15 % faster than in Beta 4, and FLUX.2-klein-4B and Qwen Image 6–8 % faster; see [Supported Models](#-supported-models).
+- 🧹 **Lower memory use.** Each request starts the model, makes the image and exits, so all of its memory is freed afterwards. The Performance/Balanced memory modes are gone.
+
+Click the image to open the original PNG at full size.
 
 <table>
   <tr>
@@ -112,30 +130,31 @@ The examples below were generated on the NPU at **1024 × 1024**. Click an image
 
 ## 🧠 Supported Models
 
-The Beta 4 packages for Windows and Ubuntu include all seven models, each with LoRA styles and custom image sizes.
+The Beta 5 packages for Windows and Ubuntu include all seven image models, each with LoRA styles and custom image sizes, and the SeedVR2-3B upscaler.
 
 ### 🖼️ Text-to-Image
 
 | Model | Model ID | Denoising steps | Time per image | Windows | Ubuntu |
 | --- | --- | ---: | ---: | :---: | :---: |
 | **FLUX.1-schnell** | `flux1-schnell` | 4 | ~20 s | ✅ | ✅ |
-| **FLUX.2-klein-4B** | `flux2-klein-4B` | 4 | ~9 s | ✅ | ✅ |
+| **FLUX.2-klein-4B** | `flux2-klein-4B` | 4 | ~8 s | ✅ | ✅ |
 | **Krea 2 Turbo** | `krea2-turbo` | 8 | ~45 s | ✅ | ✅ |
 | **Z-Image-Turbo** | `z-image-turbo` | 4 or 8 | ~18 s | ✅ | ✅ |
-| **Qwen Image 2.1 Turbo** | `qwen-image-2.1-turbo` | 8 | ~33 s | ✅ | ✅ |
+| **Qwen Image 2.1 Turbo** | `qwen-image-2.1-turbo` | 8 | ~31 s | ✅ | ✅ |
 
-### ✏️ Image-to-Image (Editing)
+### ✏️ Image-to-Image (Editing and Upscaling)
 
 | Model | Model ID | Denoising steps | Time per image | Windows | Ubuntu |
 | --- | --- | ---: | ---: | :---: | :---: |
-| **FLUX.2-klein-4B Edit** | `flux2-klein-4B-edit` | 4 | ~18 s | ✅ | ✅ |
-| **Qwen Image 2.1 Turbo Edit** | `qwen-image-2.1-turbo-edit` | 8 | ~52 s | ✅ | ✅ |
+| **FLUX.2-klein-4B Edit** | `flux2-klein-4B-edit` | 4 | ~17 s | ✅ | ✅ |
+| **Qwen Image 2.1 Turbo Edit** | `qwen-image-2.1-turbo-edit` | 8 | ~45 s | ✅ | ✅ |
+| **SeedVR2-3B** (upscaling) | `seedvr2-3B` | 1 | ~5.5 s | ✅ | ✅ |
 
-All models use BFP16 weights and make images from 16 to 2048 pixels per side, in multiples of 16. The two editing models share their generation model's weights, so they need no separate download. You can switch between installed models in the web UI or the OpenWebUI model list without restarting `vgf-serve`.
+All models use BFP16 weights and make images from 16 to 2048 pixels per side, in multiples of 16; SeedVR2-3B makes square images only. The editing models take up to 4 (FLUX.2) or 10 (Qwen) reference images. The two editing models share their generation model's weights, so they need no separate download. You can switch between installed models in the web UI or the OpenWebUI model list without restarting `vgf-serve`.
 
-The times are approximate, for one 1024 × 1024 image on an AMD Ryzen AI 9 HX 370, with prompts encoded at 512 text tokens.
+The times are approximate, for one 1024 × 1024 image on an AMD Ryzen AI 9 HX 370, with prompts encoded at 512 text tokens. Editing times are for one reference image; SeedVR2-3B's is for an upscale to 1024 × 1024.
 
-Krea 2 Turbo's weights are under the [Krea 2 Community License](https://www.krea.ai/krea-2-licensing), not Apache-2.0, and its commercial use is limited; see [MODEL_LICENSES.md](MODEL_LICENSES.md). The Flux and Z-Image models in the table above are Apache-2.0. The opt-in Qwen Image 2.1 Turbo weights use the Qwen RESEARCH LICENSE AGREEMENT (research/evaluation only; separate license required for commercial use).
+Krea 2 Turbo's weights are under the [Krea 2 Community License](https://www.krea.ai/krea-2-licensing), not Apache-2.0, and its commercial use is limited; see [MODEL_LICENSES.md](MODEL_LICENSES.md). The Flux, Z-Image and SeedVR2 models in the tables above are Apache-2.0. The opt-in Qwen Image 2.1 Turbo weights use the Qwen RESEARCH LICENSE AGREEMENT (research/evaluation only; separate license required for commercial use).
 
 ### Compared with AMD Ryzen AI Software 1.8
 
@@ -157,7 +176,10 @@ All times are for one 1024 × 1024 image, and both FLUX comparisons use 4 steps.
 
 Planned for a future release:
 
-- [ ] **SeedVR2** and **VOSR2** support for image upscaling.
+- [ ] **Non-square upscaling** with SeedVR2-3B.
+- [ ] **FLUX.3-klein** support.
+- [ ] **VOSR2** support for image upscaling.
+- [x] ~~**SeedVR2** support for image upscaling.~~ SeedVR2-3B upscales square images in [Beta 5](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.5).
 - [x] ~~Extend **BFP16 LoRA support** to more model packages.~~ All seven models support LoRA styles in [Beta 4](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4).
 
 Which model should come next? Vote in [issue #4](https://github.com/jia1217/vigenflow/issues/4).
@@ -196,7 +218,7 @@ Ubuntu has no official XRT packages. The PPA's `amdxdna-dkms` driver replaces th
 
 ### 🧭 Choose How to Install
 
-- **[Beta 4 packages](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4) · recommended:** download the Windows or Ubuntu package and use the [built-in browser UI](#-use-the-built-in-browser-ui), with all seven models, LoRAs and custom sizes.
+- **[Beta 5 packages](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.5) · recommended:** download the Windows or Ubuntu package and use the [built-in browser UI](#-use-the-built-in-browser-ui), with all seven image models, the SeedVR2-3B upscaler, multi-reference editing, LoRAs and custom sizes.
 - **[Quick Install](docs/quick-install.md):** one command installs VigenFlow with its built-in web UI and downloads the models you choose.
 - **[Beta 3 release packages](docs/installation.md):** download and start each part yourself, then connect [OpenWebUI Desktop](https://github.com/open-webui/desktop).
 
@@ -214,7 +236,7 @@ Contributions to VigenFlow are welcome! Whether you want to contribute code, rep
 
 To get involved, open an [issue](https://github.com/jia1217/vigenflow/issues) or submit a [pull request](https://github.com/jia1217/vigenflow/pulls).
 
-Thank you to everyone who contributes to VigenFlow and helps make the project better!
+Thank you to everyone who contributes to VigenFlow and helps make the project better! Special thanks to [@olwaht](https://github.com/olwaht) for designing the Vigen Studio web UI and its multi-reference editing in Beta 5.
 
 ---
 
@@ -242,19 +264,19 @@ Model weights are **not** covered by this license. Each model and LoRA keeps its
 
 ## 📦 Installation
 
-For Beta 4, see [Use the Built-in Browser UI](#-use-the-built-in-browser-ui) above. The **[manual installation guide](docs/installation.md)** covers the Beta 3 release packages, model downloads, and server startup on Windows and Ubuntu.
+For Beta 5, see [Use the Built-in Browser UI](#-use-the-built-in-browser-ui) above. The **[manual installation guide](docs/installation.md)** covers the Beta 3 release packages, model downloads, and server startup on Windows and Ubuntu.
 
 ---
 
 ## 🖼️ Use the Built-in Browser UI
 
-Download and extract the [Beta 4 package](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.4) for your system, then download the weights for a model and start the server from the package folder.
+On Windows, the [one-line install](#-quick-install) does these steps for you. To do them by hand, download and extract the [Beta 5 package](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.5) for your system, then download the weights for a model and start the server from the package folder.
 
 #### 🪟 Windows
 
 ```powershell
 .\prepare\prepare_base.exe --only flux1_schnell
-.\server_running\start_windows.bat --model flux1-schnell
+.\start_windows.bat --model flux1-schnell
 ```
 
 Open **http://127.0.0.1:11283/**. Use `--port 11286` for another port.
@@ -268,9 +290,9 @@ bash start.sh
 
 Open **http://127.0.0.1:11285/**. Use `VGF_PORT=11290 bash start.sh` for another port.
 
-Other weight options are `flux2_klein_4B` (FLUX.2 generation and editing), `z_image_turbo`, `krea2_turbo` and `qwen_image_2_1_turbo` (Qwen generation and editing); Krea 2 and Qwen ask you to accept their model terms. The weights are saved in `all_model_weights` beside the package, so later versions can reuse them. Add `-k true` to the start command to keep every PNG in `server_running/images`, and press **Ctrl+C** to stop the server.
+Other weight options are `flux2_klein_4B` (FLUX.2 generation and editing), `z_image_turbo`, `krea2_turbo`, `qwen_image_2_1_turbo` (Qwen generation and editing) and `seedvr2` (SeedVR2-3B upscaling); Krea 2 and Qwen ask you to accept their model terms. The weights are saved in `all_model_weights` beside the package, so later versions can reuse them. Add `-k true` to the start command to keep every PNG in `server_running/images`, and press **Ctrl+C** to stop the server.
 
-Pick a model, enter a prompt, select optional LoRAs, choose an image size and seed, and click **Generate image**. For the editing models, choose an **Image to edit** and describe the change. The result includes a PNG download, a full-size preview, and E2E runtime in seconds.
+Pick a model, enter a prompt, select optional LoRAs, choose an image size and seed, and click **Generate image**. For the editing models, add up to 4 (FLUX.2) or 10 (Qwen) reference images and describe the change; type **@** to mention an image and **/** to insert a saved prompt. For SeedVR2-3B, add the image to upscale, pick a square size and click **Upscale image**. The result includes a PNG download, a full-size preview, and E2E runtime in seconds.
 
 Each model's LoRA styles are listed in `server_running/exe_models/<model>/loras.jsonc`. Most Civitai downloads need your Civitai API key in that file's `"civitai_token"` field. Add or remove entries as you like, then refresh the browser page; no restart is needed.
 

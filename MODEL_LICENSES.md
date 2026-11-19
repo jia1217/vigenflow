@@ -6,7 +6,7 @@ Before you use a model, especially commercially, read its license on the upstrea
 
 ## Base models
 
-These weights are available through the preparation catalog; Qwen is opt-in and its server integration is separate as noted below. Native NPU+CPU conversion does not change the upstream license.
+These weights are available through the preparation catalog; Qwen and SeedVR2 are opt-in. Native NPU+CPU conversion does not change the upstream license.
 
 | Model | Upstream | License | Commercial use |
 | --- | --- | --- | --- |
@@ -14,9 +14,12 @@ These weights are available through the preparation catalog; Qwen is opt-in and 
 | FLUX.2-klein-4B (text-to-image and editing) | [black-forest-labs/FLUX.2-klein-4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) | Apache-2.0 | Allowed |
 | Z-Image-Turbo | [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) | Apache-2.0 | Allowed |
 | Krea 2 Turbo | [krea/Krea-2-Turbo](https://huggingface.co/krea/Krea-2-Turbo) | [Krea 2 Community License](https://www.krea.ai/krea-2-licensing) | Limited: only while total company revenue, including affiliates, is below USD 1 million over the past twelve months. Above that, a separate Krea enterprise license is required. |
+| SeedVR2-3B (image upscaling; opt-in weight preparation) | [ByteDance-Seed/SeedVR2-3B](https://huggingface.co/ByteDance-Seed/SeedVR2-3B) | Apache-2.0 | Allowed |
 | Qwen Image 2.1 Turbo (text-to-image and editing; opt-in weight preparation) | [Qwen/Qwen-Image-2.1-Turbo](https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo) | [Qwen RESEARCH LICENSE AGREEMENT](model_licenses/qwen_image_2_1_turbo/LICENSE) | Research/evaluation only under this agreement; commercial use requires a separate upstream license. |
 
 The text encoders and VAEs are the ones distributed in the upstream repositories above.
+
+SeedVR2-3B weights are downloaded with `prepare_base.exe --only seedvr2`, which saves the upstream `LICENSE` and a `Notice` with them. Keep those files with any copy you make.
 
 Krea 2 Turbo is also subject to the [Krea Acceptable Use Policy](https://www.krea.ai/krea-2-use-policy). `prepare_base.exe` asks you to accept both before it downloads these weights, and it saves `LICENSE.pdf` and `Notice` with them. Keep those two files with any copy you make. The full license agreement controls; the row above is only a summary.
 
@@ -31,7 +34,7 @@ naming and attribution conditions; consult its full text when publishing derived
 
 The [converted Qwen weight package](https://huggingface.co/Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16)
 is publicly available through the opt-in preparation entry. Both tasks share one five-stage package.
-Qwen server integration remains separate from weight preparation; the source-code license does not
+Both Qwen workers are integrated into `vgf-serve` and the web UI; the source-code license does not
 grant additional rights to the weights.
 
 Other models from the same families use different licenses. For example, [FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev) and [FLUX.2-klein-9B](https://huggingface.co/black-forest-labs/FLUX.2-klein-9B) are under FLUX non-commercial licenses. If VigenFlow adds such a model, it will be listed here with its license. Its commercial use column will read "Not allowed".
