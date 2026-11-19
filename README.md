@@ -13,14 +13,6 @@
 
 **[Download for Windows](https://github.com/jia1217/vigenflow/releases/download/v0.2.0-beta.5/vgf-beta5-windows.zip)** · **[Download for Ubuntu](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.5)** · **[Get started](#-use-the-built-in-browser-ui)** · **[What's new in Beta 5](#-whats-new-in-beta-5)** · **[Beta 4 examples](#-beta-4-examples)**
 
-**🪟 One-line install on Windows.** In PowerShell, run:
-
-```powershell
-irm https://raw.githubusercontent.com/jia1217/vigenflow/main/install.ps1 | iex
-```
-
-It checks the NPU driver, downloads the latest release and the models you choose, starts the server, and opens the web UI. Run it again to update VigenFlow or add models.
-
 > **Upgrading from Beta 4?** The model weight paths are unchanged. Extract Beta 5 beside your existing `all_model_weights` folder to reuse your weights without downloading them again. Stop the Beta 4 server first; the OpenAI-compatible API is still at `/v1`. API requests must no longer contain the old `mode` or `memory_reserve_gib` fields.
 
 ---
@@ -270,7 +262,7 @@ For Beta 5, see [Use the Built-in Browser UI](#-use-the-built-in-browser-ui) abo
 
 ## 🖼️ Use the Built-in Browser UI
 
-On Windows, the [one-line install](#-quick-install) does these steps for you. To do them by hand, download and extract the [Beta 5 package](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.5) for your system, then download the weights for a model and start the server from the package folder.
+Download and extract the [Beta 5 package](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.5) for your system, then download the weights for a model and start the server from the package folder.
 
 #### 🪟 Windows
 
