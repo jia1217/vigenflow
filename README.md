@@ -168,7 +168,6 @@ All times are for one 1024 × 1024 image, and both FLUX comparisons use 4 steps.
 
 Planned for a future release:
 
-- [ ] **Non-square upscaling** with SeedVR2-3B.
 - [ ] **FLUX.3-klein** support.
 - [ ] **VOSR2** support for image upscaling.
 - [x] ~~**SeedVR2** support for image upscaling.~~ SeedVR2-3B upscales square images in [Beta 5](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.5).
