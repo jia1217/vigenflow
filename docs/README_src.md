@@ -166,7 +166,7 @@ the sibling `NPU_qwen/` tree. `SKIP_BUILD=1` installs existing
 `build/lib/libhost_<model>.so` files. The hosts need their native build
 dependencies, including a PIC build of tokenizers-cpp (`make libhost` builds it
 in `build_pic/`); the edit worker also loads libjpeg-turbo and OpenSSL at runtime. Both workers share the prepared
-`qwen_image_2_1_turbo` weights and use `qwen_image/base` or `qwen_image/edit`
+`qwen_image_2_1_turbo` weights and use `qwen_image_21/base` or `qwen_image_21/edit`
 under the NPU bundle root. See [server setup](../src/server_unified/README.md#qwen-image-21-turbo).
 
 ## Compile Model Worker Launchers on Windows
