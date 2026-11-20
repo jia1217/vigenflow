@@ -11,7 +11,8 @@ import unittest
 INSTALLER = Path(__file__).resolve().parents[1] / 'install.sh'
 QWEN = 'qwen_image_2_1_turbo'
 KREA = 'krea2_turbo'
-ALL = {'flux2_klein_4B', 'z_image_turbo', 'flux1_schnell', KREA, QWEN}
+SEEDVR2 = 'seedvr2'
+ALL = {'flux2_klein_4B', 'z_image_turbo', 'flux1_schnell', KREA, QWEN, SEEDVR2}
 
 FAKE_DOCKER = r'''
 import json, os, pathlib, sys
@@ -96,7 +97,7 @@ class InstallerTest(unittest.TestCase):
         result, _, prepares, starts = self.run_installer('all', krea=True, qwen=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual({args[1] for args in prepares}, ALL)
-        self.assertEqual(len(prepares), 5)
+        self.assertEqual(len(prepares), 6)
         self.assertEqual({args[1] for args in prepares if '--accept_license' in args}, {KREA, QWEN})
         self.assertEqual(starts, [['--model', 'z-image-turbo']])
 
@@ -132,6 +133,17 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(prepares, [['--only', 'flux2_klein_4B']])
         self.assertEqual(starts, [['--model', 'flux2-klein-4B']])
+
+    def test_seedvr2_alone_starts_the_upscaler(self):
+        result, _, prepares, starts = self.run_installer(SEEDVR2)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(prepares, [['--only', SEEDVR2]])
+        self.assertEqual(starts, [['--model', 'seedvr2-3B']])
+
+    def test_seedvr2_is_not_the_default_beside_an_image_model(self):
+        result, _, _, starts = self.run_installer(SEEDVR2 + ',' + KREA, krea=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(starts, [['--model', 'krea2-turbo']])
 
     def test_invalid_weight_id_is_rejected_before_download(self):
         result, calls, prepares, starts = self.run_installer('qwen_image_2_1_turbo_edit')
