@@ -71,7 +71,7 @@ From the extracted package folder, generate a PNG without starting the server:
 ```bash
 ./server_running/exe_models/qwen_image_2_1_turbo/run.exe \
   --weights_path ../all_model_weights/qwen_image_2_1_turbo \
-  --npu_files_path ./all_npu_files/qwen_image/base \
+  --npu_files_path ./all_npu_files/qwen_image_21/base \
   --prompt "a red fox sitting in fresh snow" --output generated.png
 ```
 
@@ -80,7 +80,7 @@ Edit a 1024x1024 input image:
 ```bash
 ./server_running/exe_models/qwen_image_2_1_turbo_edit/run.exe \
   --weights_path ../all_model_weights/qwen_image_2_1_turbo \
-  --npu_files_path ./all_npu_files/qwen_image/edit \
+  --npu_files_path ./all_npu_files/qwen_image_21/edit \
   --input_image generated.png --prompt "make it night time" --output edited.png
 ```
 

@@ -232,7 +232,7 @@ time.sleep(0.08)
                     if folder == 'flux2_klein_4B':
                         npu_path /= 'base'
                     elif folder == 'qwen_image_2_1_turbo':
-                        npu_path = root / 'all_npu_files/qwen_image/base'
+                        npu_path = root / 'all_npu_files/qwen_image_21/base'
                     assert args[args.index('--npu_files_path') + 1] == str(npu_path)
                     assert json.loads((root / folder / 'last_prompt.json').read_text()) == name
                 for steps in valid_steps:
@@ -553,7 +553,7 @@ time.sleep(0.08)
                 assert args[args.index('--steps') + 1] == '8' and args[args.index('--seed') + 1] == '42'
                 assert Path(args[args.index('--output') + 1]).suffix == '.png'
                 assert args[args.index('--weights_path') + 1] == str(root.parent / 'all_model_weights/qwen_image_2_1_turbo')
-                assert args[args.index('--npu_files_path') + 1] == str(root / 'all_npu_files/qwen_image/edit')
+                assert args[args.index('--npu_files_path') + 1] == str(root / 'all_npu_files/qwen_image_21/edit')
             # Qwen ignores every supplied steps value, including malformed values and folder aliases.
             ignored_steps = (0, 1, 4, 7, 9, 50, -1, 2**64, 2.5, None, False, '4', 'auto', [], {})
             for model, folder, endpoint in ((folders[-1], folders[-1], '/v1/images/generations'),

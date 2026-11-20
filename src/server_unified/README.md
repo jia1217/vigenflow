@@ -105,8 +105,8 @@ Qwen remains an opt-in weight download.
 
 | Model ID | Packaged worker | NPU path under `all_npu_files/` |
 |---|---|---|
-| `qwen-image-2.1-turbo` | `exe_models/qwen_image_2_1_turbo/run.exe` | `qwen_image/base` |
-| `qwen-image-2.1-turbo-edit` | `exe_models/qwen_image_2_1_turbo_edit/run.exe` | `qwen_image/edit` |
+| `qwen-image-2.1-turbo` | `exe_models/qwen_image_2_1_turbo/run.exe` | `qwen_image_21/base` |
+| `qwen-image-2.1-turbo-edit` | `exe_models/qwen_image_2_1_turbo_edit/run.exe` | `qwen_image_21/edit` |
 
 Both Ubuntu workers are built like the others: `make -C src/models/<model>`
 embeds the prebuilt `src/lib/libhost_qwen_image_2_1_turbo.so` or
@@ -227,7 +227,7 @@ On Windows run `python tests\test_server.py vigenflow_win\vgf-serve.exe` after `
 The Windows package includes all seven models, including `qwen-image-2.1-turbo`
 and `qwen-image-2.1-turbo-edit`. Both Qwen hosts use the shared
 `all_model_weights/qwen_image_2_1_turbo` folder beside the package. They receive
-`all_npu_files/qwen_image/base` and `all_npu_files/qwen_image/edit`, respectively.
+`all_npu_files/qwen_image_21/base` and `all_npu_files/qwen_image_21/edit`, respectively.
 They use eight steps and write PNGs without intermediate dumps.
 
 On Windows, Qwen works like the other five models: `src/models/build_windows.bat`

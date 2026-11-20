@@ -92,7 +92,7 @@ RUN set -eu; \
     fi; \
     test ! -e server_running/lib; \
     for task in base edit; do \
-        test -d "all_npu_files/qwen_image/$task"; \
+        test -d "all_npu_files/qwen_image_21/$task"; \
     done
 
 WORKDIR /opt/vigenflow/app/server_running
