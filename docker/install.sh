@@ -9,7 +9,8 @@
 # downloaded weights and LoRAs are kept.
 #
 # Unattended runs:
-#   VIGENFLOW_MODELS=flux2_klein_4B,z_image_turbo   models to download, or "all" (default: ask; 1 = FLUX.2)
+#   VIGENFLOW_MODELS=flux2_klein_4B,z_image_turbo   models to download, or "all" (default: ask; 1 = FLUX.2;
+#                                                   seedvr2 = the SeedVR2-3B upscaler)
 #   VIGENFLOW_ACCEPT_KREA_LICENSE=yes               accept Krea 2 Turbo's license (krea2_turbo)
 #   VIGENFLOW_ACCEPT_QWEN_LICENSE=yes               accept Qwen's license (qwen_image_2_1_turbo)
 #   CIVITAI_TOKEN, HF_TOKEN                         passed to VigenFlow for LoRA downloads
@@ -102,7 +103,7 @@ fi
 D="${DOCKER[*]}"  # for the commands printed at the end
 
 # --- Models -------------------------------------------------------------------------------------------
-ALL_MODELS=(flux2_klein_4B z_image_turbo krea2_turbo flux1_schnell qwen_image_2_1_turbo)
+ALL_MODELS=(flux2_klein_4B z_image_turbo krea2_turbo flux1_schnell qwen_image_2_1_turbo seedvr2)
 MODELS="${VIGENFLOW_MODELS:-}"
 if [ -z "$MODELS" ]; then
     if [ -n "$TTY" ]; then
@@ -114,13 +115,14 @@ Which models do you want to download?
   3) Krea 2 Turbo      19 GB   has its own license, which you are asked to accept
   4) FLUX.1-schnell    27 GB
   5) Qwen Image 2.1 Turbo  19.6 GB   text-to-image and editing; asks you to accept its license
-  a) all five          about 85 GB
+  6) SeedVR2-3B         4.7 GB   upscales an image (not a text-to-image model)
+  a) all six           about 90 GB
 EOF
     fi
     MODELS=""
     for choice in $(ask 'Type the numbers separated by spaces [1]:' 1); do
         case "$choice" in
-            1|2|3|4|5) MODELS="$MODELS,${ALL_MODELS[choice - 1]}" ;;
+            1|2|3|4|5|6) MODELS="$MODELS,${ALL_MODELS[choice - 1]}" ;;
             a|A|all) MODELS=all ;;
             *) die "Unknown choice: $choice" ;;
         esac
@@ -171,12 +173,21 @@ for m in "${ALL_MODELS[@]}"; do
     if grep -qx "$m" <<< "$listing"; then INSTALLED+=("$m"); fi
 done
 [ ${#INSTALLED[@]} -gt 0 ] || die "No model weights were downloaded; see the messages above."
-# The server's default model: z-image-turbo, vgf-serve's own default, when it is here.
-DEFAULT_MODEL="${INSTALLED[0]//_/-}"
-if [ "${INSTALLED[0]}" = qwen_image_2_1_turbo ]; then DEFAULT_MODEL=qwen-image-2.1-turbo; fi
+# The server's default model: z-image-turbo, vgf-serve's own default, when it is here; otherwise the
+# first image model, and the SeedVR2 upscaler only when it is the only model here.
+server_id() {  # weights folder -> vgf-serve model ID
+    case "$1" in
+        qwen_image_2_1_turbo) echo qwen-image-2.1-turbo ;;
+        seedvr2) echo seedvr2-3B ;;
+        *) echo "${1//_/-}" ;;
+    esac
+}
+DEFAULT_MODEL=""
 for m in "${INSTALLED[@]}"; do
-    if [ "$m" = z_image_turbo ]; then DEFAULT_MODEL=z-image-turbo; fi
+    if [ "$m" = z_image_turbo ]; then DEFAULT_MODEL=z-image-turbo; break; fi
+    if [ -z "$DEFAULT_MODEL" ] && [ "$m" != seedvr2 ]; then DEFAULT_MODEL="$(server_id "$m")"; fi
 done
+[ -n "$DEFAULT_MODEL" ] || DEFAULT_MODEL="$(server_id "${INSTALLED[0]}")"
 [ "$prepare_ok" = 1 ] || say "Some models were not downloaded (see above). Starting with the ones that are here."
 
 # --- Start VigenFlow ----------------------------------------------------------------------------------

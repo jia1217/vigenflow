@@ -1,5 +1,6 @@
 # VigenFlow server image: the published Ubuntu release package (vgf-serve with its built-in browser UI,
-# the seven NPU model workers, their NPU files and the weight downloader) on Ubuntu 24.04 with XRT.
+# the seven NPU image model workers and the SeedVR2-3B upscaler, their NPU files and the weight
+# downloader) on Ubuntu 24.04 with XRT.
 # The model weights are not in the image; `prepare` downloads them into a volume mounted at
 # /opt/vigenflow/all_model_weights. The host needs only the amdxdna driver: XRT is in the image.
 #
@@ -14,9 +15,9 @@ ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE} AS package
 
 ARG XRT_PPA=ppa:lemonade-team/stable
-ARG VIGENFLOW_VERSION=0.2.0-beta.4
+ARG VIGENFLOW_VERSION=0.2.0-beta.5
 ARG PACKAGE_URL=https://github.com/jia1217/vigenflow/releases/download/v${VIGENFLOW_VERSION}/vgf_${VIGENFLOW_VERSION}_ubuntu_amd64.zip
-ARG PACKAGE_SHA256=d53ceb34f7a6b3c268bde5eb1f4cfd16fbe795d418e64e5046b66ee8f2f5855d
+ARG PACKAGE_SHA256=f7dba7d2cc2704aceda4562a01c2a90705c46f079b05ddc49e0ede3e32d45648
 ENV DEBIAN_FRONTEND=noninteractive
 
 # The XRT PPA is added here so that the runtime stage can copy its apt source.
@@ -41,7 +42,7 @@ RUN set -eu; \
 FROM ${BASE_IMAGE}
 
 LABEL org.opencontainers.image.title="VigenFlow"
-LABEL org.opencontainers.image.description="FLUX, Z-Image, Krea 2 and Qwen Image generation and editing on the AMD Ryzen AI NPU, with a built-in browser UI and an OpenAI-compatible API"
+LABEL org.opencontainers.image.description="FLUX, Z-Image, Krea 2 and Qwen Image generation and editing and SeedVR2 upscaling on the AMD Ryzen AI NPU, with a built-in browser UI and an OpenAI-compatible API"
 LABEL org.opencontainers.image.source="https://github.com/jia1217/vigenflow"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 
