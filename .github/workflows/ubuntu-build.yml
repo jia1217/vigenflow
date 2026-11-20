@@ -80,16 +80,22 @@ jobs:
             "${{ steps.image.outputs.name }}" \
             bash -lc '
               set -euo pipefail
-              make -C src/models/flux1_schnell clean all
-              make -C src/models/flux2_klein_4B clean all
-              make -C src/models/flux2_klein_4B_edit clean all
-              make -C src/models/z_image_turbo clean all
-              make -C src/models/krea2_turbo clean all
-              make -C src/models/qwen_image_2_1_turbo clean all
-              make -C src/models/qwen_image_2_1_turbo_edit clean all
-              count="$(find src/exe_models -type f -name run.exe | wc -l)"
-              if [ "$count" -ne 7 ]; then
-                echo "Expected 7 run.exe files (seven embedded hosts), found $count"
+              # Workers built from src/models (seven embedded hosts). Other run.exe files under
+              # src/exe_models, such as seedvr2_3B, are prebuilt and are not checked here.
+              models="flux1_schnell flux2_klein_4B flux2_klein_4B_edit z_image_turbo krea2_turbo qwen_image_2_1_turbo qwen_image_2_1_turbo_edit"
+              for m in $models; do
+                make -C "src/models/$m" clean all
+              done
+              # make clean removes each run.exe, so every one must exist again after the build.
+              missing=0
+              for m in $models; do
+                exe="src/exe_models/$m/run.exe"
+                if [ ! -f "$exe" ]; then
+                  echo "Missing $exe after the build"
+                  missing=1
+                fi
+              done
+              if [ "$missing" -ne 0 ]; then
                 find src/exe_models -type f -name run.exe -print
                 exit 1
               fi
