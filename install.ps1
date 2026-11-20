@@ -6,7 +6,8 @@
 # vgf-serve.exe in its own window and opens its web UI. OpenWebUI is optional (run with uv, so neither
 # Docker nor Python has to be installed). Run it again to update VigenFlow, update the weights or add
 # models; downloaded weights are kept. The install folder holds what installing a release zip by hand gives:
-#   vgf-<version>-windows\               the release package (vigenflow_<version>_windows_amd64\ before Beta 4)
+#   vgf_<version>_windows_amd64\         the release package (Beta 4: vgf-<version>-windows\,
+#                                        earlier: vigenflow_<version>_windows_amd64\)
 #   all_model_weights\                   the weights, shared by every version
 #   openwebui\                           OpenWebUI, its Python and its data (optional)
 #   Start VigenFlow.cmd, Start OpenWebUI.cmd, also in the Start menu under VigenFlow
@@ -27,7 +28,7 @@ function Install-VigenFlow {
     $repo = 'jia1217/vigenflow'
     $apiPort = 11283
     $webuiVersion = '0.11.4'  # the OpenWebUI version VigenFlow is tested with
-    $allModels = @('flux2_klein_4B', 'z_image_turbo', 'krea2_turbo', 'flux1_schnell', 'qwen_image_2_1_turbo')
+    $allModels = @('flux2_klein_4B', 'z_image_turbo', 'krea2_turbo', 'flux1_schnell', 'qwen_image_2_1_turbo', 'seedvr2')
     $interactive = [Environment]::UserInteractive -and -not [Console]::IsInputRedirected
 
     function Say([string]$text) { Write-Host "`n==> $text" -ForegroundColor Cyan }
@@ -114,7 +115,7 @@ function Install-VigenFlow {
     if (Test-Path -LiteralPath $stateFile) { $defaultRoot = (Get-Content -LiteralPath $stateFile -Raw).Trim() }
     $root = $env:VIGENFLOW_DIR
     if (-not $root) {
-        Write-Host "`nThe install folder needs room for the model weights: 8 to 85 GB, depending on the models."
+        Write-Host "`nThe install folder needs room for the model weights: 5 to 90 GB, depending on the models."
         $root = Ask "Install folder [$defaultRoot]" $defaultRoot
     }
     New-Item -ItemType Directory -Force -Path $root | Out-Null
@@ -129,7 +130,8 @@ function Install-VigenFlow {
     # --- Latest release ---------------------------------------------------------------------------------
     Say 'Finding the latest VigenFlow release'
     $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -Headers @{ 'User-Agent' = 'vigenflow-install' }
-    # Beta 4 names the package vgf-<version>-windows.zip; earlier releases vigenflow_<version>_windows_amd64.zip.
+    # Beta 5 names the package vgf_<version>_windows_amd64.zip, Beta 4 vgf-<version>-windows.zip and
+    # earlier releases vigenflow_<version>_windows_amd64.zip.
     $asset = @($release.assets | Where-Object { $_.name -like 'vgf-*-windows.zip' -or $_.name -like '*_windows_amd64.zip' })[0]
     if (-not $asset) { throw "Release $($release.tag_name) has no Windows package." }
     $packageName = [IO.Path]::GetFileNameWithoutExtension($asset.name)
@@ -139,7 +141,7 @@ function Install-VigenFlow {
 
     # A vgf-serve.exe started from this folder holds the port and its files; stop it, and its window.
     Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -like 'vgf-*-windows' -or $_.Name -like 'vigenflow_*_windows_amd64' } |
+        Where-Object { $_.Name -like 'vgf-*-windows' -or $_.Name -like '*_windows_amd64' } |
         ForEach-Object { Stop-Launcher $startServer $_.FullName }
     if (Test-PortInUse $apiPort) {
         throw "Port $apiPort is in use, probably by a vgf-serve started from another folder. Close it and run this again."
@@ -184,13 +186,14 @@ Which models do you want to download?
   3) Krea 2 Turbo            19 GB   has its own license, which you are asked to accept
   4) FLUX.1-schnell          27 GB
   5) Qwen Image 2.1 Turbo  19.6 GB   also edits images; has its own license, which you are asked to accept
-  a) all five                85 GB
+  6) SeedVR2-3B             4.7 GB   upscales an image (not a text-to-image model)
+  a) all six           about 90 GB
 Models you already have are only updated.
 '@
         $chosen = @()
         foreach ($choice in ((Ask 'Type the numbers separated by spaces [1]' '1') -split '[\s,]+')) {
             if ($choice -in @('a', 'all')) { $chosen = @('all'); break }
-            if ($choice -match '^[1-5]$') { $chosen += $allModels[[int]$choice - 1] }
+            if ($choice -match '^[1-6]$') { $chosen += $allModels[[int]$choice - 1] }
             elseif ($choice) { throw "Unknown choice: $choice" }
         }
         $models = @($chosen | Select-Object -Unique) -join ','
@@ -209,7 +212,7 @@ Models you already have are only updated.
     }
 
     Say 'Downloading the model weights (the first time takes a while; an interrupted download resumes)'
-    # One run per model: prepare_base.exe leaves Qwen out unless it is named, and --accept_license accepts
+    # One run per model: prepare_base.exe leaves Qwen and SeedVR2 out unless they are named, and --accept_license accepts
     # every license in its run, so each acceptance stays with its own model.
     $selected = $allModels
     if ($models -ne 'all') { $selected = @($models -split ',') }
@@ -232,9 +235,15 @@ Models you already have are only updated.
     }
     if (-not $installed) { throw 'No model weights were downloaded; see the messages above.' }
     if (-not $prepareOk) { Say 'Some models were not downloaded (see above). Starting with the ones that are here.' }
-    # z-image-turbo is vgf-serve's own default; otherwise the first model that is here.
-    $defaultModel = $installed[0] -replace '_', '-'
-    if ($defaultModel -eq 'qwen-image-2-1-turbo') { $defaultModel = 'qwen-image-2.1-turbo' }  # the one ID with a dot
+    # z-image-turbo is vgf-serve's own default; otherwise the first image model that is here, and the
+    # SeedVR2 upscaler only when it is the only model here.
+    $imageModels = @($installed | Where-Object { $_ -ne 'seedvr2' })
+    $first = if ($imageModels) { $imageModels[0] } else { $installed[0] }
+    $defaultModel = switch ($first) {
+        'qwen_image_2_1_turbo' { 'qwen-image-2.1-turbo' }  # the one ID with a dot
+        'seedvr2' { 'seedvr2-3B' }
+        default { $first -replace '_', '-' }
+    }
     if ('z_image_turbo' -in $installed) { $defaultModel = 'z-image-turbo' }
 
     # --- Start VigenFlow --------------------------------------------------------------------------------
