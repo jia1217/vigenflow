@@ -102,7 +102,8 @@ public:
         parent.value = INVALID_HANDLE_VALUE;  // fd owns it now
         std::unique_ptr<FILE, decltype(&std::fclose)> stream(_fdopen(fd, read ? "rb" : "wb"), &std::fclose);
         if (!stream) { _close(fd); throw std::runtime_error("cannot open curl stream"); }
-        // The existing CLI and filesystem::path::string() use the Windows code page.
+        // The CLI and filesystem::path::string() use the process code page,
+        // set to UTF-8 by prepare.manifest.
         const int count = MultiByteToWideChar(CP_ACP, 0, command.c_str(), -1, nullptr, 0);
         check(count != 0);
         std::vector<wchar_t> wide(count);

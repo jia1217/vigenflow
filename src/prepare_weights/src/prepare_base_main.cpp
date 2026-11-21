@@ -83,13 +83,26 @@ bool is_qwen_image_turbo(const ModelEntry& m) {
            m.source == "Qwen/Qwen-Image-2.1-Turbo";
 }
 
+bool is_seedvr2(const ModelEntry& m) {
+    return m.id == "seedvr2" || m.recipe == "seedvr2" || m.source == "ByteDance-Seed/SeedVR2-3B";
+}
+
+// Models whose LICENSE and Notice must travel with the weights: Qwen's research license, and SeedVR2's
+// Apache 2.0 (section 4 asks redistributions to keep the license and the NOTICE text).
+const char* notices_model(const ModelEntry& m) {
+    if (is_qwen_image_turbo(m)) return "Qwen";
+    if (is_seedvr2(m)) return "SeedVR2";
+    return nullptr;
+}
+
 void require_model_notices(const ModelEntry& m, const fs::path& folder) {
-    if (!is_qwen_image_turbo(m)) return;
+    const char* model = notices_model(m);
+    if (!model) return;
     for (const char* name : {"LICENSE", "Notice"}) {
         const fs::path file = folder / name;
         if (!fs::is_regular_file(file) || fs::file_size(file) == 0)
-            throw std::runtime_error(folder.string() + ": missing or empty " + name +
-                                     "; Qwen weights must retain the upstream LICENSE and attribution Notice");
+            throw std::runtime_error(folder.string() + ": missing or empty " + name + "; " + model +
+                                     " weights must retain the upstream LICENSE and attribution Notice");
     }
 }
 
@@ -194,10 +207,10 @@ void download_model(const ModelEntry& m, HfClient& hf, const Options& opt) {
     }
     if (meta.value("format", "") != kPackedFormat)
         throw std::runtime_error(where + kPackedIndex + " is not a " + kPackedFormat + " index");
-    if (is_qwen_image_turbo(m)) {
+    if (const char* model = notices_model(m)) {
         for (const char* name : {"LICENSE", "Notice"}) {
             if (!index.at("weight_map").contains(name))
-                throw std::runtime_error("Qwen packed index must include " + std::string(name) + " inside the shards");
+                throw std::runtime_error(std::string(model) + " packed index must include " + name + " inside the shards");
         }
     }
 
@@ -355,8 +368,18 @@ void download_model(const ModelEntry& m, HfClient& hf, const Options& opt) {
 
 int main(int argc, char** argv) {
     g_log_tag = "[prepare_base]";
+#ifdef _WIN32
+    struct ConsoleEncoding {
+        UINT previous = 0;
+        void enable() { previous = GetConsoleOutputCP(); if (previous) SetConsoleOutputCP(CP_UTF8); }
+        ~ConsoleEncoding() { if (previous) SetConsoleOutputCP(previous); }
+    } console_encoding;
+#endif
     try {
         Options opt = parse_args(argc, argv);
+#ifdef _WIN32
+        console_encoding.enable();  // keep error messages UTF-8 too, then restore the caller's console
+#endif
         const Config config = load_config(opt.config);
         resolve_paths(opt, config, argv[0]);
         if (opt.pack_dir.empty()) opt.pack_dir = opt.weights_root.parent_path() / "packed_weights";
