@@ -87,6 +87,20 @@
       "revision": "main",
       "enabled": true,
       "keep_sources": false
+    },
+    // Opt-in NPU weight bundle for the standalone SeedVR2-3B upscaler (seedvr2_3B_square run.exe -w).
+    // Pre-packed only, at the repo root: dit/, vae_encoder/, vae_decoder/, pos_emb_bf16.bin. Apache 2.0,
+    // so no license prompt; LICENSE and Notice must be inside the shards and are kept in the model folder.
+    // --only seedvr2 downloads it while enabled stays false.
+    {
+      "id": "seedvr2",
+      "packed_repo": "Kelsey1217/SeedVR2-3B-NPU-BFP16",
+      "packed_path": "",
+      "recipe": "seedvr2",
+      "source": "ByteDance-Seed/SeedVR2-3B",
+      "revision": "37255ff8cccfb01071b87f635a5948ca8d53117c",
+      "enabled": false,
+      "keep_sources": false
     }
   ]
 }

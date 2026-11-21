@@ -16,18 +16,30 @@ bash build_ubuntu.sh               # -> prepare_base.exe
 
 ## Build and run (Windows)
 
-```bat
+```powershell
 vcpkg install nlohmann-json:x64-windows
-build_windows.bat                                  &rem -> vigenflow_win\prepare_base.exe
-vigenflow_win\prepare_base.exe --config prepare_models.jsonc --only flux2_klein_4B
+.\build_windows.bat --test   # builds the x64 executable, copies the catalog, runs the local tests
+.\vigenflow_win\prepare_base.exe --config prepare_models.jsonc --only flux2_klein_4B
+
+# Qwen's shared text-to-image and image-edit weights:
+.\vigenflow_win\prepare_base.exe --only qwen_image_2_1_turbo --weights_root C:\VigenFlow\all_model_weights
 ```
 
 `build_windows.bat` uses MSVC (it finds Visual Studio with `vswhere`) and `nlohmann/json.hpp` from vcpkg
-(`VCPKG_ROOT`, default `C:\dev\vcpkg`). The exe has the C runtime linked in, so in the package it needs only
+(`VCPKG_ROOT`, default `C:\dev\vcpkg`). It initializes the x64 toolchain even when started from an x86
+Developer Command Prompt and refreshes `vigenflow_win\prepare_models.jsonc` from the current catalog,
+including the opt-in SeedVR2 entry. `--test` needs Python 3.9 or newer; omit it to build without Python.
+The exe has the C runtime linked in, so in the package it needs only
 `prepare_models.jsonc` beside it (`prepare\`). It starts Windows' own `curl.exe` (Windows 10 1803 and later)
-directly, not through `cmd.exe`, so paths with spaces, `&` or `%` work. Its manifest allows paths longer
+directly, not through `cmd.exe`, so paths with spaces, `&` or `%` work. Its UTF-8 process manifest also
+supports non-English user folders, model directories and packed filenames. Its manifest allows paths longer
 than 260 characters where `LongPathsEnabled` is set in the registry; without that, the download cache names
 each commit by 12 hex digits instead of 40 to keep its paths short.
+
+The copied catalog is ready for the release package's `prepare\` folder. Its `weights_root` remains
+relative to the catalog: for local development use `--config prepare_models.jsonc` as above to retain
+the source catalog's default location, or pass `--weights_root` to select your existing shared weights.
+Both Qwen hosts use the resulting `all_model_weights\qwen_image_2_1_turbo` directory as `-w`.
 
 ## Check
 
@@ -37,8 +49,9 @@ python tests\test_prepare_base.py vigenflow_win\prepare_base.exe   # Windows
 ```
 
 The check runs the real tool against a local fake Hugging Face server (no network, models or login):
-packing, a resumed multi-shard download with parallel byte ranges, a byte-exact unpack, cleanup, the
-config found from the exe's folder, Krea and Qwen license prompts, Qwen's five-stage package and notices,
+packing, a resumed multi-shard download with parallel byte ranges, a byte-exact unpack, cleanup,
+Unicode paths and packed filenames, config found from the exe's folder, Krea and Qwen license prompts,
+Qwen's five-stage package and notices, SeedVR2's opt-in download without a prompt and its notices,
 disabled-model selection, rejection of missing notices, and the one-run-per-weights-root lock.
 
 `curl` (8.3 or newer) does the downloads. Paths do not depend on the current directory:
@@ -56,8 +69,10 @@ relative to the current directory as usual.
 | `krea2_turbo` | [Kelsey1217/Krea-2-Turbo-NPU-BFP16](https://huggingface.co/Kelsey1217/Krea-2-Turbo-NPU-BFP16) | 19 GB |
 | `z_image_turbo` | [Kelsey1217/Z-Image-Turbo-NPU-BFP16](https://huggingface.co/Kelsey1217/Z-Image-Turbo-NPU-BFP16) | 12 GB |
 | `qwen_image_2_1_turbo` | [Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16](https://huggingface.co/Kelsey1217/Qwen-Image-2.1-Turbo-NPU-BFP16) | 19.59 GB / 18.24 GiB |
+| `seedvr2` (opt-in) | [Kelsey1217/SeedVR2-3B-NPU-BFP16](https://huggingface.co/Kelsey1217/SeedVR2-3B-NPU-BFP16) | 4.72 GB / 4.39 GiB |
 
-All five repositories are public and enabled by default (Qwen since Beta 4). FLUX.2 text-to-image and image editing share the `flux2_klein_4B` weights.
+All six repositories are public. The first five are enabled by default (Qwen since Beta 4); SeedVR2 is
+opt-in (see below). FLUX.2 text-to-image and image editing share the `flux2_klein_4B` weights.
 
 The Krea 2 Turbo weights are under the Krea 2 Community License (not Apache 2.0), so before downloading
 them `prepare_base.exe` prints the license and use-policy links and waits for you to type `I agree`:
@@ -111,6 +126,24 @@ The published release was downloaded and unpacked with `prepare_base.exe` withou
 All four shard hashes matched the local package; all 1,398 restored payload/metadata files passed SHA256
 checks, and the remaining preparation manifest retained its provenance with the download origin added.
 License/notice bytes, download-cache cleanup and a second-run `up to date` check passed on Linux.
+
+### SeedVR2-3B (opt-in)
+
+The SeedVR2-3B upscaler weights are converted from
+[ByteDance-Seed/SeedVR2-3B](https://huggingface.co/ByteDance-Seed/SeedVR2-3B) at commit
+`37255ff8cccfb01071b87f635a5948ca8d53117c`. The catalog entry is `"enabled": false`, so a plain run does not
+download them; `--only seedvr2` does:
+
+```powershell
+.\prepare_base.exe --only seedvr2 --weights_root C:\VigenFlow\all_model_weights
+```
+
+It makes `all_model_weights/seedvr2/` with `dit/`, `vae_encoder/`, `vae_decoder/` and `pos_emb_bf16.bin`, the
+layout that the standalone SeedVR2 `run.exe` reads (`-w`, default `../all_model_weights/seedvr2`). The weights
+are Apache 2.0, so there is no license prompt. `LICENSE` and `Notice` must be inside the shards and are
+unpacked beside the stages, as for Qwen; a package or download without them fails. The Beta 5 release's
+`vgf-serve` serves it as `seedvr2-3B`; the server source in this repo does not have it yet. The published repo (one 4.39 GiB shard, 857 files) downloads and unpacks in about a minute, and a
+second run reports `up to date`.
 
 ## Choosing models: prepare_models.jsonc
 

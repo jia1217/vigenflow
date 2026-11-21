@@ -76,9 +76,9 @@ def main():
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
-        # Spaces, shell metacharacters and an environment-variable-looking name in every path.
+        # Unicode, spaces, shell metacharacters and an environment-variable-looking name in every path.
         with tempfile.TemporaryDirectory(prefix="prepare base ") as temporary:
-            root = Path(temporary) / "models & %VGF_TEST_MARKER%"
+            root = Path(temporary) / "models 权重 & %VGF_TEST_MARKER%"
             bindir = root / "bin"
             bindir.mkdir(parents=True)
             shutil.copy2(binary, bindir / "prepare_base.exe")
@@ -91,7 +91,7 @@ def main():
 
             def run(*options, expected=0, stdin_text=None, argv0=None):
                 result = subprocess.run([argv0 or str(bindir / "prepare_base.exe"), *map(str, options)],
-                                        executable=str(bindir / "prepare_base.exe"), cwd=cwd, env=env, text=True,
+                                        executable=str(bindir / "prepare_base.exe"), cwd=cwd, env=env, text=True, encoding="utf-8",
                                         input=stdin_text, stdin=None if stdin_text is not None else subprocess.DEVNULL,
                                         capture_output=True, timeout=60)
                 if result.returncode != expected:
@@ -113,6 +113,7 @@ def main():
             weights = root / "weights/tiny"
             (weights / "sub dir").mkdir(parents=True)
             (weights / "sub dir/small.bin").write_bytes(b"\x00\r\n\x1a\xff" * 100)
+            (weights / "sub dir/参数.bin").write_bytes(b"unicode payload filename")
             (weights / "tokenizer.json").write_bytes(b'{"fixture":true}\r\n')
             (weights / "large.bin").write_bytes(bytes(range(256)) * ((65 << 20) // 256))
             packed = root / "packed"
@@ -121,7 +122,7 @@ def main():
             shards = sorted(name for name in blobs if name.endswith(".safetensors"))
             assert len(shards) > 1 and "tiny/model.safetensors.index.json" in blobs, sorted(blobs)
             repos["fixture/packed"] = blobs
-            print("PASS: help, unknown option, config next to the exe, pack into shards", flush=True)
+            print("PASS: help, unknown option, config next to the exe, Unicode paths, pack into shards", flush=True)
 
             # Resume an interrupted install: a small shard is already unpacked, and the large shard's
             # parallel ranges are partly downloaded.
@@ -282,6 +283,52 @@ def main():
             assert "missing or empty LICENSE" in log, log
             assert (installed / "LICENSE").read_bytes() == (qwen_notices / "LICENSE").read_bytes()
             print("PASS: Qwen source detection, missing/empty notices rejected, existing installation preserved", flush=True)
+
+            # SeedVR2: opt-in, Apache 2.0 (no prompt), LICENSE and Notice required like Qwen's.
+            seedvr2 = dict(id="seedvr2", recipe="seedvr2", source="ByteDance-Seed/SeedVR2-3B",
+                           packed_repo="fixture/seedvr2", packed_revision="main", packed_path="", enabled=False)
+            write_config([seedvr2])
+            sv_source_root = root / "seedvr2 source"
+            sv_source = sv_source_root / seedvr2["id"]
+            for stage_name in ("dit", "vae_encoder", "vae_decoder"):
+                (sv_source / stage_name).mkdir(parents=True)
+                (sv_source / stage_name / "w_BFP.bin").write_bytes(bytes(range(256)) * 3 + stage_name.encode())
+            (sv_source / "pos_emb_bf16.bin").write_bytes(bytes(range(255, -1, -1)))
+            (sv_source / "LICENSE").write_text("Apache License 2.0 fixture", encoding="utf-8")
+            (sv_source / "Notice").write_text("SeedVR2 conversion notice fixture", encoding="utf-8")
+            (sv_source / "prepare_manifest.json").write_text(json.dumps({
+                "id": "seedvr2", "recipe": "seedvr2", "recipe_version": 1,
+                "source": seedvr2["source"], "commit": "c" * 40,
+            }), encoding="utf-8")
+            sv_packed = root / "seedvr2 packed"
+            run("--pack", "--only", "seedvr2", "--weights_root", sv_source_root,
+                "--pack_dir", sv_packed, "--shard_gb", "0.000001")
+            repos["fixture/seedvr2"] = {p.name: p.read_bytes() for p in (sv_packed / "seedvr2").iterdir() if p.is_file()}
+            sv_root = root / "seedvr2 installed"
+            sv_args = ("--weights_root", sv_root, "--only", "seedvr2")
+            before = len(requests)
+            run("--weights_root", sv_root)
+            assert len(requests) == before, "disabled SeedVR2 must not resolve or download"
+            log = run(*sv_args)
+            assert "type I agree" not in log and "own license" not in log, log
+            sv_installed = sv_root / "seedvr2"
+            for original in sv_source.rglob("*"):
+                if original.is_file() and original.name != "prepare_manifest.json":
+                    assert original.read_bytes() == (sv_installed / original.relative_to(sv_source)).read_bytes(), original
+            assert "up to date" in run(*sv_args)
+            original_index = repos["fixture/seedvr2"]["model.safetensors.index.json"]
+            invalid_index = json.loads(original_index)
+            del invalid_index["weight_map"]["Notice"]
+            repos["fixture/seedvr2"]["model.safetensors.index.json"] = json.dumps(invalid_index).encode()
+            log = run(*sv_args, "--force", expected=1)
+            assert "SeedVR2 packed index must include Notice" in log, log
+            assert (sv_installed / "Notice").is_file()
+            repos["fixture/seedvr2"]["model.safetensors.index.json"] = original_index
+            (sv_source / "Notice").unlink()
+            log = run("--pack", "--only", "seedvr2", "--weights_root", sv_source_root,
+                      "--pack_dir", root / "invalid pack", expected=1)
+            assert "missing or empty Notice; SeedVR2" in log, log
+            print("PASS: SeedVR2 disabled default, --only without a prompt, all stages, notices required", flush=True)
 
             # One run per weights root; the lock goes away with the process that held it.
             write_config([dict(tiny, packed_repo="fixture/blocked")])
