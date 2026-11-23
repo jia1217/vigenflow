@@ -281,7 +281,7 @@ body:has(#reference-view[open]) { overflow:hidden; }
 #input-limit { margin-top:8px; }
 /* Upscaler: one image, no prompt mentions, no input-size controls. */
 body[data-task="upscale"] #input-limit, body[data-task="upscale"] #input-size-note,
-body[data-task="upscale"] #input-upscaling-note, body[data-task="upscale"] .ref-insert,
+body[data-task="upscale"] .ref-insert,
 body[data-task="upscale"] #sending-info { display:none; }
 #input-limit legend { margin-bottom:6px; font-size:12px; }
 .size-track {
@@ -322,7 +322,6 @@ body[data-task="upscale"] #sending-info { display:none; }
 #reference-size { position:relative; }
 #input-limit { margin-top:7px; }
 #input-limit .size-track span { min-height:26px; }
-#input-upscaling-note { margin-top:3px; }
 #edit-size.section { margin-top:5px; padding-top:6px; }
 .sending-details { position:absolute; top:0; right:0; display:flex; align-items:center; gap:5px; }
 #sending-size { margin:0; }
@@ -391,7 +390,6 @@ body[data-task="upscale"] #sending-info { display:none; }
                 <small id="reference-budget" class="help" role="status" aria-describedby="reference-budget-help" hidden></small>
                 <small id="reference-budget-help" class="help" hidden>Each 16 × 16 block is one token. Auto fits the budget by reducing larger images first. Smaller images keep their size until needed.</small>
                 <small id="input-size-note" hidden>Long-edge limits only reduce larger images. Auto uses up to 2048 px and fits the reference token budget.</small>
-                <small id="input-upscaling-note" class="help">Upscaling for input pictures coming soon.</small>
               </div>
               <div id="edit-size" class="section" hidden>
                 <div class="output-heading"><h2>Output size</h2><small id="edit-size-help" class="help"></small></div>
@@ -708,6 +706,9 @@ body[data-task="upscale"] #sending-info { display:none; }
   let inputSize = null;
   const referenceLimit = (model = selectedModel()) => model?.reference_limit || 1;
   const referenceBudget = (model = selectedModel()) => model?.reference_token_limit || 0;
+  // Workers that resize references themselves (FLUX.3): tokens are counted after that step.
+  const workerPreparation = (model = selectedModel()) => model?.reference_preparation || '';
+  const showsTokens = (model = selectedModel()) => Boolean(referenceBudget(model) || workerPreparation(model));
   const usesNativeReferences = (model = selectedModel()) => model?.native_references === true;
   const isMultiReference = () => referenceLimit() > 1;
   const generationDimensions = {};
@@ -1029,6 +1030,7 @@ body[data-task="upscale"] #sending-info { display:none; }
     const labels = {
       '0_Model': 'Model', '1_Image_H': 'Height', '2_Image_W': 'Width',
       '3_Denoising_steps': 'Steps', '4_Seed': 'Seed', '5_Text_encoder': 'Text encoder',
+      '5_Vae_encoder': 'VAE encoder',
       '6_Denoising': 'Denoising', '7_Vae_decoder': 'VAE decoder',
       '8_E2E_runtime': 'E2E runtime', '9_Worker_wall_time': 'Worker time (including loading)',
       '10_LoRAs': 'LoRAs'
@@ -1377,7 +1379,10 @@ body[data-task="upscale"] #sending-info { display:none; }
       ? 'Remove references to fit the ' + limit + '-image limit.'
       : uploadHint + ' ' + formats + ', up to 40 MB each.';
     $('reference-size').hidden = !inputSize;
-    $('reference-budget-help').hidden = !referenceBudget();
+    $('reference-budget-help').hidden = !showsTokens();
+    $('reference-budget-help').textContent = workerPreparation()
+      ? 'Each 16 × 16 block is one token. FLUX.3 resizes the references itself: one reference to at most 4 megapixels, several to at most 1024 × 1024 pixels each (the size it uses is shown). There is no total limit.'
+      : 'Each 16 × 16 block is one token. Auto fits the budget by reducing larger images first. Smaller images keep their size until needed.';
     if (!inputSize) {
       $('source-size').checked = false;
       toggleMatchSize();
@@ -1582,6 +1587,51 @@ body[data-task="upscale"] #sending-info { display:none; }
     return plan.reduce((sum, image) => sum + referenceTokens(image), 0);
   }
 
+  // The FLUX.3 worker's own reference preparation (the official FLUX.3 rule, sides capped at
+  // 2048): the size it encodes.
+  function flux3Prepared(width, height, multi) {
+    const maxSide = 2048, grid = 16;
+    if (multi) {
+      let rw = width, rh = height;
+      if (width * height > 1024 * 1024) {
+        const scale = Math.sqrt(1024 * 1024 / (width * height));
+        rw = Math.trunc(width * scale);
+        rh = Math.trunc(height * scale);
+      }
+      if (Math.max(rw, rh) > maxSide) {
+        const s = maxSide / Math.max(rw, rh);
+        rw = Math.trunc(rw * s);
+        rh = Math.trunc(rh * s);
+      }
+      return { width: Math.floor(rw / grid) * grid, height: Math.floor(rh / grid) * grid };
+    }
+    const roundHalfEven = v => {
+      const f = Math.floor(v), d = v - f;
+      return d > 0.5 || (d === 0.5 && f % 2 !== 0) ? f + 1 : f;
+    };
+    const ceil16 = v => Math.ceil(v / grid) * grid;
+    const limit = 4 * 1024 * 1024;
+    let scale = Math.min(1, Math.sqrt(limit / (width * height)), maxSide / Math.max(width, height));
+    for (;;) {
+      const fw = Math.max(1, roundHalfEven(width * scale));
+      const fh = Math.max(1, roundHalfEven(height * scale));
+      const cw = Math.min(maxSide, Math.max(64, ceil16(fw)));
+      const ch = Math.min(maxSide, Math.max(64, ceil16(fh)));
+      if (fw <= cw && fh <= ch && cw * ch <= limit) return { width: cw, height: ch };
+      scale *= 0.995;
+    }
+  }
+
+  // The size the model encodes for each planned reference (null: the size that is sent).
+  function modelSizes(plan) {
+    if (workerPreparation() !== 'flux3') return plan.map(() => null);
+    return plan.map(image => flux3Prepared(image.targetWidth, image.targetHeight, plan.length > 1));
+  }
+
+  function modelTokens(plan) {
+    return modelSizes(plan).map((size, index) => size ? size.width / 16 * (size.height / 16) : referenceTokens(plan[index]));
+  }
+
   function referencePlan(limit = inputLimit.querySelector(':checked').value) {
     const inputs = activeReferences();
     const budget = referenceBudget();
@@ -1617,12 +1667,22 @@ body[data-task="upscale"] #sending-info { display:none; }
     const first = plan[0];
     if (!first) return;
     const budget = referenceBudget();
+    const counted = showsTokens();
+    const perReference = modelTokens(plan);
+    const used = modelSizes(plan);
+    // When the worker resizes the reference again, say which size it really encodes.
+    const usedLabel = index => {
+      const size = used[index], sent = plan[index];
+      return size && (size.width !== sent.targetWidth || size.height !== sent.targetHeight)
+        ? ' · ' + (selectedModel()?.id.startsWith('flux3') ? 'FLUX.3' : 'model') + ' uses ' + size.width + ' × ' + size.height + ' px'
+        : '';
+    };
     const label = dimensions => dimensions.targetWidth + ' × ' + dimensions.targetHeight + ' px';
-    $('sending-size').textContent = plan.length === 1 ? 'Sending: ' + label(first) : '';
+    $('sending-size').textContent = plan.length === 1 ? 'Sending: ' + label(first) + usedLabel(0) : '';
     $('reference-list').querySelectorAll('.reference-sending').forEach((element, index) => {
       if (isMultiReference() && plan[index]) {
-        const tokens = budget ? ' · ' + referenceTokens(plan[index]).toLocaleString() + ' tokens' : '';
-        element.textContent = 'Sending: ' + label(plan[index]) + tokens;
+        const tokens = counted ? ' · ' + perReference[index].toLocaleString() + ' tokens' : '';
+        element.textContent = 'Sending: ' + label(plan[index]) + usedLabel(index) + tokens;
       }
     });
     if ($('source-size').checked && selectedModel()?.edits_image) {
@@ -1630,8 +1690,13 @@ body[data-task="upscale"] #sending-info { display:none; }
       $('height').value = first.targetHeight;
     }
     const budgetInfo = $('reference-budget');
-    budgetInfo.hidden = !budget;
-    if (!budget) return;
+    budgetInfo.hidden = !counted;
+    if (!counted) return;
+    if (!budget) {  // the worker resizes; no total limit
+      budgetInfo.removeAttribute('data-over-limit');
+      budgetInfo.textContent = perReference.reduce((a, b) => a + b, 0).toLocaleString() + ' reference tokens';
+      return;
+    }
     const tokens = tokenCount(plan);
     budgetInfo.toggleAttribute('data-over-limit', tokens > budget);
     budgetInfo.textContent = tokens.toLocaleString() + ' / ' + budget.toLocaleString() + ' reference tokens' +
