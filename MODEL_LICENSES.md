@@ -2,7 +2,7 @@
 
 The VigenFlow source code is licensed under the [Apache License 2.0](LICENSE). **That license covers the code only, not model weights.** Each model and LoRA adapter stays under the license chosen by its original authors. This includes the BFP16 weights that the VigenFlow release packages contain.
 
-Before you use a model, especially commercially, read its license on the upstream model card. The tables below were checked against Hugging Face on 2026-09-30, the Krea 2 Turbo row on 2026-10-12, and the Qwen Image 2.1 Turbo license at upstream revision `fc13ba1986fcb905854dc8de2f52eee395f49b5b` on 2026-10-19.
+Before you use a model, especially commercially, read its license on the upstream model card. The tables below were checked against Hugging Face on 2026-09-30, the Krea 2 Turbo row on 2026-10-12, the Qwen Image 2.1 Turbo license at upstream revision `fc13ba1986fcb905854dc8de2f52eee395f49b5b` on 2026-10-19, and the FLUX.3 image klein license at upstream revision `09561231f44e41381c461caf53d5452005a60ac9` on 2026-11-20.
 
 ## Base models
 
@@ -12,6 +12,7 @@ These weights are available through the preparation catalog; Qwen and SeedVR2 ar
 | --- | --- | --- | --- |
 | FLUX.1-schnell | [black-forest-labs/FLUX.1-schnell](https://huggingface.co/black-forest-labs/FLUX.1-schnell) | Apache-2.0 | Allowed |
 | FLUX.2-klein-4B (text-to-image and editing) | [black-forest-labs/FLUX.2-klein-4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) | Apache-2.0 | Allowed |
+| FLUX.3 image klein (text-to-image and editing) | [black-forest-labs/flux-3-image-klein](https://huggingface.co/black-forest-labs/flux-3-image-klein) | [FLUX Kommunity License v.1.0](model_licenses/flux3_image_klein/LICENSE) | Limited: the model itself may be used for non-commercial purposes only. Outputs may be used commercially only by a Qualifying User (you and your affiliates below USD 5 million gross annualized revenue). Other commercial use needs a license from Black Forest Labs. |
 | Z-Image-Turbo | [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) | Apache-2.0 | Allowed |
 | Krea 2 Turbo | [krea/Krea-2-Turbo](https://huggingface.co/krea/Krea-2-Turbo) | [Krea 2 Community License](https://www.krea.ai/krea-2-licensing) | Limited: only while total company revenue, including affiliates, is below USD 1 million over the past twelve months. Above that, a separate Krea enterprise license is required. |
 | SeedVR2-3B (image upscaling; opt-in weight preparation) | [ByteDance-Seed/SeedVR2-3B](https://huggingface.co/ByteDance-Seed/SeedVR2-3B) | Apache-2.0 | Allowed |
@@ -36,6 +37,8 @@ The [converted Qwen weight package](https://huggingface.co/Kelsey1217/Qwen-Image
 is publicly available through the opt-in preparation entry. Both tasks share one five-stage package.
 Both Qwen workers are integrated into `vgf-serve` and the web UI; the source-code license does not
 grant additional rights to the weights.
+
+FLUX.3 image klein is under the [FLUX Kommunity License](model_licenses/flux3_image_klein/LICENSE). Non-commercial use excludes any use that earns revenue, runs in production, affects end users, or trains models for commercial use. Section 2.a lets a Qualifying User use the outputs commercially and run the model in production only to generate them. Section 2.e then requires content filtering or review of outputs before they are shared, and AI-generated disclosures where the law requires them. For any other commercial use see <https://bfl.ai/licensing>. Section 4 also forbids military, surveillance and biometric uses, among others. Redistribution must include the license, the attribution notice, a statement that the model was modified, and no claim that Black Forest Labs endorses it. The converted weights are such a modified version. The unchanged license, the [Notice](model_licenses/flux3_image_klein/Notice) and the Apache-2.0 [license](model_licenses/flux3_image_klein/LICENSE-Qwen3-VL-4B-Instruct) of the Qwen3-VL-4B-Instruct text encoder are in `model_licenses/flux3_image_klein/`. `prepare_base.exe` asks you to accept the license before it downloads the weights, and it unpacks the license files next to them in `all_model_weights/flux3_image_klein/`. Keep them with any copy you make. Both FLUX.3 workers (text-to-image and editing) use these weights.
 
 Other models from the same families use different licenses. For example, [FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev) and [FLUX.2-klein-9B](https://huggingface.co/black-forest-labs/FLUX.2-klein-9B) are under FLUX non-commercial licenses. If VigenFlow adds such a model, it will be listed here with its license. Its commercial use column will read "Not allowed".
 

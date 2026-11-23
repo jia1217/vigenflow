@@ -1,0 +1,29 @@
+This FLUX Model is licensed by Black Forest Labs Inc. under the FLUX Kommunity License. Copyright Black Forest Labs Inc. IN NO EVENT SHALL BLACK FOREST LABS INC. BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH USE OF THIS MODEL.
+
+FLUX.3 image klein NPU packed weights
+Upstream model developer: Black Forest Labs Inc.
+Upstream model: https://huggingface.co/black-forest-labs/flux-3-image-klein
+Upstream revision: 09561231f44e41381c461caf53d5452005a60ac9
+
+These weights are a modified version of the FLUX Model, prepared by
+Kelsey1217 for NPU inference. Modifications include BFP16 conversion of the
+transformer and text encoder matrices, NPU memory layouts, transposition and
+padding where required, and packing the converted files into U8 safetensors
+shards. This package is not an official Black Forest Labs product and has not
+been endorsed, approved or validated by Black Forest Labs Inc.
+
+Rights to use the FLUX Model are granted directly by Black Forest Labs Inc.
+to each recipient under the accompanying LICENSE (FLUX Kommunity License
+v.1.0): non-commercial use, plus commercial use of Outputs only for
+Qualifying Users, subject to all of its terms, restrictions, warranty
+disclaimers and liability limitations. For a commercial license see
+https://bfl.ai/licensing.
+
+The text encoder (text/) is converted from Qwen3-VL-4B-Instruct, shipped in
+the upstream repository's text_encoder/ folder under the Apache License 2.0
+(LICENSE-Qwen3-VL-4B-Instruct). Copyright Alibaba Cloud / Qwen team. Only its
+language-model layers are included, converted to BFP16 NPU layouts.
+
+The VAE decoder and encoder folders are the upstream autoencoder
+(ae.safetensors) in NPU layouts; its weights are the same as the FLUX.2 Klein
+autoencoder's.
