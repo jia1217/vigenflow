@@ -17,6 +17,7 @@
 #   VIGENFLOW_MODELS               models to download, comma-separated, or all (default: ask)
 #   VIGENFLOW_ACCEPT_KREA_LICENSE  yes accepts Krea 2 Turbo's license (krea2_turbo)
 #   VIGENFLOW_ACCEPT_QWEN_LICENSE  yes accepts Qwen's license (qwen_image_2_1_turbo)
+#   VIGENFLOW_ACCEPT_FLUX3_LICENSE yes accepts the FLUX Kommunity License (flux3_image_klein)
 #   VIGENFLOW_WEBUI                1 or 0: also start OpenWebUI or not (default: ask; VigenFlow has its own web UI)
 #
 # Written for Windows PowerShell 5.1, which irm | iex runs in by default.
@@ -28,7 +29,8 @@ function Install-VigenFlow {
     $repo = 'jia1217/vigenflow'
     $apiPort = 11283
     $webuiVersion = '0.11.4'  # the OpenWebUI version VigenFlow is tested with
-    $allModels = @('flux2_klein_4B', 'z_image_turbo', 'krea2_turbo', 'flux1_schnell', 'qwen_image_2_1_turbo', 'seedvr2')
+    $allModels = @('flux2_klein_4B', 'z_image_turbo', 'krea2_turbo', 'flux1_schnell', 'qwen_image_2_1_turbo', 'seedvr2',
+                   'flux3_image_klein')
     $interactive = [Environment]::UserInteractive -and -not [Console]::IsInputRedirected
 
     function Say([string]$text) { Write-Host "`n==> $text" -ForegroundColor Cyan }
@@ -115,7 +117,7 @@ function Install-VigenFlow {
     if (Test-Path -LiteralPath $stateFile) { $defaultRoot = (Get-Content -LiteralPath $stateFile -Raw).Trim() }
     $root = $env:VIGENFLOW_DIR
     if (-not $root) {
-        Write-Host "`nThe install folder needs room for the model weights: 5 to 90 GB, depending on the models."
+        Write-Host "`nThe install folder needs room for the model weights: 5 to 101 GB, depending on the models."
         $root = Ask "Install folder [$defaultRoot]" $defaultRoot
     }
     New-Item -ItemType Directory -Force -Path $root | Out-Null
@@ -187,13 +189,15 @@ Which models do you want to download?
   4) FLUX.1-schnell          27 GB
   5) Qwen Image 2.1 Turbo  19.6 GB   also edits images; has its own license, which you are asked to accept
   6) SeedVR2-3B             4.7 GB   upscales an image (not a text-to-image model)
-  a) all six           about 90 GB
+  7) FLUX.3 image klein    11.4 GB   also edits images (up to 10 references); FLUX Kommunity License
+                                     (non-commercial), which you are asked to accept. Needs Beta 6 or later
+  a) all seven        about 101 GB
 Models you already have are only updated.
 '@
         $chosen = @()
         foreach ($choice in ((Ask 'Type the numbers separated by spaces [1]' '1') -split '[\s,]+')) {
             if ($choice -in @('a', 'all')) { $chosen = @('all'); break }
-            if ($choice -match '^[1-6]$') { $chosen += $allModels[[int]$choice - 1] }
+            if ($choice -match '^[1-7]$') { $chosen += $allModels[[int]$choice - 1] }
             elseif ($choice) { throw "Unknown choice: $choice" }
         }
         $models = @($chosen | Select-Object -Unique) -join ','
@@ -212,15 +216,25 @@ Models you already have are only updated.
     }
 
     Say 'Downloading the model weights (the first time takes a while; an interrupted download resumes)'
-    # One run per model: prepare_base.exe leaves Qwen and SeedVR2 out unless they are named, and --accept_license accepts
-    # every license in its run, so each acceptance stays with its own model.
+    # One run per model: prepare_base.exe leaves Qwen, SeedVR2 and FLUX.3 out unless they are named, and
+    # --accept_license accepts every license in its run, so each acceptance stays with its own model.
     $selected = $allModels
     if ($models -ne 'all') { $selected = @($models -split ',') }
     $prepareOk = $true
+    $catalog = Get-Content -LiteralPath (Join-Path (Join-Path $package 'prepare') 'prepare_models.jsonc') -Raw
     foreach ($m in $selected) {
+        # A model newer than this release (FLUX.3 before Beta 6) is not in its catalog.
+        if ($catalog -notmatch ('"id"\s*:\s*"' + [regex]::Escape($m) + '"')) {
+            if ($models -ne 'all') {
+                Write-Host "  $m is not in VigenFlow $($release.tag_name); it needs a newer release. Skipped."
+                $prepareOk = $false
+            }
+            continue
+        }
         $prepareArgs = @('--only', $m)
         if (($m -eq 'krea2_turbo' -and $env:VIGENFLOW_ACCEPT_KREA_LICENSE -eq 'yes') -or
-            ($m -eq 'qwen_image_2_1_turbo' -and $env:VIGENFLOW_ACCEPT_QWEN_LICENSE -eq 'yes')) {
+            ($m -eq 'qwen_image_2_1_turbo' -and $env:VIGENFLOW_ACCEPT_QWEN_LICENSE -eq 'yes') -or
+            ($m -eq 'flux3_image_klein' -and $env:VIGENFLOW_ACCEPT_FLUX3_LICENSE -eq 'yes')) {
             $prepareArgs += '--accept_license'
         }
         & (Join-Path (Join-Path $package 'prepare') 'prepare_base.exe') @prepareArgs
