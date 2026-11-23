@@ -21,7 +21,7 @@
 
 - 🆕 **FLUX.3 image klein.** Two new models, `flux3-image-klein` (text to image) and `flux3-image-klein-edit` (editing). Both use the distilled 16-step model and share one 11 GB weights download. Image sizes are 64 to 2048 pixels per side, in multiples of 16.
 - 🖼️ **FLUX.3 editing with up to 10 references.** The references are prepared as the official FLUX.3 pipeline does it: one reference is fitted to at most 4 megapixels, and two or more are each fitted to at most 1024 × 1024 pixels. Each reference card shows the size FLUX.3 uses and its token count. The official pipeline allows sides up to 4096 pixels; this NPU build stops at 2048.
-- 🧩 **ComfyUI support.** [ComfyUI-vigenflow](https://github.com/jia1217/ComfyUI-vigenflow) adds VigenFlow nodes to ComfyUI on Linux:
+- 🧩 **ComfyUI support.** [ComfyUI-vigenflow](https://github.com/jia1217/ComfyUI-vigenflow) adds VigenFlow nodes to ComfyUI:
   - **Text to Image**, **Image Edit** and **Upscale** nodes for FLUX.1-schnell, FLUX.2-klein-4B (and Edit), Krea 2 Turbo, Qwen Image 2.1 Turbo (and Edit), Z-Image-Turbo and SeedVR2-3B. FLUX.3 is not in ComfyUI yet.
   - Helper nodes for prompts, reference images, image sizes, LoRA stacks, before/after comparison and saving.
   - Workflow templates under **Templates → Extensions → ComfyUI-vigenflow**.
