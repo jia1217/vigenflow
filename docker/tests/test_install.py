@@ -11,8 +11,9 @@ import unittest
 INSTALLER = Path(__file__).resolve().parents[1] / 'install.sh'
 QWEN = 'qwen_image_2_1_turbo'
 KREA = 'krea2_turbo'
+FLUX3 = 'flux3_image_klein'
 SEEDVR2 = 'seedvr2'
-ALL = {'flux2_klein_4B', 'z_image_turbo', 'flux1_schnell', KREA, QWEN, SEEDVR2}
+ALL = {'flux2_klein_4B', 'z_image_turbo', 'flux1_schnell', KREA, QWEN, FLUX3, SEEDVR2}
 
 FAKE_DOCKER = r'''
 import json, os, pathlib, sys
@@ -33,7 +34,7 @@ elif args and args[0] == 'run' and 'prepare' in args:
     assert options[0] == '--only', options
     model = options[1]
     if model not in installed:
-        if model in ('qwen_image_2_1_turbo', 'krea2_turbo') and '--accept_license' not in options:
+        if model in ('qwen_image_2_1_turbo', 'krea2_turbo', 'flux3_image_klein') and '--accept_license' not in options:
             sys.exit(1)  # no terminal to accept this model's terms
         installed.append(model)
         state.write_text(json.dumps(installed))
@@ -45,7 +46,7 @@ elif args and args[0] == 'run' and '-d' in args:
 
 
 class InstallerTest(unittest.TestCase):
-    def run_installer(self, models=None, *, krea=False, qwen=False, installed=(),
+    def run_installer(self, models=None, *, krea=False, qwen=False, flux3=False, installed=(),
                       old_webui=False, extra_env=None):
         with tempfile.TemporaryDirectory(prefix='vgf-installer-test-') as tmp:
             root = Path(tmp)
@@ -72,7 +73,8 @@ class InstallerTest(unittest.TestCase):
                        VGF_TEST_STATE=str(root),
                        VIGENFLOW_IMAGE='vigenflow:test',
                        VIGENFLOW_ACCEPT_KREA_LICENSE='yes' if krea else 'no',
-                       VIGENFLOW_ACCEPT_QWEN_LICENSE='yes' if qwen else 'no')
+                       VIGENFLOW_ACCEPT_QWEN_LICENSE='yes' if qwen else 'no',
+                       VIGENFLOW_ACCEPT_FLUX3_LICENSE='yes' if flux3 else 'no')
             env.pop('CIVITAI_TOKEN', None)
             env.pop('HF_TOKEN', None)
             if models is not None:
@@ -94,11 +96,12 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual(starts, [['--model', 'qwen-image-2.1-turbo']])
 
     def test_all_explicitly_includes_qwen(self):
-        result, _, prepares, starts = self.run_installer('all', krea=True, qwen=True)
+        result, _, prepares, starts = self.run_installer('all', krea=True, qwen=True, flux3=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual({args[1] for args in prepares}, ALL)
-        self.assertEqual(len(prepares), 6)
-        self.assertEqual({args[1] for args in prepares if '--accept_license' in args}, {KREA, QWEN})
+        self.assertEqual(len(prepares), 7)
+        self.assertEqual({args[1] for args in prepares if '--accept_license' in args},
+                         {KREA, QWEN, FLUX3})
         self.assertEqual(starts, [['--model', 'z-image-turbo']])
 
     def test_krea_acceptance_does_not_accept_qwen(self):
@@ -133,6 +136,16 @@ class InstallerTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(prepares, [['--only', 'flux2_klein_4B']])
         self.assertEqual(starts, [['--model', 'flux2-klein-4B']])
+
+    def test_flux3_needs_its_own_acceptance_and_starts_its_model(self):
+        result, _, prepares, starts = self.run_installer(FLUX3, krea=True, qwen=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(prepares, [['--only', FLUX3]])
+        self.assertEqual(starts, [])
+        result, _, prepares, starts = self.run_installer(FLUX3, flux3=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(prepares, [['--only', FLUX3, '--accept_license']])
+        self.assertEqual(starts, [['--model', 'flux3-image-klein']])
 
     def test_seedvr2_alone_starts_the_upscaler(self):
         result, _, prepares, starts = self.run_installer(SEEDVR2)

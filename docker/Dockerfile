@@ -1,5 +1,5 @@
 # VigenFlow server image: the published Ubuntu release package (vgf-serve with its built-in browser UI,
-# the seven NPU image model workers and the SeedVR2-3B upscaler, their NPU files and the weight
+# the nine NPU image model workers and the SeedVR2-3B upscaler, their NPU files and the weight
 # downloader) on Ubuntu 24.04 with XRT.
 # The model weights are not in the image; `prepare` downloads them into a volume mounted at
 # /opt/vigenflow/all_model_weights. The host needs only the amdxdna driver: XRT is in the image.
@@ -15,9 +15,9 @@ ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE} AS package
 
 ARG XRT_PPA=ppa:lemonade-team/stable
-ARG VIGENFLOW_VERSION=0.2.0-beta.5
+ARG VIGENFLOW_VERSION=0.2.0-beta.6
 ARG PACKAGE_URL=https://github.com/jia1217/vigenflow/releases/download/v${VIGENFLOW_VERSION}/vgf_${VIGENFLOW_VERSION}_ubuntu_amd64.zip
-ARG PACKAGE_SHA256=f7dba7d2cc2704aceda4562a01c2a90705c46f079b05ddc49e0ede3e32d45648
+ARG PACKAGE_SHA256=e09fb1035499b13a73498243447e51de37ba0c14dd42185ce4119de1af68cd4d
 ENV DEBIAN_FRONTEND=noninteractive
 
 # The XRT PPA is added here so that the runtime stage can copy its apt source.
@@ -94,6 +94,7 @@ RUN set -eu; \
     test ! -e server_running/lib; \
     for task in base edit; do \
         test -d "all_npu_files/qwen_image/$task"; \
+        test -d "all_npu_files/flux3_image_klein/$task"; \
     done
 
 WORKDIR /opt/vigenflow/app/server_running

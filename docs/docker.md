@@ -1,7 +1,7 @@
 # Run VigenFlow with Docker or Podman
 
-The image holds the [Beta 5 Ubuntu package](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.5):
-`vgf-serve` with its built-in browser UI, the seven image model workers and the SeedVR2-3B upscaler, their NPU files, the weight
+The image holds the [Beta 6 Ubuntu package](https://github.com/jia1217/vigenflow/releases/tag/v0.2.0-beta.6):
+`vgf-serve` with its built-in browser UI, the nine image model workers and the SeedVR2-3B upscaler, their NPU files, the weight
 downloader, and the XRT runtime they need. On the host you need only the NPU driver and a container
 engine. The model weights and LoRAs stay outside the image, in a volume that you fill once.
 
@@ -20,7 +20,8 @@ The installer:
 2. Installs Docker if neither Docker nor Podman is installed.
 3. Asks which models to download. Press Enter for FLUX.2-klein-4B (8 GB), the fastest,
    or choose **5** for Qwen Image 2.1 Turbo text-to-image and editing (one shared 19.6 GB download).
-   Choose **6** for the SeedVR2-3B upscaler (4.7 GB).
+   Choose **6** for FLUX.3 image klein text-to-image and editing (one shared 11.4 GB download), or
+   **7** for the SeedVR2-3B upscaler (4.7 GB).
 4. Starts VigenFlow and prints the address to open, **http://localhost:11283/**.
 
 In the browser UI, pick a model you downloaded, type a prompt and generate. The image size and the
@@ -32,18 +33,27 @@ questions, set the models on `bash`, for example
 `curl -fsSL .../install.sh | VIGENFLOW_MODELS=flux2_klein_4B,z_image_turbo bash`; the other settings
 are listed at the top of [`docker/install.sh`](../docker/install.sh).
 
-`VIGENFLOW_MODELS=qwen_image_2_1_turbo` selects both Qwen tasks; `VIGENFLOW_MODELS=all` selects all
-six weight sets, including `seedvr2`. For unattended downloads, `VIGENFLOW_ACCEPT_QWEN_LICENSE=yes` accepts Qwen's terms
-and `VIGENFLOW_ACCEPT_KREA_LICENSE=yes` accepts Krea's terms. Each setting applies only to its own
+`VIGENFLOW_MODELS=qwen_image_2_1_turbo` selects both Qwen tasks, and `flux3_image_klein` both FLUX.3
+tasks; `VIGENFLOW_MODELS=all` selects all seven weight sets, including `seedvr2`. For unattended
+downloads, `VIGENFLOW_ACCEPT_QWEN_LICENSE=yes` accepts Qwen's terms,
+`VIGENFLOW_ACCEPT_KREA_LICENSE=yes` accepts Krea's terms and `VIGENFLOW_ACCEPT_FLUX3_LICENSE=yes`
+accepts the FLUX.3 terms (FLUX Kommunity License). Each setting applies only to its own
 model. Without these settings, the downloader asks on a terminal and skips a model requiring
 acceptance when there is no terminal.
 
 
+### Updating from Beta 5
+
+Run the installer again. It pulls the Beta 6 image and restarts the `vigenflow` container; your
+weights in the `vigenflow-weights` volume are reused. To add FLUX.3 image klein, choose **6** (or
+`VIGENFLOW_MODELS=flux3_image_klein`) together with the models you already have. In the menu,
+SeedVR2-3B is now **7**.
+
 ### Updating from Beta 4
 
-Run the installer again. It pulls the Beta 5 image and restarts the `vigenflow` container; your
+Run the installer again. It pulls the Beta 6 image and restarts the `vigenflow` container; your
 weights in the `vigenflow-weights` volume are reused, and the weight paths have not changed. To add
-the SeedVR2-3B upscaler, choose **6** (or `VIGENFLOW_MODELS=seedvr2`) together with the models you
+the SeedVR2-3B upscaler, choose **7** (or `VIGENFLOW_MODELS=seedvr2`) together with the models you
 already have.
 
 ### Updating from Beta 3
@@ -75,7 +85,7 @@ The rest of this page does the same steps by hand.
   `ls -l /dev/accel/accel0`.
 - Docker Engine, or Podman. Docker Desktop does not work: it runs containers in a virtual machine
   that cannot see the NPU.
-- About 90 GB of disk space for all six weight sets, plus up to 10 GB while they download. Qwen
+- About 102 GB of disk space for all seven weight sets, plus up to 10 GB while they download. Qwen
   alone needs about 19.6 GB and serves both tasks.
 
 ## Get the image
@@ -86,7 +96,7 @@ Pull the published image:
 docker pull ghcr.io/jia1217/vigenflow:latest
 ```
 
-`ghcr.io/jia1217/vigenflow:0.2.0-beta.5` is the same image under its version.
+`ghcr.io/jia1217/vigenflow:0.2.0-beta.6` is the same image under its version.
 
 Or build it yourself from a checkout of this repository:
 
@@ -94,7 +104,7 @@ Or build it yourself from a checkout of this repository:
 docker build -f docker/Dockerfile -t ghcr.io/jia1217/vigenflow:latest .
 ```
 
-The build downloads the Beta 5 Ubuntu release zip, checks its sha256, and lays out the package
+The build downloads the Beta 6 Ubuntu release zip, checks its sha256, and lays out the package
 as it is in the zip. It then checks the package's file hashes and the runtime libraries of every
 program. When the build machine has AVX-512, it also starts every worker with `--help`. It needs no
 NPU.
@@ -109,13 +119,13 @@ docker run --rm -it \
   ghcr.io/jia1217/vigenflow:latest prepare
 ```
 
-`prepare` runs `prepare_base.exe` and takes the same options. Bare `prepare` downloads all six
-weight sets (about 90 GB); `prepare --only flux2_klein_4B,z_image_turbo` downloads only some. The
+`prepare` runs `prepare_base.exe` and takes the same options. Bare `prepare` downloads all seven
+weight sets (about 102 GB); `prepare --only flux2_klein_4B,z_image_turbo` downloads only some. The
 model names are `flux1_schnell`, `flux2_klein_4B`, `z_image_turbo`, `krea2_turbo`,
-`qwen_image_2_1_turbo` and `seedvr2` (the SeedVR2-3B upscaler). The editing models use the FLUX.2
-and Qwen weights.
+`qwen_image_2_1_turbo`, `flux3_image_klein` and `seedvr2` (the SeedVR2-3B upscaler). The editing
+models use the FLUX.2, Qwen and FLUX.3 weights.
 
-Keep `-it`: before it downloads Krea 2 Turbo or Qwen, `prepare` shows that model's
+Keep `-it`: before it downloads Krea 2 Turbo, Qwen or FLUX.3, `prepare` shows that model's
 license terms and waits for you to type `I agree`. To accept the terms for all
 models selected in that invocation without a prompt, add `--accept_license`.
 
@@ -296,11 +306,11 @@ gh api repos/jia1217/vigenflow/releases/tags/v<version> --jq '.assets[] | "\(.na
 [`.github/workflows/docker-server.yml`](../.github/workflows/docker-server.yml) builds the image on
 pull requests that change the Docker files, and pushes it to `ghcr.io/<owner>/vigenflow` when a `v*`
 tag is pushed or the workflow is run by hand. It is published under the `VIGENFLOW_VERSION` it holds
-(for example `0.2.0-beta.5`) and as `latest`. Every build that is not cached downloads the release
+(for example `0.2.0-beta.6`) and as `latest`. Every build that is not cached downloads the release
 zip, which adds one to that asset's download count.
 
 Before publishing, CI checks installer selection and license handling, builds the
-image, then starts its server without NPU inference to verify health, the browser UI, all eight
+image, then starts its server without NPU inference to verify health, the browser UI, all ten
 model IDs, entrypoint options and package checksums. The same checks can be run
 locally:
 
