@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check a built Docker/Podman image without an NPU or model weights.
 
-python3 docker/tests/check_image.py vigenflow:beta5 [--engine 'sudo docker']
+python3 docker/tests/check_image.py vigenflow:beta6 [--engine 'sudo docker']
 Starts a temporary container, checks server discovery and packaged checksums, then removes it.
 This does not run image generation or editing. The workers need AVX-512, so their --help check is
 skipped on a machine without it.
@@ -15,7 +15,8 @@ import time
 from urllib.request import urlopen
 
 MODELS = {'flux1-schnell', 'flux2-klein-4B', 'flux2-klein-4B-edit', 'krea2-turbo',
-          'z-image-turbo', 'qwen-image-2.1-turbo', 'qwen-image-2.1-turbo-edit', 'seedvr2-3B'}
+          'z-image-turbo', 'qwen-image-2.1-turbo', 'qwen-image-2.1-turbo-edit', 'flux3-image-klein',
+          'flux3-image-klein-edit', 'seedvr2-3B'}
 APP = '/opt/vigenflow/app'
 
 
@@ -65,7 +66,7 @@ def main():
             checked += ' and their --help'
         else:
             print('No AVX-512 on this machine: worker --help check skipped')
-        print('PASS: image checksums, entrypoint help, health, browser UI, all eight model IDs, ' + checked)
+        print('PASS: image checksums, entrypoint help, health, browser UI, all ten model IDs, ' + checked)
     except Exception:
         print(run('logs', container))
         raise
